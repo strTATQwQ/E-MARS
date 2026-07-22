@@ -61,19 +61,14 @@ exclusive and must not be enabled together.
 The physical Go2 hardware design, including power, cameras, installation
 photos, and CAD models, is maintained in
 [`railgunqaq/unitree-go2-edge-ai-hardware`](https://github.com/railgunqaq/unitree-go2-edge-ai-hardware).
-This repository pins that project as a Git submodule and exposes it through the
-relative [`hardware`](hardware) symbolic link.
+The relative [`hardware`](hardware) symbolic link points to a sibling checkout
+of that repository, so the hardware content can be updated independently.
 
-Clone both the software and hardware content together:
-
-```bash
-git clone --recurse-submodules https://github.com/strTATQwQ/E-MARS.git
-```
-
-For an existing checkout, initialize the pinned hardware content with:
+Clone the software and hardware repositories side by side:
 
 ```bash
-git submodule update --init --recursive
+git clone https://github.com/strTATQwQ/E-MARS.git
+git clone https://github.com/railgunqaq/unitree-go2-edge-ai-hardware.git
 ```
 
 ## Repository policy
