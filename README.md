@@ -3,10 +3,11 @@
 **E-MARS** — **Edge-deployed Multimodal Agent for Robotic Search-and-rescue**
 
 E-MARS is a ROS 2 navigation stack that combines multimodal language-guided
-planning, InternVLA, optional Step3-VL advice, Nav2, recovery behaviors,
-watchdogs, and bounded robot control. The project targets edge deployment on
-NVIDIA DGX-class hardware with Isaac Sim providing RGB-D, LiDAR, IMU, and Go2
-simulation during development.
+planning, InternVLA, one selected slow advisor (Step3-VL-10B or
+Step-3.7-Flash), Nav2, recovery behaviors, watchdogs, and bounded robot
+control. The project targets edge deployment on NVIDIA DGX-class hardware
+with Isaac Sim providing RGB-D, LiDAR, IMU, and Go2 simulation during
+development.
 
 ## Branches
 
@@ -25,7 +26,7 @@ freshness or collision policies are not valid real-robot defaults.
 ```text
 Natural-language task
   -> InternVLA policy
-  -> optional bounded Step3-VL advisor
+  -> one bounded slow advisor: Step3-VL-10B or Step-3.7-Flash
   -> ROS 2 / Nav2 / recovery / watchdog
   -> bounded velocity control
   -> Isaac Go2 simulation
@@ -43,10 +44,32 @@ The major source packages are:
 - `internvla_t4_recovery`: bounded recovery behavior;
 - `internvla_t4_sensors`: sensor and odometry integration;
 - `internvla_go2_controller`: bounded simulated Go2 control;
-- `slow_planner` and `step3_graph_nav`: optional slow-planner components;
+- `slow_planner` and `step3_graph_nav`: slow-planner components for the
+  selected advisor;
 - `isaac_vln_benchmark`: Isaac/ROS 2 simulation runtime;
 - `slow_planner_frontend`: operator panel;
 - `configs` and `scripts`: launch configuration and orchestration.
+
+### Slow-advisor selection
+
+The slow-advisor stage is required. Select exactly one model for a deployment:
+either **Step3-VL-10B** or **Step-3.7-Flash**. The two choices are mutually
+exclusive and must not be enabled together.
+
+## Hardware
+
+The physical Go2 hardware design, including power, cameras, installation
+photos, and CAD models, is maintained in
+[`railgunqaq/unitree-go2-edge-ai-hardware`](https://github.com/railgunqaq/unitree-go2-edge-ai-hardware).
+The relative [`hardware`](hardware) symbolic link points to a sibling checkout
+of that repository, so the hardware content can be updated independently.
+
+Clone the software and hardware repositories side by side:
+
+```bash
+git clone https://github.com/strTATQwQ/E-MARS.git
+git clone https://github.com/railgunqaq/unitree-go2-edge-ai-hardware.git
+```
 
 ## Repository policy
 
