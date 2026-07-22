@@ -11,6 +11,7 @@ result_root="$1"
 model_path="$2"
 venv_path="$3"
 root="${INTERNNAV_T1_CONTROL_ROOT:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)}"
+frontend_root="$root/frontend"
 python="$venv_path/bin/python"
 service_config="$root/configs/slow_models/step3_vl_10b_bf16.yaml"
 frontend_config="$root/configs/internnav_t5/lane_b_step3.yaml"
@@ -35,6 +36,7 @@ test -d "$model_path"
 test -f "$venv_path/T5_STEP3_RUNTIME_READY.json"
 test -f "$service_config"
 test -f "$frontend_config"
+test -f "$frontend_root/pyproject.toml"
 [[ "$result_root" = /home/rail/* ]]
 test -d "$result_root"
 test ! -e "$result_root/step3/services_ready.json"
@@ -102,7 +104,7 @@ trap 'exit 143' TERM HUP
 export STEP3_VL_10B_MODEL_PATH="$model_path"
 export SLOW_BENCHMARK_RESULTS="$result_root/step3"
 export T5_LANE_B_RESULTS="$result_root"
-export PYTHONPATH="$root${PYTHONPATH:+:$PYTHONPATH}"
+export PYTHONPATH="$frontend_root:$root${PYTHONPATH:+:$PYTHONPATH}"
 
 setsid env CUDA_VISIBLE_DEVICES=0 "$python" -m slow_planner.serve \
   --config "$service_config" >"$result_root/logs/step3_service.log" 2>&1 &

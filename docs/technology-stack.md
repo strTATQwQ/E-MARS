@@ -49,7 +49,7 @@ but a production Lane must not depend on a permanent remote model server.
 | LongCLIP | `3966af9ae9331666309a22128468b734db4672a7` | Recorded visual-language subdependency |
 | go2_ros2_sdk | `4e186b5f89bfec1f32c85676cbe22d4958e4f0fa` | External Go2 ROS integration reference |
 | unitree_ros2 | `668d1ec5a05d1c38d3306bdca7d59f2ba3581a88` | External Unitree ROS 2 reference |
-| Operator panel | Pinned `frontend` gitlink | Canonical VLA navigation UI |
+| Operator panel | Pinned `frontend` gitlink shared with `sim` | Canonical VLA navigation UI |
 | Hardware design | Pinned `hardware` gitlink | CAD, mounting, power, camera-placement source |
 
 Local patches and external repositories recorded by `dependencies.lock.yaml`
@@ -246,7 +246,7 @@ DGX 可以作为独立研发 Lane，但生产 Lane 不能长期依赖远程模�
 | LongCLIP | `3966af9ae9331666309a22128468b734db4672a7` | 视觉语言子依赖 |
 | go2_ros2_sdk | `4e186b5f89bfec1f32c85676cbe22d4958e4f0fa` | 外部 Go2 ROS 集成参考 |
 | unitree_ros2 | `668d1ec5a05d1c38d3306bdca7d59f2ba3581a88` | 外部 Unitree ROS 2 参考 |
-| 操作员前端 | 固定 `frontend` gitlink | 正式 VLA navigation UI |
+| 操作员前端 | 与 `sim` 共用的固定 `frontend` gitlink | 正式 VLA navigation UI |
 | 硬件描述 | 固定 `hardware` gitlink | CAD、安装、电源、相机位置来源 |
 
 部署前必须审计 `dependencies.lock.yaml` 记录的本地 patch 与外部仓库。

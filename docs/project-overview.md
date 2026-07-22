@@ -103,9 +103,10 @@ is a control-policy change and requires review and renewed qualification.
 
 ### 7. Operator panel
 
-The `frontend` submodule is the canonical VLA navigation operator panel. It
-shows camera previews, mission identity, canonical instruction, structured
-decision, ROS/Go2 health, model/Nav2/recovery state, latency, and runtime
+The `frontend` submodule is the canonical VLA navigation operator panel shared
+with the simulation branch; E-MARS does not maintain a branch-local frontend
+dependency. It shows camera previews, mission identity, canonical instruction,
+structured decision, ROS/Go2 health, model/Nav2/recovery state, latency, and runtime
 diagnostics. The high-level API supports mission submission, cancel, arm, and
 E-stop requests, but backend gates remain authoritative. A visible button does
 not bypass those gates.
@@ -239,7 +240,8 @@ Nvblox。Active Nvblox 不能掩盖定位或标定合同缺失；地图层 stale
 
 ### 7. 操作员前端
 
-`frontend` 子模块是正式 VLA 导航操作员面板，显示相机、mission identity、
+`frontend` 子模块是与仿真分支共用的正式 VLA 导航操作员面板；E-MARS 不再维护
+分支私有的前端依赖。它显示相机、mission identity、
 canonical instruction、结构化决策、ROS/Go2 health、模型/Nav2/recovery、时延和
 运行诊断。高层 API 支持 mission、cancel、arm 与 E-stop 请求，但后端 gate 始终
 具有最终权限。按钮可见不代表可以绕过这些 gate。

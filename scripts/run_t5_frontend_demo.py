@@ -16,7 +16,7 @@ from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 
 ROOT = Path(__file__).resolve().parents[1]
-PAGE = ROOT / "slow_planner_frontend" / "static" / "index.html"
+PAGE = ROOT / "frontend" / "slow_planner_frontend" / "static" / "index.html"
 VIEWS = (
     "front_left",
     "front",

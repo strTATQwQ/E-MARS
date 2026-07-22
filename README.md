@@ -76,8 +76,7 @@ watchdog, or unarmed state produces safe hold.
 | `internvla_ros2`, `internvla_t4_sensors` | Typed model and sensor/mission client / 类型化模型与传感器/任务客户端 |
 | `internvla_nav2_adapter`, `internvla_t4_recovery` | Nav2 command resolution and bounded recovery / Nav2 命令解析与有界恢复 |
 | `slow_planner` | Step3 normalization and bounded advisor protocols / Step3 规范化与受限辅助协议 |
-| `slow_planner_frontend` | In-tree compatibility copy of the operator panel / 前端仓库的兼容副本 |
-| `frontend` | Pinned `vla-nav-panel` submodule / 固定版本的前端子模块 |
+| `frontend` | Pinned `vla-nav-panel` submodule shared with the simulation branch / 与仿真分支共用的固定版本 `vla-nav-panel` 子模块 |
 | `hardware` | Pinned Go2 edge-AI hardware-description submodule / 固定版本的 Go2 边缘 AI 硬件描述子模块 |
 | `deploy/systemd`, `scripts` | Host-local services and launchers / 主机服务与启动器 |
 

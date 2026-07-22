@@ -5,9 +5,9 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-WorkingDirectory=%h/vla-nav-panel
+WorkingDirectory=%h/E-MARS/frontend
 EnvironmentFile=%h/.config/vla-nav-panel/strict-real.env
-ExecStart=%h/vla-nav-panel/scripts/run_ros_frontend.sh %h/vla-nav-panel/configs/strict_real_go2.yaml %h/vla-nav-panel/results/strict_real_go2
+ExecStart=%h/E-MARS/frontend/scripts/run_ros_frontend.sh %h/E-MARS/configs/strict_real_go2.yaml %h/.local/state/e-mars/strict_real_go2
 Restart=on-failure
 RestartSec=3
 TimeoutStopSec=15

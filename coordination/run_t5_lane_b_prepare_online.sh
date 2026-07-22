@@ -38,8 +38,8 @@ if [[ "${INTERNNAV_T5_INSIDE_LANE_B_PREPARE:-0}" != 1 ]]; then
   umask 077
   mkdir -p "$result_dir/logs" "$result_dir/lease" "$result_dir/remote/x86" \
     "$result_dir/remote/dgx_b" "$result_dir/maps"
-  "${git_command[@]}" archive --format=tar "$code_sha" | gzip -1n \
-    >"$result_dir/deployment.tar.gz"
+  bash "$root/scripts/create_source_bundle.sh" "$code_sha" \
+    "$result_dir/deployment.tar.gz" 1
   sha256sum "$result_dir/deployment.tar.gz" | cut -d' ' -f1 \
     >"$result_dir/deployment_archive_sha256.txt"
   set +e

@@ -45,6 +45,15 @@ The submodules are:
 - `frontend`: pinned `strTATQwQ/vla-nav-panel`;
 - `hardware`: pinned `railgunqaq/unitree-go2-edge-ai-hardware`.
 
+Install the panel only from the pinned submodule so simulation and real-Go2 use
+the same reviewed frontend source:
+
+```bash
+python3 -m venv .venv-panel
+source .venv-panel/bin/activate
+python -m pip install -e ./frontend
+```
+
 Credentials, host names, NIC names, model paths, ROS domain, camera device
 bindings, and run roots belong in `.env.local` or host-local systemd environment
 files. Never commit them.
@@ -203,9 +212,11 @@ Raw operator text must not reach InternVLA through a second IPC/topic path.
 
 ### 11. Frontend deployment
 
-Install the pinned frontend submodule or use the synchronized compatibility
-copy. Configure the service to listen on the approved LAN interface/port and
-read `configs/strict_real_go2.yaml`.
+Install and run the pinned `frontend` submodule; do not copy its Python package
+into this branch. Configure the service to listen on the approved LAN
+interface/port and read the E-MARS `configs/strict_real_go2.yaml`. Updating the
+panel means reviewing a new submodule commit and advancing the `frontend`
+gitlink in both E-MARS branches.
 
 The API surface includes:
 
@@ -329,6 +340,14 @@ chmod 600 .env.local
 子模块包括：`frontend`（固定版本的 `vla-nav-panel`）和 `hardware`（固定版本的
 Go2 边缘 AI 硬件描述）。凭证、主机名、NIC、模型路径、ROS domain、相机设备绑定
 和 run root 只能放 `.env.local` 或主机本地 systemd environment file，绝不能提交。
+
+前端只能从固定版本的子模块安装，从而让仿真与真机使用同一份经过审查的源码：
+
+```bash
+python3 -m venv .venv-panel
+source .venv-panel/bin/activate
+python -m pip install -e ./frontend
+```
 
 ### 4. 主机前置条件
 
@@ -457,9 +476,11 @@ python -m slow_planner.serve \
 
 ### 11. 前端部署
 
-安装固定 frontend 子模块或使用兼容副本，根据 `configs/strict_real_go2.yaml` 配置
-LAN 监听地址/端口。API 包含 health、state、camera、WebSocket，以及高层 mission、
-cancel、arm、E-stop 请求。
+只安装并运行固定版本的 `frontend` 子模块，不再把其 Python package 复制到本分支。
+根据 E-MARS 的 `configs/strict_real_go2.yaml` 配置 LAN 监听地址/端口。前端升级时
+先审查新的子模块 commit，再同步推进两个 E-MARS 分支的 `frontend` gitlink。API
+包含 health、state、camera、WebSocket，以及高层 mission、cancel、arm、E-stop
+请求。
 
 控制 endpoint 仍受后端 gate 约束。UI 控件不能绕过 mission identity、sensor/TF
 freshness、arm、E-stop、watchdog 或 command bound。相机 preview 限频；模型直接

@@ -2,6 +2,7 @@
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+frontend_root="$repo_root/frontend"
 config="${1:-$repo_root/configs/internnav_t5/lane_b_step3.yaml}"
 results="${2:-$repo_root/results/t5_readonly_ros_frontend/live}"
 frontend_python="${T5_FRONTEND_PYTHON:-/home/rail/ai-stack/venvs/step3-vl-10b-tf4.57.6/bin/python}"
@@ -33,11 +34,15 @@ source "$unitree_auth"
 set -u
 
 [[ -x "$frontend_python" ]] || { echo "missing frontend Python: $frontend_python" >&2; exit 2; }
+[[ -f "$frontend_root/pyproject.toml" ]] || {
+  echo "frontend submodule is not initialized" >&2
+  exit 2
+}
 [[ -r "$config" ]] || { echo "missing frontend config: $config" >&2; exit 2; }
 command -v python3 >/dev/null
 command -v ros2 >/dev/null
 
-export PYTHONPATH="$repo_root${PYTHONPATH:+:$PYTHONPATH}"
+export PYTHONPATH="$frontend_root:$repo_root${PYTHONPATH:+:$PYTHONPATH}"
 export T5_LANE_B_RESULTS="$results"
 export ROS_DOMAIN_ID="${ROS_DOMAIN_ID:-0}"
 export RMW_IMPLEMENTATION="${RMW_IMPLEMENTATION:-rmw_cyclonedds_cpp}"
