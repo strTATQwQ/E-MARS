@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "kind": "t5_live_frontier_capture",
+  "topics": {
+    "metadata": "internvla/observation/metadata",
+    "odometry": "odom",
+    "local_costmap": "local_costmap/costmap",
+    "global_costmap": "global_costmap/costmap"
+  },
+  "frames": {
+    "map": "map",
+    "base": "base_link"
+  },
+  "extraction": {
+    "free_max_value": 0,
+    "unknown_value": -1,
+    "nearest_free_radius_cells": 6,
+    "minimum_cluster_cells": 2,
+    "minimum_distance_m": 0.25,
+    "maximum_distance_m": 12.0,
+    "maximum_frontiers": 12,
+    "maximum_metadata_age_s": 2.5,
+    "maximum_costmap_age_s": 2.5,
+    "maximum_odometry_age_s": 2.5,
+    "snapshot_ttl_s": 2.5
+  },
+  "frontier_definition": "reachable free cell with four-connected unknown neighbor; eight-connected clustering; centroid-nearest reachable representative",
+  "candidate_reachability": "eight-connected BFS with diagonal corner cutting forbidden",
+  "costmap_preference": [
+    "local_costmap",
+    "global_costmap"
+  ],
+  "authority": {
+    "capture_only": true,
+    "ros_publishers": 0,
+    "model_requests": false,
+    "navigation_goal": false,
+    "cmd_vel": false,
+    "terminal_stop": false
+  },
+  "oracle_inputs": {
+    "reference_path": false,
+    "goal": false,
+    "success_state": false
+  },
+  "failure_policy": {
+    "missing_identity": "clear_snapshot_and_publish_nothing",
+    "reset": "clear_previous_snapshot_before_new_generation",
+    "stale_input": "clear_snapshot_and_publish_nothing",
+    "no_reachable_frontier": "clear_snapshot_and_publish_nothing"
+  }
+}

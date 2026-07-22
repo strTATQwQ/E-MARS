@@ -1,0 +1,45 @@
+benchmark:
+  name: route_choice_v3
+  timeout_sec: 60
+  seeds: [0, 1, 2, 3, 4]
+  route_choice_target_correct_branch_rate: 0.60
+
+scenes:
+  - scene_id: intersection_left_target
+    type: intersection
+    intersection_ahead_m: 0.75
+    branch_objects:
+      left: red_cone
+      right: blue_box
+  - scene_id: intersection_right_target
+    type: intersection
+    intersection_ahead_m: 0.75
+    branch_objects:
+      left: red_cone
+      right: blue_box
+
+tasks:
+  - task_id: route_left_red_cone
+    instruction: "At the intersection, turn left toward the red cone."
+    expected_route: left
+    target_object: red_cone
+  - task_id: route_right_blue_box
+    instruction: "At the intersection, turn right toward the blue box."
+    expected_route: right
+    target_object: blue_box
+
+modes:
+  - omninav_only
+  - step_route_choice_only
+  - omninav_step_route_choice
+  - forced_oracle_route_choice
+
+outputs:
+  required_files:
+    - summary.md
+    - metrics.json
+    - events.jsonl
+    - mode_table.csv
+    - failure_table.csv
+    - trajectory.csv
+    - action_distribution.csv

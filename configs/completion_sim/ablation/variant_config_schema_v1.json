@@ -1,0 +1,258 @@
+{
+  "$id": "configs/completion_sim/ablation/variant_config_schema_v1.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$comment": "Wire-shape schema. Frozen arm mapping, runtime-profile SHA, and bool/int type semantics are authoritatively checked by scripts/t4_ablation_validate.py.",
+  "additionalProperties": false,
+  "properties": {
+    "artifact_type": {
+      "const": "t4_ablation_variant_config"
+    },
+    "bounded_velocity_required": {
+      "const": true
+    },
+    "comparison_block": {
+      "enum": [
+        "system",
+        "trajectory",
+        "stop",
+        "history",
+        "recovery",
+        "view"
+      ]
+    },
+    "comparison_ids": {
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "factors": {
+      "$ref": "#/$defs/factors"
+    },
+    "forbidden_targets": {
+      "const": [
+        "real_go2",
+        "hardware_motion"
+      ]
+    },
+    "forbid_model_execution_in_worker": {
+      "const": true
+    },
+    "forbid_model_finetuning": {
+      "const": true
+    },
+    "forbid_nvfp4": {
+      "const": true
+    },
+    "forbid_step_3_7": {
+      "const": true
+    },
+    "mapping_and_safety_geometry": {
+      "const": "go2_frozen"
+    },
+    "matrix_id": {
+      "const": "internnav_t4_6_completion_sim_ablation_v1"
+    },
+    "matrix_sha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "oracle_termination": {
+      "additionalProperties": false,
+      "properties": {
+        "distance_source": {
+          "const": "evaluator_ground_truth"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "interpretation": {
+          "const": "diagnostic_upper_bound"
+        },
+        "requires_episode_identity_match": {
+          "const": true
+        },
+        "requires_original_model_stop_observation": {
+          "const": true
+        },
+        "scope": {
+          "const": "termination_only"
+        },
+        "threshold_m": {
+          "const": 2.5
+        },
+        "threshold_source": {
+          "const": "frozen_evaluator_success_radius"
+        },
+        "unstable_reasons": {
+          "const": [
+            "stop_unstable_missing",
+            "stop_unstable_premature",
+            "stop_unstable_oscillatory"
+          ]
+        }
+      },
+      "required": [
+        "enabled",
+        "scope",
+        "unstable_reasons",
+        "threshold_m",
+        "threshold_source",
+        "distance_source",
+        "requires_original_model_stop_observation",
+        "requires_episode_identity_match",
+        "interpretation"
+      ],
+      "type": "object"
+    },
+    "runtime_policy": {
+      "const": "completion_sim"
+    },
+    "runtime_profiles": {
+      "const": {
+        "completion_sim": {
+          "path": "configs/runtime/completion_sim.yaml",
+          "sha256": "5219f2d9d6496dcff889f563677e60c666aed322b07776dd7da61295b0d090cc"
+        },
+        "strict_evidence": {
+          "path": "configs/runtime/strict_evidence.yaml",
+          "sha256": "96e3c3fba54ff14c3ce245c2acaca9aa2848c074d00d1d8b99f661f262e5ba50"
+        }
+      }
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "simulation_estop_required": {
+      "const": true
+    },
+    "strict_evidence_unchanged": {
+      "const": true
+    },
+    "target": {
+      "const": "isaac_simulation_only"
+    },
+    "variant_id": {
+      "$ref": "#/$defs/variant_id"
+    },
+    "view_scope": {
+      "const": "internvla_rgb_only"
+    },
+    "warning_allowlist": {
+      "const": [
+        "recorder_partial_frame",
+        "tf_nearest_or_latest",
+        "source_timeout_extended",
+        "watchdog_extended",
+        "costmap_current_extended",
+        "collision_monitor_warn_only",
+        "nvblox_shadow",
+        "render_stamp_deviation"
+      ]
+    }
+  },
+  "required": [
+    "schema_version",
+    "artifact_type",
+    "matrix_id",
+    "matrix_sha256",
+    "variant_id",
+    "comparison_block",
+    "comparison_ids",
+    "runtime_policy",
+    "runtime_profiles",
+    "target",
+    "factors",
+    "view_scope",
+    "mapping_and_safety_geometry",
+    "strict_evidence_unchanged",
+    "bounded_velocity_required",
+    "simulation_estop_required",
+    "forbid_step_3_7",
+    "forbid_nvfp4",
+    "forbid_model_finetuning",
+    "forbid_model_execution_in_worker",
+    "forbidden_targets",
+    "warning_allowlist",
+    "oracle_termination"
+  ],
+  "title": "InternNav T4.6 generated variant config v1",
+  "type": "object",
+  "$defs": {
+    "factors": {
+      "additionalProperties": false,
+      "properties": {
+        "history_mode": {
+          "enum": [
+            "on",
+            "off"
+          ]
+        },
+        "recovery_mode": {
+          "enum": [
+            "on",
+            "off"
+          ]
+        },
+        "system_mode": {
+          "enum": [
+            "full_system1_system2",
+            "oracle_high_level_system1",
+            "system2_oracle_local_path"
+          ]
+        },
+        "termination_mode": {
+          "enum": [
+            "model_stop",
+            "oracle_termination"
+          ]
+        },
+        "trajectory_mode": {
+          "enum": [
+            "full_trajectory",
+            "endpoint",
+            "straight_line"
+          ]
+        },
+        "view_mode": {
+          "enum": [
+            "go2_view",
+            "h1_view"
+          ]
+        }
+      },
+      "required": [
+        "system_mode",
+        "trajectory_mode",
+        "termination_mode",
+        "history_mode",
+        "recovery_mode",
+        "view_mode"
+      ],
+      "type": "object"
+    },
+    "sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "variant_id": {
+      "enum": [
+        "full_system1_system2",
+        "oracle_high_level_system1",
+        "system2_oracle_local_path",
+        "full_trajectory",
+        "endpoint",
+        "straight_line",
+        "model_stop",
+        "oracle_termination",
+        "history_on",
+        "history_off",
+        "recovery_on",
+        "recovery_off",
+        "h1_view",
+        "go2_view"
+      ]
+    }
+  }
+}

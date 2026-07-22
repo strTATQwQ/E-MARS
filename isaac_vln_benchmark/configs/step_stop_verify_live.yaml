@@ -1,0 +1,42 @@
+benchmark:
+  name: step_stop_verify_live
+  ros_domain_id: 42
+  duration_sec: 10
+  trigger_period_sec: 0.25
+  seeds: [0, 1]
+  stop_accuracy_target: 0.75
+  visible_to_stop_latency_target_sec: 2.0
+
+mode:
+  name: step_stop_verify_live
+  use_step: true
+  use_omninav: false
+  use_internnav: false
+  step_policy: event_triggered
+  step_triggers: [goal_verify_only]
+  step_roles_only: true
+  real_step_required: true
+  external_step_triggers_only: true
+  pending_policy: stop
+  stale_gate_enabled: true
+
+tasks:
+  - task_id: target_verify_fire_extinguisher
+    scene_type: target_verify_fire_extinguisher_near
+    instruction: "Stop near the fire extinguisher."
+    target_object: fire_extinguisher_verify
+  - task_id: target_verify_exit_sign
+    scene_type: target_verify_exit_sign_near
+    instruction: "Stop near the red exit sign."
+    target_object: exit_sign_verify
+  - task_id: target_verify_blue_box
+    scene_type: target_verify_blue_box_near
+    instruction: "Approach the blue box and stop."
+    target_object: blue_box_verify
+
+step_output_schema:
+  stop: true
+  target_visible: true
+  estimated_distance_ok: true
+  confidence: 0.0
+  reason: short

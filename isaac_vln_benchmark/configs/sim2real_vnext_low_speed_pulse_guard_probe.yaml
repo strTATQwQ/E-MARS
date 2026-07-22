@@ -1,0 +1,31 @@
+benchmark:
+  name: sim2real_vnext_low_speed_pulse_guard_probe
+  timeout_sec_default: 180
+  seeds: [105]
+  modes:
+    - omninav_step_route_stop_sim2real_low_speed
+
+tasks:
+  simple_navigation:
+    ids: [simple_002]
+    count: 1
+    timeout_sec: 180
+  turn_choice:
+    ids: [turn_002]
+    count: 1
+    timeout_sec: 180
+  semantic_target:
+    ids: [semantic_001]
+    count: 1
+    timeout_sec: 180
+
+policy:
+  real_step_required: true
+  forced_oracle: forbidden
+  max_linear_x_mps: 0.20
+  max_yaw_rate_radps: 0.30
+  actual_linear_p95_mps: 0.20
+  actual_linear_raw_max_mps: 0.26
+  actual_yaw_p95_radps: 0.30
+  actual_yaw_raw_max_radps: 0.39
+  real_robot: disabled

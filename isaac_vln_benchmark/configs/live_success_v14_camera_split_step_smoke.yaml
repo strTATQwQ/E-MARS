@@ -1,0 +1,27 @@
+benchmark:
+  name: live_success_v14_camera_split_step_smoke
+  timeout_sec_default: 120
+  seeds: [0]
+  modes:
+    - omninav_step_route_stop_v12_screen
+
+tasks:
+  turn_choice:
+    ids: [turn_001]
+    count: 1
+    timeout_sec: 120
+  semantic_target:
+    ids: [semantic_001]
+    count: 1
+    timeout_sec: 120
+
+evidence_policy:
+  require_real_step_http: true
+  require_multimodal_step_roles: [route_choice, semantic_stop]
+  allow_mock_or_fallback: false
+  qualification_evidence: false
+  locomotion_fidelity: ideal_kinematic
+
+camera_contract:
+  omninav_prefer_synthetic_primary: true
+  step_image_topic: /camera/front/isaac_image

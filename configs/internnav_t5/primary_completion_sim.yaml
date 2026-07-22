@@ -1,0 +1,24 @@
+/**/internvla_model_node:
+  ros__parameters:
+    use_sim_time: true
+    observation_transport: raw
+    observation_wait_sec: 5.0
+    observation_cache_size: 32
+    idempotency_cache_size: 512
+    maximum_rgb_bytes: 524288
+    maximum_depth_bytes: 786432
+
+/**/internvla_client_node:
+  ros__parameters:
+    use_sim_time: true
+    observation_transport: raw
+    rgb_jpeg_quality: 85
+    depth_png_compression: 3
+    maximum_rgb_bytes: 524288
+    maximum_depth_bytes: 786432
+    service_timeout_sec: 300.0
+    step_deadline_sec: 30.0
+    step_validity_sec: 35.0
+    discovery_timeout_sec: 1200.0
+    ipc_idle_timeout_sec: 900.0
+    nav2_resolution_timeout_sec: 10.0

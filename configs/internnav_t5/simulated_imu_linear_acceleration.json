@@ -1,0 +1,40 @@
+{
+  "acceleration_frame": "go2_imu_link",
+  "contract_id": "internnav-t5-sim-imu-linear-acceleration-v1",
+  "covariance_diagonal_m2_s4": [
+    0.01,
+    0.01,
+    0.01
+  ],
+  "derivative_clock": "consecutive_normal_sample_sim_stamps",
+  "gravity_convention": {
+    "definition": "specific_force_body_equals_R_world_to_body_times_linear_acceleration_world_minus_gravity_world",
+    "gravity_world_mps2": [
+      0.0,
+      0.0,
+      -9.80665
+    ],
+    "stationary_level_expected_mps2": [
+      0.0,
+      0.0,
+      9.80665
+    ]
+  },
+  "invalid_samples": [
+    "first_sample_after_reset",
+    "state_only_or_bootstrap_sample",
+    "missing_or_non_positive_sim_stamp",
+    "non_increasing_sim_stamp",
+    "non_finite_input",
+    "invalid_orientation"
+  ],
+  "invalid_sample_behavior": "clear_baseline_and_require_two_new_consecutive_normal_samples",
+  "lio_backend_implemented": false,
+  "purpose": "sensor_contract_precondition_only",
+  "published_sample_stamp_key": "go2_imu_linear_acceleration_sample_sim_stamp_ns",
+  "reset_behavior": "clear_previous_velocity_and_publish_unavailable_until_next_sim_sample",
+  "schema_version": 1,
+  "scope": "completion_sim_only",
+  "source": "finite_difference_articulation_world_linear_velocity",
+  "units": "m/s^2"
+}

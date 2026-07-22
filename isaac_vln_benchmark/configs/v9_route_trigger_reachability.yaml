@@ -1,0 +1,21 @@
+benchmark:
+  name: v9_route_trigger_reachability
+  timeout_sec_default: 80
+  seeds: [0, 1, 2]
+  modes:
+    - v9_forced_forward_until_trigger
+    - v9_omninav_until_trigger
+    - v9_omninav_with_progress_assist
+
+tasks:
+  turn_choice:
+    count: 2
+    timeout_sec: 80
+
+targets:
+  forced_forward_reached_injection_window_min: 5
+  forced_forward_episodes: 6
+  collision_count: 0
+  stale_action_executed: 0
+  runtime_stale_discards: 0
+  timebase_error_count: 0

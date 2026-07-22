@@ -1,0 +1,37 @@
+internnav_go2_client:
+  ros__parameters:
+    server_host: "10.100.100.128"
+    server_port: 8087
+    model_name: "cma"
+    ckpt_path: "checkpoints/r2r/fine_tuned/cma_plus"
+    output_topic: "/go2/cmd_vel"
+
+    # Provided by isaac_vln_benchmark/go2_benchmark_adapter_node during live Isaac runs.
+    front_image_topic: "/camera/front/image"
+    depth_topic: "/camera/front/depth"
+    odom_topic: "/odom"
+    synthetic_fallback: false
+    depth_max_meters: 10.0
+    reset_on_init: true
+
+    # R2R mini hallway-forward fragment: "Step forward into the hallway."
+    instruction_tokens: "2088,915,1165,2202,1036,9"
+    inference_rate_hz: 1.0
+    publish_rate_hz: 20.0
+    command_ttl_sec: 1.2
+    action_ttl_sec: 1.2
+
+    forward_speed_mps: 0.12
+    turn_speed_radps: 0.30
+    enable_degenerate_recovery: true
+    degenerate_recovery_window: 6
+    degenerate_min_yaw_progress_rad: 0.05
+    degenerate_min_xy_progress_m: 0.02
+    degenerate_recovery_forward_steps: 5
+
+    image_width: 256
+    image_height: 256
+    http_timeout_sec: 30.0
+    init_retry_count: 5
+    init_retry_sleep_sec: 2.0
+    dry_run: false

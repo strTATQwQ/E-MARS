@@ -1,0 +1,61 @@
+benchmark:
+  name: live_success_v12_step_screening
+  timeout_sec_default: 135
+  seeds: [0, 1, 2]
+  modes:
+    - omninav_only_v11_matched
+    - omninav_forced_route_stop_oracle_v11
+    - omninav_step_route_only_v12_screen
+    - omninav_step_stop_only_v12_screen
+    - omninav_step_route_stop_v12_screen
+    - step_only_v12_sanity
+
+tasks:
+  simple_navigation:
+    count: 2
+    timeout_sec: 135
+  turn_choice:
+    count: 2
+    timeout_sec: 120
+  semantic_target:
+    count: 1
+    timeout_sec: 120
+
+targets:
+  screened_mode_episodes: 15
+  route_stop_success_min: 8
+  route_stop_clean_min: 6
+  success_delta_min: 2
+  clean_delta_min: 2
+  turn_choice_success_min: 1
+  semantic_target_success_min: 1
+  simple_navigation_success_min: 5
+  step_call_min: 1
+  helped_gt_hurt: true
+  runtime_stale_discards: 0
+  timebase_error_count: 0
+  collision_count: 0
+  stale_action_executed: 0
+
+evidence_policy:
+  require_real_step_http: true
+  require_accepted_step_response: true
+  allow_mock_or_fallback: false
+  semantic_stop_requires_step: true
+  controller_chain:
+    - stale_gate
+    - route_stop_bridge_or_geometric_controller
+    - primitive_executor
+    - safe_mux
+    - isaac
+
+gate_policy:
+  requires_v11_run: v11_forced_oracle_upper_bound_final_20260711
+  requires_step_route_run: step_route_choice_real_v11_final2_20260711
+  requires_step_stop_run: step_stop_verify_real_v11_final_20260711
+  confirmation: LOCKED_UNTIL_SCREEN_PASS
+  real_robot: DISABLED
+
+camera_contract:
+  omninav_prefer_synthetic_primary: true
+  step_image_topic: /camera/front/isaac_image

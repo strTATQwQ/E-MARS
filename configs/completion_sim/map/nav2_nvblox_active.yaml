@@ -1,0 +1,13 @@
+# Opt-in overlay for nav2_static_lidar.yaml. A composer may merge this file
+# only after the active Nvblox preflight succeeds. VoxelLayer remains the
+# primary local fast path, so rejecting/removing this overlay is lossless.
+local_costmap:
+  local_costmap:
+    ros__parameters:
+      plugins: [voxel_layer, nvblox_layer, inflation_layer]
+      nvblox_layer:
+        plugin: nvblox::nav2::NvbloxCostmapLayer
+        enabled: true
+        nav2_costmap_global_frame: odom
+        nvblox_map_slice_topic: /nvblox_node/static_map_slice
+        convert_to_binary_costmap: true

@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>nav2_footprint_clearing_layer</name>
+  <version>0.1.0</version>
+  <description>Pose and sensor verified current-footprint clearing layer for Nav2.</description>
+  <maintainer email="noreply@example.invalid">InternNav T4</maintainer>
+  <license>Apache-2.0</license>
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <depend>rclcpp</depend>
+  <depend>nav2_costmap_2d</depend>
+  <depend>nav2_msgs</depend>
+  <depend>pluginlib</depend>
+  <depend>sensor_msgs</depend>
+  <depend>std_msgs</depend>
+  <depend>tf2_ros</depend>
+  <export>
+    <build_type>ament_cmake</build_type>
+    <nav2_costmap_2d plugin="${prefix}/footprint_clearing_layer.xml" />
+  </export>
+</package>

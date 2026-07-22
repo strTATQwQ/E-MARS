@@ -1,0 +1,19 @@
+{
+  "benchmark": {
+    "name": "live_success_small",
+    "timeout_sec_default": 120,
+    "seeds": [0, 1, 2],
+    "modes": [
+      "internnav_only",
+      "step_internnav_event",
+      "omninav_only",
+      "step_omninav_event",
+      "step_only"
+    ]
+  },
+  "tasks": {
+    "simple_navigation": {"count": 2, "timeout_sec": 135},
+    "turn_choice": {"count": 2, "timeout_sec": 120},
+    "semantic_target": {"count": 1, "timeout_sec": 120}
+  }
+}

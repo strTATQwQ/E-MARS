@@ -1,0 +1,289 @@
+{
+  "schema_version": 1,
+  "default_camera": {"front_fov_deg": 90.0, "max_range_m": 12.0},
+  "scenes": [
+    {
+      "scene_id": "straight_001",
+      "scene_type": "straight_corridor",
+      "robot_start_pose": [0.0, 0.0, 0.0],
+      "bounds": [-1.5, -1.5, 9.0, 1.5],
+      "semantic_zones": [{"id": "corridor", "class": "corridor", "center": [4.0, 0.0], "radius": 5.0}],
+      "objects": [
+        {"id": "exit_sign_1", "class": "exit_sign", "pose": [7.5, 0.0, 1.5], "color": "red", "radius": 0.45, "success_condition": "within_distance_visible"},
+        {"id": "blue_box_1", "class": "box", "pose": [5.0, 0.8, 0.4], "color": "blue", "radius": 0.55, "success_condition": "within_distance"}
+      ],
+      "obstacles": [{"id": "cone_1", "pose": [3.5, -0.55, 0.3], "size": [0.25, 0.25, 0.6]}],
+      "dynamic_obstacles": [],
+      "lighting_seed": 101,
+      "texture_seed": 201,
+      "blocked_paths": [],
+      "semantic_distractors": []
+    },
+    {
+      "scene_id": "intersection_001",
+      "scene_type": "corridor_with_intersection",
+      "robot_start_pose": [0.0, 0.0, 0.0],
+      "bounds": [-1.5, -3.0, 8.0, 3.0],
+      "semantic_zones": [{"id": "intersection_a", "class": "intersection", "center": [4.0, 0.0], "radius": 1.1}],
+      "objects": [
+        {"id": "exit_sign_1", "class": "exit_sign", "pose": [6.0, 2.0, 1.5], "color": "red", "radius": 0.45, "success_condition": "within_distance_visible"},
+        {"id": "blue_box_1", "class": "box", "pose": [6.2, -2.0, 0.5], "color": "blue", "radius": 0.6, "success_condition": "within_distance"},
+        {"id": "fire_extinguisher_1", "class": "fire_extinguisher", "pose": [6.3, 1.8, 0.5], "color": "red", "radius": 0.4, "success_condition": "within_distance_visible"},
+        {"id": "red_box_distractor", "class": "box", "pose": [3.0, -2.0, 0.5], "color": "red", "radius": 0.5, "success_condition": "distractor"}
+      ],
+      "obstacles": [{"id": "box_1", "pose": [2.5, 0.2, 0.5], "size": [0.5, 0.5, 0.5]}],
+      "dynamic_obstacles": [],
+      "lighting_seed": 102,
+      "texture_seed": 202,
+      "blocked_paths": [],
+      "semantic_distractors": ["red_box_distractor"]
+    },
+    {
+      "scene_id": "doorway_001",
+      "scene_type": "doorway_room",
+      "robot_start_pose": [0.0, 0.0, 0.0],
+      "bounds": [-2.0, -2.5, 7.0, 3.0],
+      "semantic_zones": [{"id": "doorway_left", "class": "doorway", "center": [3.0, 1.1], "radius": 0.8}],
+      "objects": [
+        {"id": "door_sign_1", "class": "door_sign", "pose": [3.2, 1.4, 1.4], "color": "white", "radius": 0.35, "success_condition": "within_distance_visible"},
+        {"id": "chair_1", "class": "chair", "pose": [5.5, 1.4, 0.5], "color": "brown", "radius": 0.55, "success_condition": "within_distance"},
+        {"id": "table_1", "class": "table", "pose": [5.8, 0.8, 0.5], "color": "gray", "radius": 0.75, "success_condition": "relation_anchor"}
+      ],
+      "obstacles": [{"id": "barrier_1", "pose": [2.4, -0.8, 0.45], "size": [0.9, 0.25, 0.9]}],
+      "dynamic_obstacles": [],
+      "lighting_seed": 103,
+      "texture_seed": 203,
+      "blocked_paths": [],
+      "semantic_distractors": []
+    },
+    {
+      "scene_id": "clutter_001",
+      "scene_type": "cluttered_hallway",
+      "robot_start_pose": [0.0, 0.0, 0.0],
+      "bounds": [-1.8, -1.8, 8.0, 1.8],
+      "semantic_zones": [{"id": "clutter_zone", "class": "clutter", "center": [4.0, 0.0], "radius": 2.5}],
+      "objects": [
+        {"id": "fire_extinguisher_2", "class": "fire_extinguisher", "pose": [6.7, 0.9, 0.5], "color": "red", "radius": 0.4, "success_condition": "within_distance_visible"},
+        {"id": "blue_box_2", "class": "box", "pose": [4.8, -0.9, 0.5], "color": "blue", "radius": 0.55, "success_condition": "within_distance"}
+      ],
+      "obstacles": [
+        {"id": "box_2", "pose": [2.5, 0.5, 0.4], "size": [0.5, 0.5, 0.8]},
+        {"id": "box_3", "pose": [3.6, -0.5, 0.4], "size": [0.6, 0.4, 0.8]},
+        {"id": "cone_2", "pose": [5.2, 0.2, 0.3], "size": [0.3, 0.3, 0.6]}
+      ],
+      "dynamic_obstacles": [],
+      "lighting_seed": 104,
+      "texture_seed": 204,
+      "blocked_paths": [],
+      "semantic_distractors": []
+    },
+    {
+      "scene_id": "ambiguous_001",
+      "scene_type": "ambiguous_targets",
+      "robot_start_pose": [0.0, 0.0, 0.0],
+      "bounds": [-2.0, -3.0, 7.5, 3.0],
+      "semantic_zones": [{"id": "door_zone", "class": "doorway", "center": [5.5, 1.5], "radius": 1.0}],
+      "objects": [
+        {"id": "exit_sign_2", "class": "exit_sign", "pose": [5.5, 1.8, 1.5], "color": "red", "radius": 0.45, "success_condition": "within_distance_visible"},
+        {"id": "red_sign_distractor", "class": "exit_sign", "pose": [5.5, -1.8, 1.5], "color": "red", "radius": 0.45, "success_condition": "distractor"},
+        {"id": "blue_box_3", "class": "box", "pose": [4.8, -1.7, 0.5], "color": "blue", "radius": 0.55, "success_condition": "relation_anchor"},
+        {"id": "door_sign_2", "class": "door_sign", "pose": [5.2, 1.2, 1.3], "color": "white", "radius": 0.35, "success_condition": "within_distance_visible"}
+      ],
+      "obstacles": [],
+      "dynamic_obstacles": [],
+      "lighting_seed": 105,
+      "texture_seed": 205,
+      "blocked_paths": [],
+      "semantic_distractors": ["red_sign_distractor"]
+    },
+    {
+      "scene_id": "dynamic_001",
+      "scene_type": "dynamic_obstacle_hallway",
+      "robot_start_pose": [0.0, 0.0, 0.0],
+      "bounds": [-1.8, -1.8, 8.0, 1.8],
+      "semantic_zones": [{"id": "dynamic_zone", "class": "corridor", "center": [4.0, 0.0], "radius": 3.0}],
+      "objects": [{"id": "exit_sign_3", "class": "exit_sign", "pose": [7.0, 0.0, 1.5], "color": "red", "radius": 0.45, "success_condition": "within_distance_visible"}],
+      "obstacles": [{"id": "barrier_2", "pose": [5.0, 0.8, 0.5], "size": [0.7, 0.25, 1.0]}],
+      "dynamic_obstacles": [{"id": "human_dummy_1", "class": "human_dummy", "path": [[3.2, -1.0], [3.2, 1.0]], "speed_mps": 0.35, "radius": 0.45}],
+      "lighting_seed": 106,
+      "texture_seed": 206,
+      "blocked_paths": [],
+      "semantic_distractors": []
+    },
+    {
+      "scene_id": "blocked_001",
+      "scene_type": "blocked_path_recovery",
+      "robot_start_pose": [0.0, 0.0, 0.0],
+      "bounds": [-2.0, -3.0, 8.0, 3.0],
+      "semantic_zones": [{"id": "blocked_ahead", "class": "blocked_path", "center": [3.5, 0.0], "radius": 1.0}],
+      "objects": [
+        {"id": "fire_extinguisher_3", "class": "fire_extinguisher", "pose": [6.8, 1.8, 0.5], "color": "red", "radius": 0.4, "success_condition": "within_distance_visible"},
+        {"id": "exit_sign_4", "class": "exit_sign", "pose": [6.5, 2.0, 1.5], "color": "red", "radius": 0.45, "success_condition": "relation_anchor"}
+      ],
+      "obstacles": [{"id": "blocked_barrier", "pose": [3.5, 0.0, 0.6], "size": [1.2, 0.35, 1.2]}],
+      "dynamic_obstacles": [],
+      "lighting_seed": 107,
+      "texture_seed": 207,
+      "blocked_paths": ["main_corridor"],
+      "semantic_distractors": []
+    },
+    {
+      "scene_id": "intersection_microbench_001",
+      "scene_type": "intersection_microbench",
+      "robot_start_pose": [3.0, 0.0, 0.0],
+      "bounds": [-1.5, -3.0, 8.0, 3.0],
+      "semantic_zones": [{"id": "intersection_micro", "class": "intersection", "center": [4.0, 0.0], "radius": 1.2}],
+      "objects": [
+        {"id": "red_cone_left", "class": "cone", "pose": [5.8, 2.0, 0.4], "color": "red", "radius": 0.45, "success_condition": "within_distance_visible"},
+        {"id": "blue_box_right", "class": "box", "pose": [5.8, -2.0, 0.5], "color": "blue", "radius": 0.6, "success_condition": "within_distance_visible"}
+      ],
+      "obstacles": [],
+      "dynamic_obstacles": [],
+      "lighting_seed": 301,
+      "texture_seed": 401,
+      "blocked_paths": [],
+      "semantic_distractors": []
+    },
+    {
+      "scene_id": "target_verify_fire_extinguisher_001",
+      "scene_type": "target_verify_fire_extinguisher",
+      "robot_start_pose": [3.7, 0.0, 0.0],
+      "bounds": [-1.5, -1.5, 7.0, 1.5],
+      "semantic_zones": [{"id": "verify_zone_fire", "class": "target_verify", "center": [5.8, 0.0], "radius": 3.0}],
+      "objects": [
+        {"id": "fire_extinguisher_verify", "class": "fire_extinguisher", "pose": [5.8, 0.0, 0.5], "color": "red", "radius": 0.4, "success_condition": "within_distance_visible"}
+      ],
+      "obstacles": [],
+      "dynamic_obstacles": [],
+      "lighting_seed": 302,
+      "texture_seed": 402,
+      "blocked_paths": [],
+      "semantic_distractors": []
+    },
+    {
+      "scene_id": "target_verify_exit_sign_001",
+      "scene_type": "target_verify_exit_sign",
+      "robot_start_pose": [3.4, 0.0, 0.0],
+      "bounds": [-1.5, -1.5, 7.0, 1.5],
+      "semantic_zones": [{"id": "verify_zone_exit", "class": "target_verify", "center": [5.7, 0.0], "radius": 3.0}],
+      "objects": [
+        {"id": "exit_sign_verify", "class": "exit_sign", "pose": [5.7, 0.0, 1.5], "color": "red", "radius": 0.45, "success_condition": "within_distance_visible"}
+      ],
+      "obstacles": [],
+      "dynamic_obstacles": [],
+      "lighting_seed": 303,
+      "texture_seed": 403,
+      "blocked_paths": [],
+      "semantic_distractors": []
+    },
+    {
+      "scene_id": "target_verify_blue_box_001",
+      "scene_type": "target_verify_blue_box",
+      "robot_start_pose": [3.2, 0.0, 0.0],
+      "bounds": [-1.5, -1.5, 7.0, 1.5],
+      "semantic_zones": [{"id": "verify_zone_box", "class": "target_verify", "center": [5.6, 0.0], "radius": 3.0}],
+      "objects": [
+        {"id": "blue_box_verify", "class": "box", "pose": [5.6, 0.0, 0.5], "color": "blue", "radius": 0.55, "success_condition": "within_distance_visible"}
+      ],
+      "obstacles": [],
+      "dynamic_obstacles": [],
+      "lighting_seed": 304,
+      "texture_seed": 404,
+      "blocked_paths": [],
+      "semantic_distractors": []
+    },
+    {
+      "scene_id": "target_verify_fire_extinguisher_near_001",
+      "scene_type": "target_verify_fire_extinguisher_near",
+      "robot_start_pose": [0.0, 0.0, 0.0],
+      "bounds": [-1.5, -1.5, 4.0, 1.5],
+      "semantic_zones": [{"id": "verify_zone_fire_near", "class": "target_verify", "center": [2.35, 0.0], "radius": 2.0}],
+      "objects": [
+        {"id": "fire_extinguisher_verify", "class": "fire_extinguisher", "pose": [2.35, 0.0, 0.5], "color": "red", "radius": 0.4, "success_condition": "within_distance_visible"}
+      ],
+      "obstacles": [],
+      "dynamic_obstacles": [],
+      "lighting_seed": 305,
+      "texture_seed": 405,
+      "blocked_paths": [],
+      "semantic_distractors": []
+    },
+    {
+      "scene_id": "target_verify_exit_sign_near_001",
+      "scene_type": "target_verify_exit_sign_near",
+      "robot_start_pose": [0.0, 0.0, 0.0],
+      "bounds": [-1.5, -1.5, 4.0, 1.5],
+      "semantic_zones": [{"id": "verify_zone_exit_near", "class": "target_verify", "center": [2.25, 0.0], "radius": 2.0}],
+      "objects": [
+        {"id": "exit_sign_verify", "class": "exit_sign", "pose": [2.25, 0.0, 1.5], "color": "red", "radius": 0.45, "success_condition": "within_distance_visible"}
+      ],
+      "obstacles": [],
+      "dynamic_obstacles": [],
+      "lighting_seed": 306,
+      "texture_seed": 406,
+      "blocked_paths": [],
+      "semantic_distractors": []
+    },
+    {
+      "scene_id": "target_verify_blue_box_near_001",
+      "scene_type": "target_verify_blue_box_near",
+      "robot_start_pose": [0.0, 0.0, 0.0],
+      "bounds": [-1.5, -1.5, 4.0, 1.5],
+      "semantic_zones": [{"id": "verify_zone_box_near", "class": "target_verify", "center": [2.15, 0.0], "radius": 2.0}],
+      "objects": [
+        {"id": "blue_box_verify", "class": "box", "pose": [2.15, 0.0, 0.5], "color": "blue", "radius": 0.55, "success_condition": "within_distance_visible"}
+      ],
+      "obstacles": [],
+      "dynamic_obstacles": [],
+      "lighting_seed": 307,
+      "texture_seed": 407,
+      "blocked_paths": [],
+      "semantic_distractors": []
+    },
+    {
+      "scene_id": "semantic_micro_clear_001",
+      "scene_type": "semantic_micro_clear",
+      "robot_start_pose": [0.0, 0.0, 0.0],
+      "bounds": [-1.5, -2.0, 6.0, 2.0],
+      "semantic_zones": [{"id": "semantic_clear_zone", "class": "target_approach", "center": [4.0, 0.0], "radius": 4.0}],
+      "objects": [{"id": "semantic_target_clear", "class": "fire_extinguisher", "pose": [4.0, 0.0, 0.5], "color": "red", "radius": 0.4, "success_condition": "within_distance_visible"}],
+      "obstacles": [],
+      "dynamic_obstacles": [],
+      "lighting_seed": 501,
+      "texture_seed": 601,
+      "blocked_paths": [],
+      "semantic_distractors": []
+    },
+    {
+      "scene_id": "semantic_micro_obstacle_001",
+      "scene_type": "semantic_micro_obstacle",
+      "robot_start_pose": [0.0, 0.0, 0.0],
+      "bounds": [-1.5, -2.5, 6.0, 2.5],
+      "semantic_zones": [{"id": "semantic_obstacle_zone", "class": "target_approach", "center": [4.2, 0.0], "radius": 4.0}],
+      "objects": [{"id": "semantic_target_obstacle", "class": "fire_extinguisher", "pose": [4.2, 0.0, 0.5], "color": "red", "radius": 0.4, "success_condition": "within_distance_visible"}],
+      "obstacles": [{"id": "semantic_box", "pose": [2.0, 0.0, 0.5], "size": [0.65, 0.65, 1.0]}],
+      "dynamic_obstacles": [],
+      "lighting_seed": 502,
+      "texture_seed": 602,
+      "blocked_paths": [],
+      "semantic_distractors": []
+    },
+    {
+      "scene_id": "semantic_micro_intersection_001",
+      "scene_type": "semantic_micro_intersection",
+      "robot_start_pose": [0.0, 0.0, 0.0],
+      "bounds": [-1.5, -3.0, 8.0, 3.0],
+      "semantic_zones": [{"id": "semantic_intersection_zone", "class": "intersection", "center": [4.0, 0.0], "radius": 1.1}],
+      "objects": [
+        {"id": "semantic_target_intersection", "class": "fire_extinguisher", "pose": [6.3, 1.8, 0.5], "color": "red", "radius": 0.4, "success_condition": "within_distance_visible"},
+        {"id": "semantic_exit_anchor", "class": "exit_sign", "pose": [6.0, 2.0, 1.5], "color": "red", "radius": 0.45, "success_condition": "relation_anchor"}
+      ],
+      "obstacles": [{"id": "semantic_intersection_box", "pose": [2.5, 0.2, 0.5], "size": [0.5, 0.5, 0.5]}],
+      "dynamic_obstacles": [],
+      "lighting_seed": 503,
+      "texture_seed": 603,
+      "blocked_paths": [],
+      "semantic_distractors": []
+    }
+  ]
+}

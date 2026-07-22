@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "profile": "completion_sim_minimal_v1",
+  "soak_duration_sim_sec": 600,
+  "schedule_timebase": "sim_time",
+  "wall_time_scope": "actuator_and_process_liveness_only",
+  "events": [
+    {
+      "event_id": "fi-01-model-request-timeout",
+      "kind": "model_request_timeout",
+      "start_sim_offset_sec": 60,
+      "duration_sim_sec": 0,
+      "target": "dgx_model"
+    },
+    {
+      "event_id": "fi-02-model-service-restart",
+      "kind": "model_service_restart",
+      "start_sim_offset_sec": 140,
+      "duration_sim_sec": 0,
+      "target": "dgx_model_supervisor"
+    },
+    {
+      "event_id": "fi-03-dgx-ros-node-restart",
+      "kind": "dgx_ros_node_restart",
+      "start_sim_offset_sec": 240,
+      "duration_sim_sec": 0,
+      "target": "dgx_onboard_supervisor"
+    },
+    {
+      "event_id": "fi-04-episode-reset",
+      "kind": "episode_reset",
+      "start_sim_offset_sec": 340,
+      "duration_sim_sec": 0,
+      "target": "x86_model_agent"
+    },
+    {
+      "event_id": "fi-05-lidar-depth-short-outage",
+      "kind": "lidar_depth_short_outage",
+      "start_sim_offset_sec": 420,
+      "duration_sim_sec": 8,
+      "target": "x86_isaac_controller"
+    },
+    {
+      "event_id": "fi-06-network-short-outage",
+      "kind": "network_short_outage_and_recovery",
+      "start_sim_offset_sec": 510,
+      "duration_sim_sec": 8,
+      "target": "x86_cross_host_data_plane"
+    }
+  ],
+  "required_invariants": {
+    "safe_stop_before_destructive_restart": true,
+    "sensor_and_action_freshness_timebase": "sim_time",
+    "stale_response_discard": true,
+    "wall_time_used_only_for_liveness": true,
+    "final_residual_count": 0,
+    "real_go2_eligible": false
+  }
+}

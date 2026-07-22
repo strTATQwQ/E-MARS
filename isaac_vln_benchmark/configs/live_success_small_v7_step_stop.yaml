@@ -1,0 +1,25 @@
+benchmark:
+  name: live_success_small_v7_step_stop
+  timeout_sec_default: 135
+  seeds: [0, 1, 2]
+  modes:
+    - omninav_step_stop_only_v7
+
+tasks:
+  simple_navigation:
+    count: 2
+    timeout_sec: 135
+  turn_choice:
+    count: 2
+    timeout_sec: 120
+  semantic_target:
+    count: 1
+    timeout_sec: 120
+
+targets:
+  semantic_target_success_min: 1
+  stop_decision_accuracy_min: 0.75
+  visible_to_stop_latency_max_sec: 2.0
+  collision_count: 0
+  stale_action_executed: 0
+  timebase_error_count: 0

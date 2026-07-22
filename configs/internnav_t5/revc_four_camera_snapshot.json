@@ -1,0 +1,148 @@
+{
+  "calibration_status": "temporary_concept_geometry",
+  "camera_order": [
+    "front_left",
+    "front",
+    "front_right",
+    "rear"
+  ],
+  "cameras": [
+    {
+      "frame_id": "t5_revc_front_left_optical_frame",
+      "identity": "front_left",
+      "position_F_M_m": [
+        0.03,
+        0.051962,
+        0.02
+      ],
+      "position_F_M_mm": [
+        30.0,
+        51.962,
+        20.0
+      ],
+      "prim_path": "base/t5_revc_front_left",
+      "sensor_name": "t5_revc_front_left",
+      "yaw_deg": 60.0
+    },
+    {
+      "frame_id": "t5_revc_front_optical_frame",
+      "identity": "front",
+      "position_F_M_m": [
+        0.06,
+        0.0,
+        0.02
+      ],
+      "position_F_M_mm": [
+        60.0,
+        0.0,
+        20.0
+      ],
+      "prim_path": "base/t5_revc_front",
+      "sensor_name": "t5_revc_front",
+      "yaw_deg": 0.0
+    },
+    {
+      "frame_id": "t5_revc_front_right_optical_frame",
+      "identity": "front_right",
+      "position_F_M_m": [
+        0.03,
+        -0.051962,
+        0.02
+      ],
+      "position_F_M_mm": [
+        30.0,
+        -51.962,
+        20.0
+      ],
+      "prim_path": "base/t5_revc_front_right",
+      "sensor_name": "t5_revc_front_right",
+      "yaw_deg": -60.0
+    },
+    {
+      "frame_id": "t5_revc_rear_optical_frame",
+      "identity": "rear",
+      "position_F_M_m": [
+        -0.06,
+        0.0,
+        0.02
+      ],
+      "position_F_M_mm": [
+        -60.0,
+        0.0,
+        20.0
+      ],
+      "prim_path": "base/t5_revc_rear",
+      "sensor_name": "t5_revc_rear",
+      "yaw_deg": 180.0
+    }
+  ],
+  "contract_id": "internnav-t5-revc-four-camera-v1",
+  "cuvslam_stereo_separation": {
+    "baseline_m": 0.12,
+    "must_not_reuse_revc_cameras": true,
+    "resolution": [
+      320,
+      240
+    ],
+    "sensor_names": [
+      "t4_stereo_left",
+      "t4_stereo_right"
+    ]
+  },
+  "frames": {
+    "base_frame": "base_link",
+    "mast_frame": "F_M",
+    "temporary_T_base_link_F_M": {
+      "rotation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "translation_m": [
+        0.14,
+        0.0,
+        0.18
+      ]
+    }
+  },
+  "optics": {
+    "hfov_deg": 73.0,
+    "pitch_down_deg": 10.0,
+    "resolution": [
+      640,
+      480
+    ]
+  },
+  "safety_invariants": [
+    "collision_geometry_preserved",
+    "bounded_linear_and_angular_velocity",
+    "bounded_linear_and_angular_acceleration",
+    "stale_command_safe_stop",
+    "episode_reset_isolation"
+  ],
+  "schema_version": 1,
+  "scope": "completion_sim_only",
+  "snapshot": {
+    "ack_file": "revc_snapshot.ack.json",
+    "capture": "on_demand_same_render_tick",
+    "encoding": "png_rgb8",
+    "external_preview_max_hz": 1.0,
+    "metadata": "one_json_sidecar_per_snapshot",
+    "render_barrier": "replicator_step_pause_timeline_wait_for_render",
+    "render_metadata_policy": "strict_isaac_reference_time_required_and_pause_stable",
+    "required_render_metadata": [
+      "rendering_frame.referenceTimeNumerator",
+      "rendering_frame.referenceTimeDenominator",
+      "rendering_time"
+    ],
+    "request_claim": "atomic_rename_then_atomic_ack",
+    "request_file": "revc_snapshot.request.json",
+    "required_execution_identity": [
+      "episode_id",
+      "reset_generation",
+      "sequence_id"
+    ]
+  },
+  "source_handoff": "output/cad/go2_board_camera_mast_revC_compact_20260720/CHAT_HANDOFF_REV_C.md"
+}

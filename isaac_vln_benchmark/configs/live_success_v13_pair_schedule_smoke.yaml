@@ -1,0 +1,19 @@
+benchmark:
+  name: live_success_v13_pair_schedule_smoke
+  timeout_sec_default: 60
+  seeds: [0]
+  modes:
+    - omninav_only_v11_matched
+    - omninav_step_route_stop_v12_screen
+  randomize_mode_order_by_task: true
+  mode_order_seed: 20260711
+
+tasks:
+  simple_navigation:
+    count: 2
+    timeout_sec: 60
+
+targets:
+  pairs: 2
+  episodes: 4
+  adjacent_modes_per_task: true

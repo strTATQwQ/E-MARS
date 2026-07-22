@@ -1,0 +1,121 @@
+{
+  "schema_version": 1,
+  "camera_model": "Intel RealSense D435i",
+  "role": "InternVLA semantic RGB camera; the depth stream is evaluated separately by T4.2",
+  "official_specs": {
+    "rgb_hfov_deg": 69.4,
+    "rgb_vfov_deg": 42.5,
+    "depth_hfov_deg": 87.0,
+    "depth_vfov_deg": 58.0,
+    "ideal_range_m": [
+      0.3,
+      3.0
+    ],
+    "minimum_depth_distance_at_max_resolution_m": 0.28,
+    "dimensions_mm": [
+      90.0,
+      25.0,
+      25.0
+    ],
+    "nominal_mass_g": 72.0,
+    "rgb_shutter": "rolling",
+    "depth_shutter": "global"
+  },
+  "sources": [
+    "https://www.intel.com/content/www/us/en/products/sku/190004/intel-realsense-depth-camera-d435i/specifications.html",
+    "https://www.realsenseai.com/products/depth-camera-d435i/",
+    "https://www.intelrealsense.com/wp-content/uploads/2024/10/Intel-RealSense-D400-Series-Datasheet-October-2024.pdf"
+  ],
+  "fixed_parameters": {
+    "forward_from_base_m": 0.2,
+    "lateral_from_base_m": 0.0,
+    "semantic_resolution": [
+      640,
+      480
+    ],
+    "mount": "rigid_fixed_extrinsics",
+    "posture_policy": "continuous Go2 base roll/pitch stabilizer; D435i IMU retained for timestamped attitude telemetry",
+    "development_episode_count": 5
+  },
+  "geometric_prescreen": {
+    "method": "flat-ground intersections of the upper and lower RGB frustum rays",
+    "maximum_near_ground_intersection_m": 0.8,
+    "minimum_finite_far_ground_intersection_m": 3.0,
+    "maximum_mast_above_base_m": 0.45,
+    "note": "Prescreen is a hardware/coverage constraint, not a navigation result."
+  },
+  "candidates": [
+    {
+      "variant": "d435i_low_062_p20",
+      "height_above_support_m": 0.62,
+      "pitch_down_deg": 20.0,
+      "mast_above_base_m": 0.2,
+      "near_ground_intersection_m": 0.707,
+      "far_ground_intersection_m": null,
+      "prescreen_feasible": true
+    },
+    {
+      "variant": "d435i_low_062_p30",
+      "height_above_support_m": 0.62,
+      "pitch_down_deg": 30.0,
+      "mast_above_base_m": 0.2,
+      "near_ground_intersection_m": 0.498,
+      "far_ground_intersection_m": 4.028,
+      "prescreen_feasible": true
+    },
+    {
+      "variant": "d435i_low_062_p40",
+      "height_above_support_m": 0.62,
+      "pitch_down_deg": 40.0,
+      "mast_above_base_m": 0.2,
+      "near_ground_intersection_m": 0.34,
+      "far_ground_intersection_m": 1.826,
+      "prescreen_feasible": false
+    },
+    {
+      "variant": "d435i_mid_085_p20",
+      "height_above_support_m": 0.85,
+      "pitch_down_deg": 20.0,
+      "mast_above_base_m": 0.43,
+      "near_ground_intersection_m": 0.969,
+      "far_ground_intersection_m": null,
+      "prescreen_feasible": false
+    },
+    {
+      "variant": "d435i_mid_085_p30",
+      "height_above_support_m": 0.85,
+      "pitch_down_deg": 30.0,
+      "mast_above_base_m": 0.43,
+      "near_ground_intersection_m": 0.682,
+      "far_ground_intersection_m": 5.523,
+      "prescreen_feasible": true
+    },
+    {
+      "variant": "d435i_mid_085_p40",
+      "height_above_support_m": 0.85,
+      "pitch_down_deg": 40.0,
+      "mast_above_base_m": 0.43,
+      "near_ground_intersection_m": 0.466,
+      "far_ground_intersection_m": 2.504,
+      "prescreen_feasible": false
+    },
+    {
+      "variant": "d435i_high_100_p30",
+      "height_above_support_m": 1.0,
+      "pitch_down_deg": 30.0,
+      "mast_above_base_m": 0.58,
+      "near_ground_intersection_m": 0.803,
+      "far_ground_intersection_m": 6.497,
+      "prescreen_feasible": false
+    },
+    {
+      "variant": "d435i_h1_125_p30",
+      "height_above_support_m": 1.25,
+      "pitch_down_deg": 30.0,
+      "mast_above_base_m": 0.83,
+      "near_ground_intersection_m": 1.003,
+      "far_ground_intersection_m": 8.121,
+      "prescreen_feasible": false
+    }
+  ]
+}

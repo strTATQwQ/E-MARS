@@ -1,0 +1,38 @@
+runtime_policy: completion_sim
+applies_to: [isaac_simulation_only]
+forbidden_targets: [real_go2, hardware_motion]
+recorder:
+  mode: nonfatal_consumer_shadow
+  watchdog_sec: 5.0
+  partial_frame: warn
+  global_ros_shutdown_on_partial_frame: false
+  consumer_groups:
+    nav2: [latest_lidar, nearest_tf]
+    nvblox_depth: [depth, camera_info, nearest_tf]
+    nvblox_lidar: [lidar, nearest_tf]
+    internvla: [rgb_or_rgbd, nearest_pose, history]
+tf:
+  lookup: nearest_or_latest
+  transform_tolerance_sec: 2.5
+  fallback: isaac_ground_truth_pose
+navigation:
+  source_timeout_sec: 5.0
+  costmap_current_timeout_sec: 5.0
+  observation_persistence_sec: 5.0
+  collision_monitor: warn_only
+  bounded_velocity_required: true
+  simulation_estop_required: true
+  footprint_startup_edge_m: 0.08
+  unknown_to_free_near_footprint: true
+  preserve_far_unknown: true
+mapping:
+  nvblox: shadow
+  global_map: static_with_lidar_local
+render_clock:
+  canonical_stamp: integer_physics_clock
+  stamp_deviation_tolerance_ns: 1000000
+  deviation_action: warn_and_record
+shutdown:
+  sigterm_143_normal_when_zero_residuals: true
+stability:
+  soak_600_sec: post_functional

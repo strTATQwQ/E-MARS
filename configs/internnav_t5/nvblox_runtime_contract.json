@@ -1,0 +1,76 @@
+{
+  "schema_version": 1,
+  "runtime_policy": "completion_sim",
+  "target": "isaac_simulation_only",
+  "default_mode": "off",
+  "allowed_modes": [
+    "off",
+    "shadow",
+    "active_local_gt"
+  ],
+  "node": {
+    "package": "nvblox_ros",
+    "executable": "nvblox_node",
+    "name": "nvblox_node",
+    "parameter_file": "configs/internnav_t5/nvblox_fused_gt.yaml",
+    "remappings": {
+      "camera_0/depth/image": "/go2/d435i/depth/image_rect",
+      "camera_0/depth/camera_info": "/go2/d435i/depth/camera_info",
+      "pointcloud": "/go2/lidar/points"
+    }
+  },
+  "inputs": {
+    "depth": "/go2/d435i/depth/image_rect",
+    "depth_camera_info": "/go2/d435i/depth/camera_info",
+    "lidar": "/go2/lidar/points",
+    "ground_truth_odometry": "/odom",
+    "reset_generation": "/internvla_t4/map_reset_generation"
+  },
+  "output": {
+    "slice_relative_to_lane_namespace": "nvblox_node/static_map_slice"
+  },
+  "readiness": {
+    "minimum_consecutive_valid_slices": 10,
+    "sensor_stale_after_sim_sec": 2.5,
+    "slice_stale_after_sim_sec": 2.5,
+    "requires_depth": true,
+    "requires_lidar": true,
+    "requires_ground_truth_odometry": true,
+    "requires_free_occupied_unknown": true
+  },
+  "navigation": {
+    "base": "configs/internnav_t5/nav2_static_lidar.yaml",
+    "active_local_overlay": "configs/internnav_t5/nav2_nvblox_active_local_overlay.yaml",
+    "static_global_map_retained": true,
+    "lidar_voxel_local_retained": true,
+    "nvblox_global_layer_forbidden": true,
+    "nvblox_layer_initially_enabled": false
+  },
+  "modes": {
+    "off": {
+      "starts_real_nvblox_node": false,
+      "feeds_navigation": false
+    },
+    "shadow": {
+      "starts_real_nvblox_node": true,
+      "feeds_navigation": false
+    },
+    "active_local_gt": {
+      "starts_real_nvblox_node": true,
+      "feeds_navigation": true,
+      "pose_source": "isaac_ground_truth"
+    }
+  },
+  "fallback": {
+    "trigger": "child_exit_or_sensor_or_slice_stale_or_reset",
+    "action": "disable_nvblox_local_layer",
+    "effective_navigation": "static_global_plus_lidar_voxel_local",
+    "rearm_requires_fresh_fused_inputs_and_ten_new_valid_slices": true
+  },
+  "claims": {
+    "lidar_only_counts_as_fused": false,
+    "shadow_is_navigation_pass": false,
+    "node_start_without_sensor_slices_is_component_pass": false,
+    "online_acceptance_required": true
+  }
+}

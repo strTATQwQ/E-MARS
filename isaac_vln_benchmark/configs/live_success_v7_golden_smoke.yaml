@@ -1,0 +1,22 @@
+benchmark:
+  name: live_success_v7_golden_smoke
+  timeout_sec_default: 120
+  seeds: [0]
+  modes:
+    - omninav_only_v6_golden
+
+tasks:
+  simple_navigation:
+    count: 2
+    timeout_sec: 90
+  turn_choice:
+    count: 1
+    timeout_sec: 90
+
+targets:
+  mean_path_m: 2.0
+  move_forward_count_min: 1
+  max_linear_x_min: 0.001
+  timebase_error_count: 0
+  collision_count: 0
+  stale_action_executed: 0

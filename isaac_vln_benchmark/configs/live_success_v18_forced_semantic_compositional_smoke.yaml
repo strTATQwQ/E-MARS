@@ -1,0 +1,33 @@
+benchmark:
+  name: live_success_v18_forced_semantic_compositional_smoke
+  timeout_sec_default: 40
+  seeds: [0]
+  preserve_task_ids: true
+  modes: [forced_semantic_oracle]
+  tasks_source: configs/generated/natural_language_navigation_v18_tasks.yaml
+
+tasks:
+  semantic_navigation:
+    ids: [comp_02]
+    count: 1
+    timeout_sec: 40
+
+runtime:
+  scenes_source: configs/generated/natural_language_navigation_v18_scenes.yaml
+  instrumented_semantic_markers: true
+  geometry_judge_is_oracle_only: true
+
+evidence_policy:
+  require_real_omninav: true
+  require_forced_semantic_oracle: true
+  require_normal_execution_chain: true
+  allow_mock_or_fallback: false
+  qualification_evidence: false
+
+scope:
+  step_model_enabled: false
+  local_navigation_owner: OmniNav
+  train_or_modify_locomotion: false
+  reinforcement_learning: false
+  real_go2_connected: false
+  qualification_evidence: false

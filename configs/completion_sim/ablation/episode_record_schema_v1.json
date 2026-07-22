@@ -1,0 +1,482 @@
+{
+  "$id": "configs/completion_sim/ablation/episode_record_schema_v1.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$comment": "Wire-shape schema. Cross-field pairing, activation, latency, STOP/oracle, official-metric, and safety state machines are authoritatively checked by scripts/t4_ablation_validate.py.",
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "evidence_kind": {
+            "const": "synthetic"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "execution_target": {
+            "const": "offline_synthetic"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "evidence_kind": {
+            "const": "completion_sim"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "execution_target": {
+            "const": "isaac_simulation"
+          }
+        }
+      }
+    }
+  ],
+  "properties": {
+    "activation": {
+      "additionalProperties": false,
+      "properties": {
+        "history_frame_count": {
+          "$ref": "#/$defs/nonnegative_integer"
+        },
+        "history_reset_count": {
+          "$ref": "#/$defs/nonnegative_integer"
+        },
+        "observed_view_mode": {
+          "enum": [
+            "go2_view",
+            "h1_view"
+          ]
+        },
+        "oracle_high_level_count": {
+          "$ref": "#/$defs/nonnegative_integer"
+        },
+        "oracle_local_path_count": {
+          "$ref": "#/$defs/nonnegative_integer"
+        },
+        "observed_trajectory_mode": {
+          "enum": [
+            "full_trajectory",
+            "endpoint",
+            "straight_line"
+          ]
+        },
+        "recovery_trigger_count": {
+          "$ref": "#/$defs/nonnegative_integer"
+        },
+        "system1_count": {
+          "$ref": "#/$defs/nonnegative_integer"
+        },
+        "system2_count": {
+          "$ref": "#/$defs/nonnegative_integer"
+        },
+        "trajectory_transform_count": {
+          "$ref": "#/$defs/nonnegative_integer"
+        },
+        "visual_frame_count": {
+          "$ref": "#/$defs/nonnegative_integer"
+        },
+        "visual_input_only": {
+          "const": true
+        }
+      },
+      "required": [
+        "system1_count",
+        "system2_count",
+        "oracle_high_level_count",
+        "oracle_local_path_count",
+        "trajectory_transform_count",
+        "observed_trajectory_mode",
+        "history_frame_count",
+        "history_reset_count",
+        "recovery_trigger_count",
+        "visual_frame_count",
+        "observed_view_mode",
+        "visual_input_only"
+      ],
+      "type": "object"
+    },
+    "dataset_sha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "diagnostics": {
+      "additionalProperties": false,
+      "properties": {
+        "latency_ms": {
+          "additionalProperties": false,
+          "properties": {
+            "end_to_end": {
+              "$ref": "#/$defs/latency"
+            },
+            "system1": {
+              "$ref": "#/$defs/latency"
+            },
+            "system2": {
+              "$ref": "#/$defs/latency"
+            }
+          },
+          "required": [
+            "system1",
+            "system2",
+            "end_to_end"
+          ],
+          "type": "object"
+        },
+        "stuck": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "stuck",
+        "latency_ms"
+      ],
+      "type": "object"
+    },
+    "episode_id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "episode_ordinal": {
+      "$ref": "#/$defs/nonnegative_integer"
+    },
+    "evidence_kind": {
+      "enum": [
+        "completion_sim",
+        "synthetic"
+      ]
+    },
+    "execution_target": {
+      "enum": [
+        "isaac_simulation",
+        "offline_synthetic"
+      ]
+    },
+    "matrix_id": {
+      "const": "internnav_t4_6_completion_sim_ablation_v1"
+    },
+    "matrix_sha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "official_metrics": {
+      "additionalProperties": false,
+      "properties": {
+        "ne_m": {
+          "minimum": 0,
+          "type": "number"
+        },
+        "os": {
+          "enum": [
+            0,
+            1
+          ]
+        },
+        "spl": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        "sr": {
+          "enum": [
+            0,
+            1
+          ]
+        }
+      },
+      "required": [
+        "sr",
+        "os",
+        "spl",
+        "ne_m"
+      ],
+      "type": "object"
+    },
+    "provenance": {
+      "additionalProperties": false,
+      "properties": {
+        "episode_manifest_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "run_id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "runner_commit_sha": {
+          "pattern": "^[0-9a-f]{40}$",
+          "type": "string"
+        },
+        "source_result_path": {
+          "$ref": "#/$defs/repository_path"
+        }
+      },
+      "required": [
+        "run_id",
+        "runner_commit_sha",
+        "episode_manifest_sha256",
+        "source_result_path"
+      ],
+      "type": "object"
+    },
+    "runtime_policy": {
+      "const": "completion_sim"
+    },
+    "safety": {
+      "additionalProperties": false,
+      "properties": {
+        "bounded_velocity_violation_count": {
+          "const": 0
+        },
+        "collision_count": {
+          "$ref": "#/$defs/nonnegative_integer"
+        },
+        "fall_count": {
+          "$ref": "#/$defs/nonnegative_integer"
+        },
+        "reset_contamination_count": {
+          "const": 0
+        },
+        "simulation_estop_available": {
+          "const": true
+        },
+        "stale_command_count": {
+          "const": 0
+        }
+      },
+      "required": [
+        "collision_count",
+        "fall_count",
+        "stale_command_count",
+        "reset_contamination_count",
+        "bounded_velocity_violation_count",
+        "simulation_estop_available"
+      ],
+      "type": "object"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "seed": {
+      "$ref": "#/$defs/nonnegative_integer"
+    },
+    "termination": {
+      "additionalProperties": false,
+      "properties": {
+        "configured_policy": {
+          "enum": [
+            "model_stop",
+            "oracle_termination"
+          ]
+        },
+        "distance_at_termination_m": {
+          "$ref": "#/$defs/nullable_nonnegative_number"
+        },
+        "effective_source": {
+          "enum": [
+            "model_stop",
+            "oracle_distance",
+            "environment",
+            "timeout",
+            "stuck",
+            "safety",
+            "error"
+          ]
+        },
+        "model_stop_observed": {
+          "type": "boolean"
+        },
+        "model_stop_suppressed_count": {
+          "$ref": "#/$defs/nonnegative_integer"
+        },
+        "oracle_distance_source": {
+          "enum": [
+            "evaluator_ground_truth",
+            null
+          ]
+        },
+        "oracle_mode_enabled": {
+          "type": "boolean"
+        },
+        "oracle_reason": {
+          "enum": [
+            "stop_unstable_missing",
+            "stop_unstable_premature",
+            "stop_unstable_oscillatory",
+            null
+          ]
+        },
+        "oracle_threshold_m": {
+          "enum": [
+            2.5,
+            null
+          ]
+        },
+        "oracle_threshold_source": {
+          "enum": [
+            "frozen_evaluator_success_radius",
+            null
+          ]
+        },
+        "reason": {
+          "enum": [
+            "success",
+            "failure",
+            "timeout",
+            "stuck",
+            "collision",
+            "fall",
+            "error"
+          ]
+        },
+        "stop_stability": {
+          "enum": [
+            "stable",
+            "not_observed",
+            "missing",
+            "premature",
+            "oscillatory"
+          ]
+        },
+        "terminated_by_oracle": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "configured_policy",
+        "effective_source",
+        "reason",
+        "stop_stability",
+        "model_stop_observed",
+        "model_stop_suppressed_count",
+        "oracle_mode_enabled",
+        "terminated_by_oracle",
+        "oracle_reason",
+        "oracle_threshold_m",
+        "oracle_threshold_source",
+        "oracle_distance_source",
+        "distance_at_termination_m"
+      ],
+      "type": "object"
+    },
+    "variant_config_sha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "variant_id": {
+      "$ref": "#/$defs/variant_id"
+    },
+    "warnings": {
+      "items": {
+        "enum": [
+          "recorder_partial_frame",
+          "tf_nearest_or_latest",
+          "source_timeout_extended",
+          "watchdog_extended",
+          "costmap_current_extended",
+          "collision_monitor_warn_only",
+          "nvblox_shadow",
+          "render_stamp_deviation"
+        ]
+      },
+      "type": "array",
+      "uniqueItems": true
+    }
+  },
+  "required": [
+    "schema_version",
+    "matrix_id",
+    "matrix_sha256",
+    "variant_id",
+    "variant_config_sha256",
+    "dataset_sha256",
+    "episode_id",
+    "episode_ordinal",
+    "seed",
+    "evidence_kind",
+    "runtime_policy",
+    "execution_target",
+    "official_metrics",
+    "diagnostics",
+    "termination",
+    "activation",
+    "safety",
+    "warnings",
+    "provenance"
+  ],
+  "title": "InternNav T4.6 episode record v1",
+  "type": "object",
+  "$defs": {
+    "latency": {
+      "additionalProperties": false,
+      "properties": {
+        "count": {
+          "$ref": "#/$defs/nonnegative_integer"
+        },
+        "max": {
+          "$ref": "#/$defs/nullable_nonnegative_number"
+        },
+        "mean": {
+          "$ref": "#/$defs/nullable_nonnegative_number"
+        },
+        "p50": {
+          "$ref": "#/$defs/nullable_nonnegative_number"
+        },
+        "p95": {
+          "$ref": "#/$defs/nullable_nonnegative_number"
+        }
+      },
+      "required": [
+        "count",
+        "mean",
+        "p50",
+        "p95",
+        "max"
+      ],
+      "type": "object"
+    },
+    "nonnegative_integer": {
+      "minimum": 0,
+      "type": "integer"
+    },
+    "nullable_nonnegative_number": {
+      "oneOf": [
+        {
+          "minimum": 0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "repository_path": {
+      "minLength": 1,
+      "pattern": "^(?!/)(?![A-Za-z]:)(?!.*(?:^|/)\\.\\.(?:/|$))[^\\\\]+$",
+      "type": "string"
+    },
+    "sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "variant_id": {
+      "enum": [
+        "full_system1_system2",
+        "oracle_high_level_system1",
+        "system2_oracle_local_path",
+        "full_trajectory",
+        "endpoint",
+        "straight_line",
+        "model_stop",
+        "oracle_termination",
+        "history_on",
+        "history_off",
+        "recovery_on",
+        "recovery_off",
+        "h1_view",
+        "go2_view"
+      ]
+    }
+  }
+}

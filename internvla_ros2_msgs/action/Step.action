@@ -1,0 +1,44 @@
+# Goal: image bytes travel on raw or bounded compressed topics with one sim stamp.
+std_msgs/Header header
+uint32 protocol_version
+string episode_id
+uint64 reset_generation
+uint64 sequence_id
+string request_id
+string observation_digest
+uint64 client_wall_monotonic_ns
+builtin_interfaces/Time sim_stamp
+builtin_interfaces/Time observation_stamp
+builtin_interfaces/Time deadline
+builtin_interfaces/Time valid_until
+---
+# Result
+std_msgs/Header header
+uint8 status_code
+string status_message
+string episode_id
+uint64 reset_generation
+uint64 sequence_id
+string request_id
+int8 discrete_action
+bool stop
+bool replayed
+uint8 ACTION_SOURCE_UNKNOWN=0
+uint8 ACTION_SOURCE_SYSTEM2=1
+uint8 ACTION_SOURCE_SYSTEM1_NEW=2
+uint8 ACTION_SOURCE_SYSTEM1_QUEUE=3
+uint8 action_source
+uint8 TRAJECTORY_NONE=0
+uint8 TRAJECTORY_SYSTEM1_NEW=1
+uint8 trajectory_source
+bool trajectory_valid
+nav_msgs/Path local_path
+builtin_interfaces/Time valid_until
+float32 inference_latency_sec
+---
+# Feedback
+std_msgs/Header header
+uint64 sequence_id
+string request_id
+string stage
+float32 elapsed_sec

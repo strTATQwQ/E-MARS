@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "profile_id": "B",
+  "runtime_guard": {
+    "runtime_policy": "completion_sim",
+    "simulation_only": true,
+    "real_go2_allowed": false,
+    "hardware_motion_allowed": false,
+    "simulation_estop_required": true,
+    "bounded_velocity_required": true,
+    "strict_evidence_unchanged": true
+  },
+  "detector": {
+    "no_progress_window_sec": 2.5,
+    "minimum_window_coverage": 0.8,
+    "minimum_sample_count": 5,
+    "maximum_observation_gap_sec": 1.0,
+    "minimum_displacement_m": 0.08,
+    "minimum_goal_progress_m": 0.08,
+    "loop_window_sec": 5.0,
+    "loop_cell_size_m": 0.2,
+    "loop_revisit_count": 2,
+    "loop_min_travel_m": 0.4,
+    "loop_max_net_displacement_m": 0.1,
+    "plan_cycle_repetitions": 2,
+    "trajectory_resolution_m": 0.05,
+    "trajectory_max_points": 2048,
+    "taboo_capacity": 64
+  },
+  "bounds": {
+    "action_timeout_sec": 5.0,
+    "plan_wait_timeout_sec": 4.0,
+    "retry_backoff_sec": 0.25,
+    "cooldown_sec": 3.0,
+    "maximum_action_attempts": 2,
+    "maximum_replan_requests_per_stage": 3,
+    "maximum_plan_rejections_per_stage": 2,
+    "maximum_recoveries_per_episode": 3,
+    "maximum_commands_per_recovery": 24,
+    "maximum_recovery_duration_sec": 60.0
+  },
+  "motion": {
+    "scan_yaw_rad": 1.0471975511965976,
+    "scan_angular_speed_rps": 0.35,
+    "safety_freshness_timeout_sec": 1.0,
+    "retreat_enabled": true,
+    "retreat_distance_m": 0.15,
+    "retreat_linear_speed_mps": 0.05,
+    "retreat_minimum_rear_clearance_m": 0.35
+  },
+  "events": {
+    "history_capacity": 1024
+  }
+}

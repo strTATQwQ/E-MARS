@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "status": "AUTHORIZED_AND_APPLIED",
+  "authorized_date": "2026-07-16",
+  "scope": "T4.2 Nvblox online-map global planner only",
+  "parameter": "planner_server.ros__parameters.GridBased.allow_unknown",
+  "before": false,
+  "after": true,
+  "failed_attempt": "t4_2_oracle_attempt_001",
+  "failed_config_sha256": "8c91ddacd16513b669dc287c01a4088572b9ada384892fd2f1fc9367cfad298a",
+  "repaired_config_sha256": "103ec7eb6a529b7c3b149efdab119b812f4c7221ed1e00112d65d34514035c66",
+  "retained_safety_layers": [
+    "Nvblox local costmap geometry",
+    "inflation layer",
+    "Collision Monitor",
+    "reset map-ready barrier",
+    "stale-motion fail-safe stop",
+    "identity fail-safe stop"
+  ],
+  "unknown_cells_preserved": true,
+  "required_rerun_order": [
+    "one-episode engineering smoke",
+    "same fixed 10-episode Oracle gate"
+  ],
+  "downstream_gate_policy": "T4.3 remains prohibited until all T4.2 sub-gates pass"
+}

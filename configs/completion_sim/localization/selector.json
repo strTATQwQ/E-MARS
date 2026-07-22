@@ -1,0 +1,75 @@
+{
+  "allowed_targets": [
+    "isaac_simulation"
+  ],
+  "evidence": {
+    "record_filename": "localization_records.jsonl",
+    "summary_filename": "localization_summary.json"
+  },
+  "forbidden_targets": [
+    "real_go2",
+    "hardware_motion"
+  ],
+  "output": {
+    "child_frame": "base_link",
+    "deviation_topic": "/internvla_t4/localization/deviation",
+    "odometry_topic": "/odom",
+    "parent_frame": "odom",
+    "oracle_completion_topic": "/internvla_t4/localization/oracle_complete",
+    "single_authority_required": true,
+    "source_health_topic": "/internvla_t4/localization/source_health",
+    "switch_event_topic": "/internvla_t4/localization/switch_event",
+    "tf_topic": "/tf"
+  },
+  "runtime_policy": "completion_sim",
+  "runtime_target": "isaac_simulation",
+  "schema_version": 1,
+  "selection": {
+    "allow_isaac_gt_fallback": true,
+    "maximum_future_stamp_sec": 0.001,
+    "minimum_dwell_sec": 0.5,
+    "preferred_recovery_hold_sec": 1.0,
+    "quaternion_norm_tolerance": 0.001,
+    "source_timeout_sec": 5.0,
+    "tf_tolerance_sec": 2.5
+  },
+  "sources": [
+    {
+      "enabled": true,
+      "expected_child_frame": "base_link",
+      "expected_parent_frame": "cuvslam_odom",
+      "health_topic": "/internvla_t4/localization/source/cuvslam/health",
+      "name": "cuvslam",
+      "odometry_topic": "/internvla_t4/localization/source/cuvslam/odometry",
+      "priority": 10,
+      "role": "odometry",
+      "startup_reason": "stereo_feed_and_backend_pending_runtime_integration",
+      "startup_state": "DEFERRED"
+    },
+    {
+      "enabled": true,
+      "expected_child_frame": "base_link",
+      "expected_parent_frame": "lidar_imu_odom",
+      "health_topic": "/internvla_t4/localization/source/lidar_imu/health",
+      "name": "lidar_imu",
+      "odometry_topic": "/internvla_t4/localization/source/lidar_imu/odometry",
+      "priority": 20,
+      "role": "odometry",
+      "startup_reason": "lio_backend_and_linear_acceleration_pending_runtime_integration",
+      "startup_state": "DEFERRED"
+    },
+    {
+      "enabled": true,
+      "expected_child_frame": "base_link",
+      "expected_parent_frame": "isaac_world",
+      "health_topic": "/internvla_t4/localization/source/isaac_gt/health",
+      "name": "isaac_ground_truth_pose",
+      "odometry_topic": "/internvla_t4/localization/source/isaac_gt/odometry",
+      "priority": 1000,
+      "role": "fallback",
+      "startup_reason": "awaiting_private_isaac_gt_ingress",
+      "startup_state": "NO_SAMPLE"
+    }
+  ],
+  "use_sim_time": true
+}

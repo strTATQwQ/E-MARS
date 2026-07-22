@@ -1,0 +1,38 @@
+benchmark:
+  name: forced_stop_oracle_live
+  ros_domain_id: 42
+  duration_sec: 8
+  publish_period_sec: 0.10
+  stop_publish_duration_sec: 2.0
+  stop_accuracy_target: 0.90
+  visible_to_stop_latency_target_sec: 1.50
+  collision_count: 0
+  stale_action_executed: 0
+
+mode:
+  name: forced_stop_oracle
+  use_step: false
+  use_omninav: false
+  use_internnav: false
+  pending_policy: none
+  stale_gate_enabled: true
+
+tasks:
+  - task_id: target_verify_fire_extinguisher
+    scene_type: target_verify_fire_extinguisher_near
+    instruction: "Stop near the fire extinguisher."
+    target_object: fire_extinguisher_verify
+  - task_id: target_verify_exit_sign
+    scene_type: target_verify_exit_sign_near
+    instruction: "Stop near the red exit sign."
+    target_object: exit_sign_verify
+  - task_id: target_verify_blue_box
+    scene_type: target_verify_blue_box_near
+    instruction: "Approach the blue box and stop."
+    target_object: blue_box_verify
+
+stop_oracle:
+  topic: /oracle/semantic_stop_json
+  force_when_target_visible: true
+  max_distance_to_target_m: 2.5
+  confidence: 1.0

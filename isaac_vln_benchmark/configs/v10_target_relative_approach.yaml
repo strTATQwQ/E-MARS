@@ -1,0 +1,24 @@
+benchmark:
+  name: v10_target_relative_approach
+  timeout_sec_default: 90
+  seeds: [0, 1, 2]
+  modes:
+    - v10_target_rotate_then_forward
+    - v10_target_proportional
+
+tasks:
+  semantic_target:
+    count: 1
+    timeout_sec: 90
+
+targets:
+  target_vector_valid_min: 3
+  distance_decrease_ratio_required: 0.80
+  reached_stop_threshold_min: 3
+  stop_oracle_triggered_min: 3
+  safe_cmd_vel_zero_after_stop_min: 3
+  semantic_success_min: 2
+  collision_count: 0
+  stale_action_executed: 0
+  runtime_stale_discards: 0
+  timebase_error_count: 0

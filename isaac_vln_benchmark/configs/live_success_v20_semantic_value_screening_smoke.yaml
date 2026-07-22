@@ -1,0 +1,33 @@
+benchmark:
+  name: live_success_v20_semantic_value_screening_smoke
+  timeout_sec_default: 60
+  seeds: [0]
+  preserve_task_ids: true
+  preserve_task_seeds: true
+  modes:
+    - omninav_only_v20_semantic_screen
+    - omninav_public_heuristic_v20_semantic_screen
+    - omninav_forced_semantic_oracle_v20_semantic_screen
+    - omninav_step_semantic_executive_v20_semantic_screen
+  tasks_source: configs/generated/v20_semantic_value_screen_tasks.yaml
+
+tasks:
+  semantic_navigation:
+    ids: [ref_01]
+    count: 1
+    timeout_sec: 60
+
+runtime:
+  scenes_source: configs/generated/natural_language_navigation_v19_scenes.yaml
+  runtime_profile: v19_local_marker_v2
+  instrumented_semantic_markers: true
+  geometry_judge_is_oracle_only: true
+
+camera_contract:
+  omninav_prefer_synthetic_primary: false
+  step_image_topic: /camera/front/isaac_image
+  fresh_image_max_age_sec: 0.75
+
+scope:
+  evidence_scope: infrastructure_smoke_only
+  qualification_evidence: false

@@ -1,0 +1,15 @@
+benchmark:
+  name: v10_route_geometry_audit
+  modes: []
+
+route:
+  tasks: [turn_001, turn_002]
+  scene_type: corridor_with_intersection
+  branch_polygon_entry_y_m: 0.35
+  branch_polygon_half_width_m: 1.5
+  branch_polygon_length_m: 3.5
+
+targets:
+  direction_mapping_valid: true
+  turn_left_angular_z_sign: 1
+  turn_right_angular_z_sign: -1

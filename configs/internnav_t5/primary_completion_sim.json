@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "profile": "t5_symmetric_lane_completion_sim",
+  "runtime_policy": "completion_sim",
+  "real_go2_targeted": false,
+  "roles": {
+    "dgx_lane": "colocated InternVLA-N1, ROS2 sensors, localization, maps, Nvblox, Nav2, adapter, watchdog, bounded velocity control",
+    "isaac_x86": "Isaac Sim, Go2 physics, simulated sensors, evaluator, sole /clock"
+  },
+  "network": {
+    "lane_values_source": "configs/internnav_t5/topology.json",
+    "lane_specific_fields": [
+      "ros_domain_id",
+      "namespace",
+      "controller_tcp_port",
+      "model_client_tcp_port",
+      "oracle_tcp_port",
+      "isaac_clock_udp_port"
+    ],
+    "dds_discovery": "LOCALHOST plus paired-host static peer only",
+    "cross_lane_discovery_forbidden": true
+  },
+  "time": {
+    "clock_source": "isaac_x86_only",
+    "dgx_lane_use_sim_time": true,
+    "request_fields": [
+      "client_wall_monotonic_ns",
+      "sim_stamp",
+      "episode_id",
+      "reset_generation",
+      "sequence_id",
+      "request_id",
+      "deadline",
+      "valid_until"
+    ]
+  },
+  "observation": {
+    "x86_to_dgx_lane": "bounded inline zlib arrays over peer-pinned TCP",
+    "inside_dgx_lane": "raw ROS 2 observation transport; no cross-DGX model hop",
+    "rgb_jpeg_quality": 85,
+    "depth_png_compression": 3,
+    "maximum_rgb_bytes": 524288,
+    "maximum_depth_bytes": 786432
+  },
+  "navigation": {
+    "map_source": "static_global",
+    "local_costmap_source": "lidar",
+    "pose_source": "ground_truth_completion_sim",
+    "active_nvblox": false,
+    "recovery_profile": "A",
+    "collision_monitor_policy": "completion_sim_warn_only_or_limited",
+    "bounded_speed_and_sim_estop_required": true
+  },
+  "frozen_t4_identity": {
+    "commit_sha": "d6332b75a3830c0e2f9752446340c90398a2c489",
+    "dataset_sha256": "63631e3c8baf22cd1e083a1dd1617b5e75412f386715073468c34251143aac88",
+    "model_revision": "1d8d078aa9031a4a02a1ae05844d49a1768a10e4",
+    "checkpoint_revision": "a698a9e898b4001621a319e1bc89f02ec715cc86",
+    "camera_config": "configs/internnav_t4/frozen_camera.json"
+  },
+  "acceptance": {
+    "oracle_episode_count": 5,
+    "oracle_minimum_success_count": 4,
+    "pilot_episode_count": 20,
+    "pilot_minimum_success_count": 1
+  }
+}

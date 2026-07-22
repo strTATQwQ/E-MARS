@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "candidate_profile": "recovery_a",
+  "extends": "baseline",
+  "scope": "completion_sim_only",
+  "runtime": {
+    "materializer": "scripts/t4_recovery_runtime.py",
+    "t4_profile": "configs/completion_sim/recovery/profile_a.json",
+    "t4_profile_canonical_sha256": "0b7b789f0ba3b0170be9dedd8298ccf4e47e002ad49e8320e3cd00afe0526531",
+    "recovery_enabled": true,
+    "recovery_mode": "on",
+    "scheduled_refresh_enabled": true,
+    "maximum_scheduled_refreshes_per_episode": 1
+  },
+  "t5_completion_sim_overrides": {
+    "recovery_scan_yaw_rad": 0.3,
+    "replan_deadline_sec": 65.0
+  },
+  "expected_bounds": {
+    "no_progress_window_sec": 4.0,
+    "maximum_recoveries_per_episode": 2,
+    "maximum_recovery_duration_sec": 35.0,
+    "short_backup_enabled": false
+  },
+  "baseline_contract": {
+    "default_candidate_profile": "baseline",
+    "recovery_enabled_when_unset": false,
+    "frozen_t4_modified": false,
+    "t4_profile_and_canonical_sha256_unchanged": true
+  }
+}

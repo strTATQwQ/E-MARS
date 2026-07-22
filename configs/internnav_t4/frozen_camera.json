@@ -1,0 +1,65 @@
+{
+  "analysis_sha256": "860eb529a0df4b10e0bfda6be8ab76b529a133cc1ab4bf48aa21acbde8c177b5",
+  "camera": {
+    "camera_model": "Intel RealSense D435i",
+    "focal_length_mm": 15.13143157973373,
+    "height_above_support_m": 0.62,
+    "hfov_deg": 69.4,
+    "mount": "rigid_fixed_extrinsics",
+    "pitch_down_deg": 20.0,
+    "posture_compensation": "continuous_base_roll_pitch_feedback_stabilizer",
+    "translation_from_base_m": [
+      0.2,
+      0.0,
+      0.2
+    ],
+    "vfov_deg": 42.5,
+    "wrapper_sha256": "ef18af8a4338699893e9b43f900f1e72b12a4df0c9281e5a5adfc3f4854b7165"
+  },
+  "depth_camera_contract": {
+    "hfov_deg": 87.0,
+    "minimum_depth_m": 0.28,
+    "recommended_operating_range_m": [
+      0.3,
+      3.0
+    ],
+    "vfov_deg": 58.0
+  },
+  "development_attempt": "031",
+  "development_metrics": {
+    "Count": 5,
+    "FR": 0.0,
+    "NE": 5.2058,
+    "OS": 0.4,
+    "SPL": 0.4,
+    "SR": 0.4,
+    "StR": 0.4,
+    "TL": 4.2147
+  },
+  "geometric_coverage": {
+    "far_ground_intersection_m": null,
+    "mast_above_base_m": 0.2,
+    "near_ground_intersection_m": 0.707
+  },
+  "schema_version": 1,
+  "selection_policy": "D435i hardware/frustum prescreen, then lexicographic SR, OS, SPL, inverse NE, inverse near-field proxy",
+  "heldout_attempt": "046",
+  "heldout_metrics": {
+    "Count": 5,
+    "FR": 0.0,
+    "NE": 6.7717,
+    "OS": 0.2,
+    "SPL": 0.2,
+    "SR": 0.2,
+    "StR": 0.8,
+    "TL": 1.9145
+  },
+  "heldout_safety": {
+    "fall_count": 0,
+    "nan_count": 0,
+    "physical_collision_count": 0,
+    "stale_or_identity_reject_count": 0
+  },
+  "status": "FROZEN_HELDOUT_VALIDATED",
+  "variant": "d435i_low_062_p20"
+}

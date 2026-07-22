@@ -1,0 +1,27 @@
+benchmark:
+  name: probe_omninav_action_parser
+  ros_domain_id: 42
+  samples: 20
+  request_interval_sec: 0.25
+  wait_response_sec: 4.0
+
+probe:
+  episode_id_prefix: "parser_probe"
+  instruction: "Move forward through the simple corridor to the goal."
+  active_subgoal:
+    subgoal: "Move forward through the corridor."
+    success_condition: "Reach the end of the corridor."
+  pose: [0.0, 0.0, 0.0]
+  frame_count: 3
+  use_left_right: false
+  use_history: false
+  reset_task_id: "simple_001"
+  reset_scene_id: "straight_001"
+  reset_settle_sec: 1.5
+  reset_discovery_timeout_sec: 4.0
+  reset_publish_interval_sec: 0.2
+
+targets:
+  move_forward_count_min: 1
+  fallback_turn_left_rate_max: 0.5
+  unknown_count: 0

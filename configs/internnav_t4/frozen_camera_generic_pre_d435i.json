@@ -1,0 +1,32 @@
+{
+  "analysis_sha256": "7c41e299232e990f1acc705ee7293a77a41d72f4767500bc0ed769b9e1c9cfe3",
+  "camera": {
+    "focal_length_mm": 8.791666353650841,
+    "height_above_support_m": 0.62,
+    "hfov_deg": 100.0,
+    "mount": "rigid_fixed_extrinsics",
+    "pitch_down_deg": 30.0,
+    "posture_compensation": "continuous_base_roll_pitch_feedback_stabilizer",
+    "translation_from_base_m": [
+      0.2,
+      0.0,
+      0.2
+    ],
+    "wrapper_sha256": "a823fec7bd7388510a743a2a0f457ef6fc149d368f878834628684aaed8fd9eb"
+  },
+  "development_attempt": "026",
+  "development_metrics": {
+    "Count": 5,
+    "FR": 0.0,
+    "NE": 2.5381,
+    "OS": 0.6,
+    "SPL": 0.5818,
+    "SR": 0.6,
+    "StR": 0.6,
+    "TL": 2.2177
+  },
+  "schema_version": 1,
+  "selection_policy": "lexicographic SR, OS, SPL, inverse NE, inverse p95 near-field proxy; variant order breaks exact ties",
+  "status": "SUPERSEDED_BY_D435I_CALIBRATION",
+  "variant": "hfov_100"
+}

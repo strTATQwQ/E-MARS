@@ -1,0 +1,142 @@
+mission:
+  max_duration_sec: 90
+  success_hold_sec: 2.0
+
+omninav:
+  enabled: true
+  target_rate_hz: 6.0
+  max_inflight_requests: 1
+  queue_size: 1
+  max_action_age_sec: 1.0
+  min_confidence: 0.25
+  low_confidence_count_for_step: 3
+  frame_count: 3
+  use_left_right: false
+  use_history: false
+
+step:
+  enabled: true
+  endpoint: "http://127.0.0.1:8096/v1/chat/completions"
+  model: "step-iq3"
+  max_tokens: 128
+  temperature: 0.0
+  timeout_sec: 120.0
+  multimodal_timeout_sec: 120.0
+  min_interval_sec: 8.0
+  max_calls_per_minute: 6
+  call_on_every_step: false
+  multimodal_policy: "event_only"
+  use_streaming: true
+
+model_clients:
+  step_http:
+    endpoint: "http://127.0.0.1:8096/v1/chat/completions"
+    model: "step-iq3"
+    max_tokens: 128
+    temperature: 0.0
+    timeout_sec: 120.0
+    use_streaming: true
+  omninav:
+    repo: "/home/railgun/ai-stack/src/OmniNav"
+    model_path: "/home/railgun/ai-stack/models/OmniNav"
+    helper_module_path: "/home/railgun/dgx-unitree/remote_bench/omninav_token_sweep.py"
+    extra_python_paths:
+      - "/home/railgun/ai-stack/venvs/omninav-fa/lib/python3.12/site-packages"
+      - "/home/railgun/ai-stack/venvs/navila/lib/python3.12/site-packages"
+    config_name: "F_front_semantic_history_384tok"
+    attn_implementation: "flash_attention_2"
+    autoload: true
+    synthetic_fallback: true
+    synthetic_width: 640
+    synthetic_height: 569
+    front_image_topic: "/camera/front/image"
+    left_image_topic: ""
+    right_image_topic: ""
+    ttl_sec: 1.0
+    stop_arrive_threshold: 0.75
+    stop_distance_m: 0.04
+    min_waypoint_norm_m: 0.03
+    turn_threshold_deg: 12.0
+    hard_turn_threshold_deg: 28.0
+    waypoint_forward_axis: "y"
+    forward_yaw_threshold_deg: 20.0
+    forward_min_x_m: 0.05
+    forward_min_m: 0.05
+    history_limit: 32
+
+triggers:
+  mission_start: true
+  candidate_goal_reached: true
+  completion_verification: true
+  semantic_ambiguity: true
+  omninav_low_confidence_twice: true
+  no_progress_timeout_sec: 20.0
+  target_not_seen_after_m: 5.0
+  instruction_changed_by_user: true
+  safety_stop_requires_explanation: true
+  map_semantic_conflict: true
+
+pending_policy:
+  allow_move_while_step: false
+  default: "hold_position"
+  thinking_speed_limit_mps: 0.03
+  thinking_max_distance_m: 0.10
+  thinking_max_yaw_deg: 5.0
+  scan_yaw_deg: 10.0
+  scan_yaw_rate: 0.10
+  stop_if_step_multimodal: true
+  stop_if_near_goal: true
+  stop_if_near_intersection: true
+  stop_if_near_doorway: true
+  stop_if_dynamic_obstacle: true
+  stop_if_human_within_m: 2.0
+  stop_if_obstacle_within_m: 0.8
+
+primitive:
+  normal_speed_mps: 0.45
+  thinking_speed_mps: 0.03
+  max_linear_x: 0.45
+  max_linear_y: 0.0
+  max_yaw_rate: 0.35
+  max_forward_horizon_m: 0.50
+  cmd_vel_ttl_sec: 0.45
+  accel_limit_mps2: 0.08
+  stop_after_each_primitive: false
+  lane_centering_enabled: true
+  lane_center_y_m: 0.0
+  lane_center_lookahead_m: 2.0
+  lane_center_gain: 0.8
+  lane_center_max_yaw_rate: 0.28
+
+route_choice_bridge:
+  turn_yaw_deg: 35.0
+  forward_distance_m: 0.35
+  ttl_sec: 0.75
+
+semantic_stop_bridge:
+  ttl_sec: 0.5
+
+stale_gate:
+  step_result_ttl_sec: 30.0
+  step_pose_delta_m: 0.50
+  step_yaw_delta_deg: 30.0
+  multimodal_step_pose_delta_m: 0.30
+  multimodal_step_yaw_delta_deg: 20.0
+  omninav_pose_delta_m: 0.50
+  omninav_yaw_delta_deg: 30.0
+  max_clock_skew_sec: 0.25
+
+safety:
+  dry_run: false
+  require_deadman_for_real_motion: false
+  require_enable_motion_env: false
+  enable_motion_env_name: "GO2_ENABLE_MOTION"
+  stop_on_estop: true
+  stop_on_local_warning: true
+  output_topic: "/safe_cmd_vel"
+
+logging:
+  output_dir: "/home/song/dgx-unitree/runs/real_models_latest"
+  write_jsonl: true
+  write_csv: true
+  log_images: false

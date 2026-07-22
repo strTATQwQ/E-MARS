@@ -1,0 +1,27 @@
+benchmark:
+  name: live_success_v5
+  timeout_sec_default: 120
+  seeds: [0, 1, 2]
+  modes:
+    - omninav_only
+
+tasks:
+  simple_navigation:
+    count: 2
+    timeout_sec: 135
+  turn_choice:
+    count: 2
+    timeout_sec: 120
+  semantic_target:
+    count: 1
+    timeout_sec: 120
+
+targets:
+  omninav_success_count: 6
+  omninav_stale_discards_max: 20
+  forced_oracle_not_worse_than_omninav: true
+  step_success_count: 8
+  step_clean_success_count: 6
+  collision_count: 0
+  stale_action_executed: 0
+  timebase_error_count: 0

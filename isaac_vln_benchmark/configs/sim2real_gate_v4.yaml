@@ -1,0 +1,26 @@
+required:
+  forced_route_oracle_correct_branch_rate: 0.80
+  forced_stop_oracle_accuracy: 0.90
+  step_route_choice_correct_branch_rate: 0.60
+  step_semantic_stop_accuracy: 0.75
+  visible_to_stop_latency_sec: 2.0
+  collision_count: 0
+  stale_action_executed: 0
+  stale_discard_count: 0
+  parse_error: 0
+  max_linear_x_mps: 0.20
+  actions_through_safe_mux: true
+  real_robot_motion_enabled: false
+
+allowed_next_steps:
+  - sensor-only dry-run
+  - bag replay
+  - offline scoring
+  - stationary camera validation
+  - manual-triggered primitive test
+
+disallowed_next_steps:
+  - real robot autonomous navigation
+  - dynamic obstacle real test
+  - semantic target approach on real robot
+

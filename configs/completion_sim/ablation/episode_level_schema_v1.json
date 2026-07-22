@@ -1,0 +1,277 @@
+{
+  "$id": "configs/completion_sim/ablation/episode_level_schema_v1.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$comment": "Wire-shape schema. Canonical ordering and every paired delta are authoritatively recomputed by scripts/t4_ablation_validate.py.",
+  "additionalProperties": false,
+  "properties": {
+    "analysis_status": {
+      "enum": [
+        "COMPLETE",
+        "SYNTHETIC_COMPLETE"
+      ]
+    },
+    "artifact_type": {
+      "const": "t4_ablation_episode_level"
+    },
+    "dataset_sha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "episode_count_per_variant": {
+      "minimum": 20,
+      "type": "integer"
+    },
+    "episode_manifest_sha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "evidence_kind": {
+      "enum": [
+        "completion_sim",
+        "synthetic"
+      ]
+    },
+    "execution_target": {
+      "enum": [
+        "isaac_simulation",
+        "offline_synthetic"
+      ]
+    },
+    "matrix_id": {
+      "const": "internnav_t4_6_completion_sim_ablation_v1"
+    },
+    "matrix_sha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "paired_contributions": {
+      "items": {
+        "$ref": "#/$defs/paired_contribution"
+      },
+      "minItems": 160,
+      "type": "array"
+    },
+    "records": {
+      "items": {
+        "$ref": "episode_record_schema_v1.json"
+      },
+      "minItems": 280,
+      "type": "array"
+    },
+    "runtime_policy": {
+      "const": "completion_sim"
+    },
+    "runner_commit_sha": {
+      "pattern": "^[0-9a-f]{40}$",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "variant_order": {
+      "$ref": "#/$defs/variant_order"
+    }
+  },
+  "required": [
+    "schema_version",
+    "matrix_id",
+    "matrix_sha256",
+    "analysis_status",
+    "evidence_kind",
+    "runtime_policy",
+    "execution_target",
+    "runner_commit_sha",
+    "dataset_sha256",
+    "episode_manifest_sha256",
+    "episode_count_per_variant",
+    "variant_order",
+    "artifact_type",
+    "records",
+    "paired_contributions"
+  ],
+  "title": "InternNav T4.6 normalized episode-level analysis v1",
+  "type": "object",
+  "$defs": {
+    "comparison_id": {
+      "enum": [
+        "system2_gap_to_oracle_high_level",
+        "system1_gap_to_oracle_local_path",
+        "full_trajectory_vs_endpoint",
+        "full_trajectory_vs_straight_line",
+        "model_stop_gap_to_oracle_termination",
+        "history_on_vs_off",
+        "recovery_on_vs_off",
+        "go2_view_vs_h1_view"
+      ]
+    },
+    "metric_delta": {
+      "additionalProperties": false,
+      "properties": {
+        "benefit_oriented_delta": {
+          "$ref": "#/$defs/nullable_number"
+        },
+        "candidate_value": {
+          "$ref": "#/$defs/nullable_number"
+        },
+        "raw_candidate_minus_reference": {
+          "$ref": "#/$defs/nullable_number"
+        },
+        "reference_value": {
+          "$ref": "#/$defs/nullable_number"
+        }
+      },
+      "required": [
+        "candidate_value",
+        "reference_value",
+        "raw_candidate_minus_reference",
+        "benefit_oriented_delta"
+      ],
+      "type": "object"
+    },
+    "metrics": {
+      "additionalProperties": false,
+      "properties": {
+        "latency_end_to_end_mean_ms": {
+          "$ref": "#/$defs/metric_delta"
+        },
+        "latency_end_to_end_p95_ms": {
+          "$ref": "#/$defs/metric_delta"
+        },
+        "latency_system1_mean_ms": {
+          "$ref": "#/$defs/metric_delta"
+        },
+        "latency_system1_p95_ms": {
+          "$ref": "#/$defs/metric_delta"
+        },
+        "latency_system2_mean_ms": {
+          "$ref": "#/$defs/metric_delta"
+        },
+        "latency_system2_p95_ms": {
+          "$ref": "#/$defs/metric_delta"
+        },
+        "ne_m": {
+          "$ref": "#/$defs/metric_delta"
+        },
+        "os": {
+          "$ref": "#/$defs/metric_delta"
+        },
+        "spl": {
+          "$ref": "#/$defs/metric_delta"
+        },
+        "sr": {
+          "$ref": "#/$defs/metric_delta"
+        },
+        "stuck": {
+          "$ref": "#/$defs/metric_delta"
+        }
+      },
+      "required": [
+        "sr",
+        "os",
+        "spl",
+        "ne_m",
+        "stuck",
+        "latency_system1_mean_ms",
+        "latency_system1_p95_ms",
+        "latency_system2_mean_ms",
+        "latency_system2_p95_ms",
+        "latency_end_to_end_mean_ms",
+        "latency_end_to_end_p95_ms"
+      ],
+      "type": "object"
+    },
+    "nullable_number": {
+      "oneOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "paired_contribution": {
+      "additionalProperties": false,
+      "properties": {
+        "candidate_variant": {
+          "type": "string"
+        },
+        "comparison_id": {
+          "$ref": "#/$defs/comparison_id"
+        },
+        "component": {
+          "type": "string"
+        },
+        "effect_kind": {
+          "enum": [
+            "paired_contribution",
+            "replacement_gap",
+            "gap_to_oracle"
+          ]
+        },
+        "episode_id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "episode_ordinal": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "interpretation": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "metrics": {
+          "$ref": "#/$defs/metrics"
+        },
+        "oracle_assisted_episode": {
+          "type": "boolean"
+        },
+        "recovery_triggered_pair": {
+          "type": "boolean"
+        },
+        "reference_variant": {
+          "type": "string"
+        },
+        "seed": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "comparison_id",
+        "component",
+        "effect_kind",
+        "interpretation",
+        "candidate_variant",
+        "reference_variant",
+        "episode_id",
+        "episode_ordinal",
+        "seed",
+        "oracle_assisted_episode",
+        "recovery_triggered_pair",
+        "metrics"
+      ],
+      "type": "object"
+    },
+    "sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "variant_order": {
+      "const": [
+        "full_system1_system2",
+        "oracle_high_level_system1",
+        "system2_oracle_local_path",
+        "full_trajectory",
+        "endpoint",
+        "straight_line",
+        "model_stop",
+        "oracle_termination",
+        "history_on",
+        "history_off",
+        "recovery_on",
+        "recovery_off",
+        "h1_view",
+        "go2_view"
+      ]
+    }
+  }
+}

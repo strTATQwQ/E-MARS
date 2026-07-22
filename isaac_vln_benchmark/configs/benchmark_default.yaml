@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "seed": 42,
+  "oracle_semantics": true,
+  "noisy_semantics": false,
+  "semantic_noise_prob": 0.0,
+  "success_hold_sec": 1.0,
+  "stop_linear_threshold_mps": 0.05,
+  "stop_angular_threshold_radps": 0.10,
+  "workspace_margin_m": 0.5,
+  "stale_gate": {
+    "max_step_age_sec": 1.0,
+    "max_omninav_age_sec": 0.35,
+    "max_pose_delta_m": 0.5,
+    "max_yaw_delta_deg": 30.0
+  },
+  "latency_model": {
+    "step_mean_ms": 1850,
+    "step_std_ms": 180,
+    "omninav_mean_ms": 159,
+    "omninav_std_ms": 30
+  },
+  "mock_motion": {
+    "nominal_speed_mps": 0.35,
+    "turn_time_sec": 2.0,
+    "collision_radius_m": 0.45
+  },
+  "real_robot_guard": {
+    "enabled": true,
+    "forbidden_topics": ["/sportmodestate", "/api/sport/request", "/lowcmd", "/wirelesscontroller", "/unitree_go2/cmd_vel"],
+    "allow_real_robot": false
+  }
+}

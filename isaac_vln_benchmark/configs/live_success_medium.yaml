@@ -1,0 +1,21 @@
+{
+  "benchmark": {
+    "name": "live_success_medium",
+    "timeout_sec_default": 150,
+    "seeds": [0, 1, 2],
+    "modes": [
+      "internnav_only",
+      "step_internnav_event",
+      "omninav_only",
+      "step_omninav_event",
+      "step_only"
+    ]
+  },
+  "tasks": {
+    "simple_navigation": {"count": 5, "timeout_sec": 90},
+    "turn_choice": {"count": 5, "timeout_sec": 120},
+    "semantic_target": {"count": 5, "timeout_sec": 120},
+    "relational_grounding": {"count": 5, "timeout_sec": 150},
+    "failure_recovery": {"count": 5, "timeout_sec": 180}
+  }
+}

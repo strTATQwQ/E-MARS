@@ -1,0 +1,17 @@
+schema_version: 1
+run_name: cosmos_reason2_32b_bf16
+model_variant: cosmos_reason2_32b_bf16
+precision_mode: bf16
+model_path: ${COSMOS_REASON2_32B_MODEL_PATH}
+revision: 4ed9828334c4397ace8b0c62134961adbe5aed0e
+device: cuda
+attn_implementation: sdpa
+processor_use_fast: false
+max_new_tokens: 48
+max_retries: 1
+deterministic_decoding: true
+batch_size: 1
+reasoning_budget: none
+bind: tcp://0.0.0.0:8200
+max_request_age_s: 5.0
+log_path: ${SLOW_BENCHMARK_RESULTS}/cosmos_reason2_32b_bf16/service.jsonl

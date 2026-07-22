@@ -1,0 +1,60 @@
+benchmark:
+  name: live_success_v16_sensor_only_micro
+  timeout_sec_default: 120
+  seeds: [0, 1, 2]
+  modes:
+    - step_route_sensor_only_v16_micro
+    - step_semantic_sensor_only_v16_micro
+
+tasks:
+  turn_choice:
+    ids: [turn_001, turn_002]
+    count: 2
+    timeout_sec: 120
+  semantic_target:
+    ids: [semantic_micro_clear]
+    count: 1
+    timeout_sec: 120
+
+camera_contract:
+  omninav_prefer_synthetic_primary: false
+  omninav_image_topic: /camera/front/isaac_image
+  step_image_topic: /camera/front/isaac_image
+  depth_topic: /camera/front/depth
+  camera_info_topic: /camera/front/camera_info
+  require_synchronized_rgb_depth: true
+
+evidence_policy:
+  require_real_step_http: true
+  require_actual_isaac_viewport: true
+  require_grounded_sam_local: true
+  require_sensor_only_controller: true
+  allow_mock_or_fallback: false
+  forbidden_controller_fields:
+    - target_pose
+    - nav_target_pose
+    - expected_branch
+    - branch_polygon
+    - branch_membership
+    - oracle_visibility
+  qualification_evidence: false
+  locomotion_fidelity: ideal_kinematic
+
+gates:
+  distinct_track_hits: 2
+  detector_latency_p95_sec: 5.0
+  step_latency_p95_sec: 7.0
+  threshold_to_safe_stop_p95_sec: 2.0
+  collision: 0
+  runtime_stale: 0
+  timebase_error: 0
+  stale_action_executed: 0
+  oracle_context_leakage: 0
+
+scope:
+  perception_tracking_route_planning_only: true
+  train_or_modify_locomotion: false
+  reinforcement_learning: false
+  real_go2_connected: false
+  qualification_evidence: false
+  internnav_identity: CmaAgent/system1/fallback_static_cma_tokens

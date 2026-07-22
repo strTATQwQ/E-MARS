@@ -1,0 +1,56 @@
+scenes:
+  simple_corridor:
+    task: "Move forward to the blue box."
+    target: blue_box
+    success_radius_m: 2.0
+    world:
+      corridor_length_m: 8.0
+      corridor_width_m: 2.4
+      objects:
+        - {name: blue_box, x: 6.0, y: 0.0, color: blue}
+        - {name: red_exit_sign, x: 7.2, y: 0.8, color: red}
+  intersection_route_choice:
+    task: "At the intersection, turn left toward the red cone."
+    target: red_cone
+    success_radius_m: 2.0
+    world:
+      intersection_ahead_m: 0.75
+      objects:
+        - {name: red_cone, x: 4.0, y: 2.2, color: red}
+        - {name: blue_box, x: 4.0, y: -2.2, color: blue}
+  semantic_stop:
+    task: "Stop near the fire extinguisher."
+    target: fire_extinguisher
+    success_radius_m: 2.0
+    world:
+      objects:
+        - {name: fire_extinguisher, x: 5.0, y: 0.5, color: red}
+        - {name: red_exit_sign, x: 5.4, y: 0.9, color: red}
+        - {name: red_box_distractor, x: 3.8, y: -0.7, color: red}
+  ambiguous_target:
+    task: "Go to the fire extinguisher near the red exit sign."
+    target: fire_extinguisher
+    success_radius_m: 2.0
+    world:
+      objects:
+        - {name: red_box, x: 3.4, y: -0.8, color: red}
+        - {name: fire_extinguisher, x: 5.8, y: 0.7, color: red}
+        - {name: red_exit_sign, x: 6.1, y: 1.0, color: red}
+
+overlay:
+  fields:
+    - robot_trajectory
+    - target_marker
+    - success_radius
+    - current_waypoint
+    - current_primitive
+    - active_subgoal
+    - step_trigger_reason
+    - step_json_summary
+    - stale_gate_status
+    - safety_mux_status
+    - distance_to_target
+    - target_visible
+    - visible_to_stop_latency
+    - entered_correct_branch
+    - stop_decision

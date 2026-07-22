@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "kind": "t5_semantic_frontier_offline_gate",
+  "evaluation_scope": "ORACLE_MAP_OFFLINE_BENCHMARK",
+  "scorer": {
+    "semantic_min_confidence": 0.05,
+    "weights": {
+      "semantic_relevance": 0.5,
+      "information_gain": 0.25,
+      "path_cost": 0.15,
+      "revisit": 0.07,
+      "stuck": 0.03
+    },
+    "missing_stale_or_abstained_semantics": "slow_planner.base.deterministic_fallback",
+    "oracle_reference_path_or_goal_as_feature": false
+  },
+  "promotion": {
+    "minimum_labeled_cases": 5,
+    "minimum_semantic_cases": 5,
+    "positive_progress_rate_gain_vs_random": 0.1,
+    "geodesic_regret_reduction_vs_frozen_fallback": 0.2
+  },
+  "authority": {
+    "legal_current_frontier_ids_only": true,
+    "cmd_vel": false,
+    "terminal_stop": false,
+    "coordinate_goal": false,
+    "stale_or_illegal_execution": false
+  },
+  "limitations": {
+    "frozen_replay_triplet_is_live_nav2": false,
+    "offline_pass_is_navigation_effect_evidence": false,
+    "online_canary_allowed_before_offline_pass": false
+  }
+}

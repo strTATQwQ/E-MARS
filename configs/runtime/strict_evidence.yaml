@@ -1,0 +1,20 @@
+runtime_policy: strict_evidence
+applies_to: [isaac_evidence]
+recorder:
+  mode: fatal_exact_batch
+  watchdog_sec: 0.35
+tf:
+  lookup: exact
+  transform_tolerance_sec: 0.0
+navigation:
+  source_timeout_sec: 0.35
+  costmap_current_timeout_sec: 0.35
+  observation_persistence_sec: 0.0
+  collision_monitor: enforce
+mapping:
+  nvblox: active_required
+  global_map: nvblox
+render_clock:
+  stamp_deviation_tolerance_ns: 0
+shutdown:
+  sigterm_143_requires_zero_exit: true

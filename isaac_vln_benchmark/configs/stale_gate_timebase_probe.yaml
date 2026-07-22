@@ -1,0 +1,12 @@
+benchmark:
+  name: stale_gate_timebase_probe
+  ros_domain_id: 42
+  samples: 10
+  max_reasonable_age_sec: 1.0
+  mode: omninav_only
+
+probe:
+  stationary: true
+  publish_rate_hz: 5.0
+  primitive: stop
+  expected_discards: 0

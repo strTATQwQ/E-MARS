@@ -1,0 +1,26 @@
+benchmark:
+  name: v10_branch_entry_controller
+  timeout_sec_default: 90
+  seeds: [0, 1, 2]
+  modes:
+    - v10_branch_yaw60_fwd08
+    - v10_branch_yaw75_fwd08
+    - v10_branch_yaw90_fwd08
+    - v10_branch_yaw90_fwd12
+
+tasks:
+  turn_choice:
+    count: 2
+    timeout_sec: 90
+
+targets:
+  decision_published_min: 6
+  rotate_phase_entered_min: 6
+  post_turn_forward_executed_min: 6
+  entered_correct_branch_min: 5
+  left_correct_min: 2
+  right_correct_min: 2
+  collision_count: 0
+  stale_action_executed: 0
+  runtime_stale_discards: 0
+  timebase_error_count: 0

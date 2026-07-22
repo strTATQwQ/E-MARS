@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "delay_profiles": {
+    "none": {"image_delay_sec": 0.0, "action_delay_sec": 0.0, "step_response_delay_sec": 0.0, "odom_delay_sec": 0.0, "semantic_delay_sec": 0.0, "drop_rate": 0.0},
+    "mild": {"image_delay_sec": 0.5, "action_delay_sec": 0.2, "step_response_delay_sec": 0.2, "odom_delay_sec": 0.1, "semantic_delay_sec": 0.1, "drop_rate": 0.05},
+    "medium": {"image_delay_sec": 1.0, "action_delay_sec": 0.5, "step_response_delay_sec": 0.8, "odom_delay_sec": 0.2, "semantic_delay_sec": 0.3, "drop_rate": 0.10},
+    "severe": {"image_delay_sec": 2.0, "action_delay_sec": 1.0, "step_response_delay_sec": 2.0, "odom_delay_sec": 0.5, "semantic_delay_sec": 0.8, "drop_rate": 0.30}
+  }
+}

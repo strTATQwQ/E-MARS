@@ -1,0 +1,17 @@
+required:
+  route_correct_branch_min: 5
+  left_correct_min: 2
+  right_correct_min: 2
+  semantic_reached_threshold_min: 3
+  semantic_success_min: 2
+  runtime_stale_discards_required: 0
+  collision_count_required: 0
+  stale_action_executed_required: 0
+  timebase_error_required: 0
+
+allowed_only:
+  - sensor-only dry-run
+  - bag replay
+  - offline scoring
+  - stationary camera validation
+  - manual-triggered primitive test

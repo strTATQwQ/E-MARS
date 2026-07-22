@@ -1,0 +1,41 @@
+benchmark:
+  name: semantic_stop_v3
+  timeout_sec: 60
+  seeds: [0, 1, 2, 3, 4]
+  semantic_stop_target_accuracy: 0.75
+  visible_to_stop_latency_target_sec: 2.0
+
+tasks:
+  - task_id: stop_fire_extinguisher
+    instruction: "Stop near the fire extinguisher."
+    target: fire_extinguisher
+  - task_id: stop_red_exit_sign
+    instruction: "Stop near the red exit sign."
+    target: red_exit_sign
+  - task_id: stop_blue_box
+    instruction: "Stop near the blue box."
+    target: blue_box
+
+modes:
+  - omninav_only
+  - step_verify_only
+  - omninav_step_verify
+  - forced_stop_gate
+  - step_verify_plus_forced_stop_gate
+
+semantic_stop_gate:
+  target_visible_required_frames: 2
+  max_distance_to_target_m: 2.5
+  force_stop_if_distance_less_than_m: 2.0
+  force_stop_after_visible_sec: 1.5
+  min_confidence: 0.55
+
+outputs:
+  required_files:
+    - summary.md
+    - metrics.json
+    - events.jsonl
+    - mode_table.csv
+    - failure_table.csv
+    - trajectory.csv
+    - action_distribution.csv

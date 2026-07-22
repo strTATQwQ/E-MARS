@@ -1,0 +1,111 @@
+schema_version: 2
+experiment_name: step3_isaac_stop_fix_split_policy
+map_setting: oracle_connectivity_graph
+
+model:
+  variant: step3_vl_10b_bf16
+  model_path: ${STEP3_VL_10B_MODEL_PATH}
+  revision: 5026053b0c2f5dfaa08fc2d149384162c3c8bca1
+  transformers_version: 4.57.6
+  checkpoint_key_mapping: step3_flat_checkpoint_to_nested_v1
+  precision: bf16
+  processor_use_fast: false
+  multi_crop: true
+  fix_mistral_regex: true
+  require_clean_checkpoint_load: true
+  require_all_parameters_bf16: true
+  temperature: 0.0
+  do_sample: false
+  max_new_tokens: 32
+  reasoning_tokens: 20
+  batch_size: 1
+  pacore: false
+  retries: 0
+  fallback: none
+  reasoning_mode: bounded_private_then_schema_score
+  split_policy: true
+
+service:
+  bind: tcp://0.0.0.0:8210
+  endpoint: tcp://10.100.100.128:8210
+  timeout_ms: 90000
+  max_request_age_s: 120.0
+  log_path: results/step3_stop_fix/service/service.jsonl
+
+arrival:
+  initial_threshold: 0.0
+  history_min_frames: 2
+  history_max_frames: 4
+
+data:
+  calibration_manifest: results/slow_model_benchmark/manifests/nvfp4_calibration_episodes.jsonl
+  heldout_manifest: results/slow_model_benchmark/manifests/pilot_episodes.jsonl
+  connectivity_root: /home/song/InternNav/data/matterport_connectivity_archive/connectivity
+  collision_asset_root: results/slow_model_benchmark/mp3d_collision_v4
+  old_snapshot_reuse_root: results/step3_isaac_quickstart/gate2
+  forbidden_development_canary:
+    1pXnuDYAj8r: [228, 278, 229]
+
+coordinate_transform:
+  habitat_xyz_to_isaac_xyz: [x, -z, y]
+  basis_rotation_x_deg: 90.0
+  nominal_camera_height_m: 1.40
+
+camera:
+  width: 640
+  height: 360
+  horizontal_fov_deg: 90.0
+  source: isaac_render_product
+  candidate_view: current_viewpoint_looking_along_connectivity_edge
+  include_depth_in_model_request: false
+
+candidates:
+  ordering: ascending_target_viewpoint_source_index
+  id_definition: zero_based_ordinal_in_fixed_order
+  move_semantics: direct_switch_to_target_viewpoint
+  yaw_after_move: executed_edge_absolute_bearing
+
+metrics:
+  goal_node: nearest_included_viewpoint_to_episode_goal
+  success_positive: graph_ne_to_goal_node_lte_episode_goal_radius
+  ne: final_graph_shortest_distance_to_goal_node_m
+
+gate2a:
+  scenes: [5LpN3gDmAk7]
+  snapshots: 25
+  min_parse_rate: 0.95
+  min_candidate_validity: 1.0
+  min_geodesic_improvement_rate: 0.50
+  min_top1_over_random: 0.10
+
+gate2b:
+  calibration_scenes: [8WUmhLawc2A]
+  validation_scenes: [E9uDoFAP3SH, 82sE5b5pLXE]
+  episodes_per_split: 10
+  states_per_split: 20
+  arrived_per_split: 10
+  not_arrived_per_split: 10
+  history_min_frames: 2
+  history_max_frames: 4
+  min_precision: 0.60
+  min_recall: 0.60
+  min_balanced_accuracy: 0.65
+
+gate3a:
+  scene: 1LXtFkjw3qL
+  episode_ids: [313, 312, 302, 201, 269]
+  max_model_calls_per_episode: 12
+  same_node_visit_limit: 3
+  early_stop_after_oracle_failures: 3
+  min_oracle_successes: 1
+  save_video: false
+
+gate3b:
+  scene: 1pXnuDYAj8r
+  episode_ids: [280, 251, 752, 227, 382]
+  max_model_calls_per_episode: 12
+  same_node_visit_limit: 3
+  min_successes: 1
+  false_stop_early_stop_episodes: 3
+  save_video: false
+

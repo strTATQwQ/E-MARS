@@ -1,0 +1,102 @@
+{
+  "schema_version": 2,
+  "architecture": "two_complete_dgx_lanes_plus_dual_gpu_isaac_x86",
+  "dgx_lane_contract": {
+    "required_colocated_components": [
+      "internvla_n1_model",
+      "ros2_sensor_ingress",
+      "localization",
+      "nvblox",
+      "static_global_map",
+      "lidar_local_costmap",
+      "nav2",
+      "go2_command_adapter",
+      "watchdog",
+      "bounded_velocity_control"
+    ],
+    "forbidden_components": [
+      "isaac_sim",
+      "go2_physics"
+    ]
+  },
+  "roles": {
+    "dgx_a": {
+      "host": "10.100.100.128",
+      "user": "railgun",
+      "cuda_visible_devices": "0",
+      "lock_path": "/tmp/internnav_dgx.lock",
+      "paired_isaac_gpu": 0,
+      "ros_domain_id": 75,
+      "namespace": "/t5/lane_a",
+      "controller_tcp_port": 25137,
+      "model_client_tcp_port": 25139,
+      "oracle_tcp_port": 25140,
+      "isaac_clock_udp_port": 25141
+    },
+    "dgx_b": {
+      "host": "10.100.120.116",
+      "user": "rail",
+      "cuda_visible_devices": "0",
+      "lock_path": "/tmp/internnav_dgx.lock",
+      "paired_isaac_gpu": 1,
+      "ros_domain_id": 76,
+      "namespace": "/t5/lane_b",
+      "controller_tcp_port": 25138,
+      "model_client_tcp_port": 25239,
+      "oracle_tcp_port": 25240,
+      "isaac_clock_udp_port": 25241
+    },
+    "isaac_x86": {
+      "host": "10.100.120.111",
+      "user": "song",
+      "gpu0": "lane_a_isaac_worker",
+      "gpu1": "lane_b_isaac_worker",
+      "allowed_components": [
+        "isaac_sim",
+        "go2_physics",
+        "simulated_sensors",
+        "evaluator",
+        "clock_source"
+      ],
+      "forbidden_components": [
+        "internvla_n1_model",
+        "nav2",
+        "localization",
+        "mapping",
+        "velocity_control"
+      ],
+      "gpu0_lock_path": "/tmp/internnav_isaac_gpu0.lock",
+      "gpu1_lock_path": "/tmp/internnav_isaac_gpu1.lock",
+      "ros_runtime": {
+        "kind": "docker_exec",
+        "containers": {
+          "lane_a": "internnav_t5_isaac_a",
+          "lane_b": "internnav_t5_isaac_b"
+        },
+        "user": "admin",
+        "setup": "/opt/ros/jazzy/setup.bash"
+      }
+    }
+  },
+  "resource_profiles": {
+    "dgx_a": ["dgx_a"],
+    "dgx_b": ["dgx_b"],
+    "lane_a": ["dgx_a", "isaac_gpu0"],
+    "lane_b": ["dgx_b", "isaac_gpu1"],
+    "all_lanes": ["dgx_a", "dgx_b", "isaac_gpu0", "isaac_gpu1"]
+  },
+  "execution_model": {
+    "lock_order_only_prevents_deadlock": true,
+    "lane_a_does_not_lock_dgx_b": true,
+    "lane_b_does_not_lock_dgx_a": true,
+    "dgx_a_and_dgx_b_may_build_and_test_concurrently": true,
+    "each_dgx_runs_its_model_and_navigation_concurrently": true,
+    "d0_online_order_is_a_then_b_then_both": true,
+    "neither_lane_is_a_long_lived_primary": true
+  },
+  "time_contract": {
+    "clock_source": "paired_isaac_x86_worker_only",
+    "both_dgx_lanes_use_sim_time": true
+  },
+  "real_go2_targeted": false
+}

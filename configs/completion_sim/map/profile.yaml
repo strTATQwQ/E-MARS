@@ -1,0 +1,57 @@
+# T4.2 completion_sim map profile. This profile is simulation-only and must
+# never be selected by a real-Go2 or hardware-motion entry point.
+schema_version: 1
+runtime_policy: completion_sim
+target: isaac_simulation_only
+default_nvblox_mode: shadow
+
+core_nav:
+  global: static_map
+  local: lidar_voxel
+  params_file: nav2_static_lidar.yaml
+  nvblox_active_overlay: nav2_nvblox_active.yaml
+  active_overlay_requires_nvblox_preflight: true
+  active_preflight_failure_action: use_default_core
+
+topics:
+  static_map: /map
+  lidar: /go2/lidar/points_base
+  nvblox_lidar: /go2/lidar/points
+  collision_points: /go2/safety/points
+  navigation_cmd: /cmd_vel_nav
+  collision_monitor_shadow_output: /completion_sim/collision_monitor/warn_only_cmd_vel
+
+frames:
+  global: map
+  local: odom
+  robot: base_link
+  nvblox_lidar: go2_l1_lidar
+
+safety:
+  robot_radius_m: 0.30
+  footprint_padding_m: 0.02
+  inflation_radius_m: 0.40
+  max_linear_velocity_mps: 0.25
+  max_angular_velocity_radps: 1.0
+  collision_monitor_mode: warn_only
+  collision_monitor_in_navigation_command_path: false
+  collision_monitor_shadow_output_has_motion_consumer: false
+  simulation_estop_required: true
+  bounded_velocity_required: true
+  real_go2_allowed: false
+
+timing:
+  use_sim_time: true
+  source_timeout_sec: 5.0
+  observation_persistence_sec: 5.0
+  costmap_current_timeout_sec: 5.0
+  transform_tolerance_sec: 2.5
+
+nvblox:
+  shadow_config: nvblox_shadow.yaml
+  active_config: nvblox_active.yaml
+  active_opt_in: true
+  active_preflight_required: true
+  active_failure_fallback: shadow
+  fallback_core_nav: nav2_static_lidar.yaml
+  strict_evidence_extension_status: pending

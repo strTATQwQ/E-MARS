@@ -1,0 +1,15 @@
+primitive:
+  normal_speed_mps: 0.45
+  thinking_speed_mps: 0.03
+  max_linear_x: 0.45
+  max_linear_y: 0.0
+  max_yaw_rate: 0.35
+  max_forward_horizon_m: 0.50
+  cmd_vel_ttl_sec: 0.45
+  accel_limit_mps2: 0.08
+  stop_after_each_primitive: false
+  lane_centering_enabled: true
+  lane_center_y_m: 0.0
+  lane_center_lookahead_m: 2.0
+  lane_center_gain: 0.8
+  lane_center_max_yaw_rate: 0.28

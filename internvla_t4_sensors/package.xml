@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>internvla_t4_sensors</name>
+  <version>0.1.0</version>
+  <description>Calibrated Isaac sensor bridge and truth-isolation audit for InternNav T4.</description>
+  <maintainer email="noreply@example.invalid">InternNav T4</maintainer>
+  <license>Apache-2.0</license>
+  <buildtool_depend>ament_python</buildtool_depend>
+  <exec_depend>geometry_msgs</exec_depend>
+  <exec_depend>internnav_t5_lane_b_msgs</exec_depend>
+  <exec_depend>internvla_go2_controller</exec_depend>
+  <exec_depend>internvla_ros2</exec_depend>
+  <exec_depend>internvla_ros2_msgs</exec_depend>
+  <exec_depend>nav2_msgs</exec_depend>
+  <exec_depend>nav_msgs</exec_depend>
+  <exec_depend>nvblox_msgs</exec_depend>
+  <exec_depend>isaac_ros_visual_slam</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
+  <exec_depend>tf2_ros</exec_depend>
+  <exec_depend>python3-numpy</exec_depend>
+  <test_depend>python3-pytest</test_depend>
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>

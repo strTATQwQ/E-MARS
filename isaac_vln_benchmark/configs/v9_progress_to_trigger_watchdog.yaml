@@ -1,0 +1,24 @@
+benchmark:
+  name: v9_progress_to_trigger_watchdog
+  timeout_sec_default: 80
+  seeds: [0, 1, 2]
+  modes:
+    - v9_route_progress_watchdog
+    - v9_semantic_progress_watchdog
+
+tasks:
+  turn_choice:
+    count: 2
+    timeout_sec: 80
+  semantic_target:
+    count: 1
+    timeout_sec: 80
+
+targets:
+  route_elapsed_gt_20_x_lt_2_sec: 20
+  route_elapsed_gt_40_x_lt_3_sec: 40
+  semantic_visible_distance_gt_threshold_sec: 5
+  collision_count: 0
+  stale_action_executed: 0
+  runtime_stale_discards: 0
+  timebase_error_count: 0

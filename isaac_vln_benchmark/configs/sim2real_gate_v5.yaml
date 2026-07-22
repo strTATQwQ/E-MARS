@@ -1,0 +1,13 @@
+required:
+  timebase_error_count: 0
+  episode_mismatch_count: 0
+  missing_timestamp_count: 0
+  stale_discard_count: 0
+  route_choice_correct_branch_rate: 0.60
+  semantic_stop_accuracy: 0.75
+  visible_to_stop_latency_sec: 2.0
+  collision_count: 0
+  stale_action_executed: 0
+  parse_error: 0
+  max_linear_x_mps: 0.20
+  actions_through_safe_mux: true

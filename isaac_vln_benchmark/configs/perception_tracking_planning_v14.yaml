@@ -1,0 +1,57 @@
+schema_version: 1
+scope:
+  perception_tracking_route_planning_only: true
+  locomotion_fidelity: ideal_kinematic
+  qualification_evidence: false
+  train_or_modify_locomotion: false
+  reinforcement_learning: false
+  real_go2_connected: false
+  internnav_identity: CmaAgent/system1/fallback_static_cma_tokens
+assets:
+  scene_n1_subset: mp3d_pe
+  isaac_path: /home/song/InternNav/data/scene_data/mp3d_pe
+  huggingface_endpoint: https://hf-mirror.com
+  full_scene_n1_download: false
+visual_domain:
+  controlled_route_cases: 24
+  controlled_semantic_cases: 36
+  mp3d_route_cases: 12
+  mp3d_semantic_cases: 18
+  max_image_age_sec: 0.75
+  horizontal_flip: true
+  vertical_flip: true
+  oracle_context_leakage_allowed: 0
+tracking:
+  sequences: 30
+  required_hits: 2
+  max_misses: 2
+  duplicate_frame_hits_allowed: 0
+planning:
+  route_episodes: 30
+  semantic_episodes: 30
+  coverage_distance_m: 2.5
+  stop_distance_m: 2.0
+  max_linear_mps: 0.2
+  normal_chain:
+    - stale_gate
+    - controller
+    - primitive_executor
+    - safe_mux
+gates:
+  controlled_route_accuracy: 0.80
+  controlled_route_side_accuracy: 0.75
+  mp3d_route_accuracy: 0.75
+  semantic_precision: 0.90
+  semantic_recall: 0.85
+  semantic_false_positive_rate_max: 0.10
+  per_target_recall: 0.70
+  tracking_false_confirmed_rate_max: 0.05
+  tracking_reacquisition_rate: 0.90
+  route_correct: 24
+  route_side_correct: 12
+  semantic_coverage: 15
+  semantic_success: 14
+  semantic_false_stops: 0
+  approach_distance_decrease_rate: 0.80
+  step_latency_p95_sec: 7.0
+  threshold_to_safe_stop_p95_sec: 2.0

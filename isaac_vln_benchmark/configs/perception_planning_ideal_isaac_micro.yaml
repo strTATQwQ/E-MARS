@@ -1,0 +1,41 @@
+benchmark:
+  name: perception_planning_ideal_isaac_micro
+  timeout_sec_default: 120
+  seeds: [201]
+  modes:
+    - omninav_step_route_stop_v12_screen
+
+tasks:
+  turn_choice:
+    ids: [turn_001, turn_002]
+    count: 2
+    timeout_sec: 120
+  semantic_target:
+    ids: [semantic_001]
+    count: 1
+    timeout_sec: 120
+
+development_fidelity:
+  locomotion: ideal_kinematic
+  qualification_evidence: false
+  dynamics_claim: forbidden
+  sim2real_claim: forbidden
+  controller_chain:
+    - decision
+    - stale_gate
+    - route_stop_bridge_or_geometric_controller
+    - primitive_executor
+    - safe_mux
+    - isaac_ideal_kinematic_base
+
+targets:
+  real_step_multimodal_calls: 4
+  fresh_image_required: true
+  oracle_visibility_hidden: true
+  target_track_required: true
+  route_correct_min: 1
+  semantic_stop_min: 1
+  semantic_absent_negative_control: 1
+  collision_count: 0
+  runtime_stale_discards: 0
+  stale_action_executed: 0

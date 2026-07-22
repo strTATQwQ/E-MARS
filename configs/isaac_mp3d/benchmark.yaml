@@ -1,0 +1,69 @@
+schema_version: 1
+benchmark_name: omninav_slow_models_mp3d_r2r_oracle_map
+map_setting: oracle_map
+data:
+  manifest_root: ${ISAAC_SLOW_BENCHMARK_ROOT}/manifests
+  scene_split_manifest: ${ISAAC_SLOW_BENCHMARK_ROOT}/manifests/scene_splits.json
+  formal_episodes: ${ISAAC_SLOW_BENCHMARK_ROOT}/manifests/formal_episodes.jsonl
+  collision_asset_root: ${ISAAC_SLOW_BENCHMARK_ROOT}/mp3d_collision_v4
+  connectivity_root: /home/song/InternNav/data/matterport_connectivity_archive/connectivity
+  source_r2r_archive_sha256: 095b09c97696347a3dc400a100f5f334a3e49c4854c50ece9de0645ab1acfc21
+  selection_seed: 20260713
+  expected_formal_scenes: 11
+  expected_formal_episodes: 110
+coordinate_transform:
+  habitat_xyz_to_isaac_xyz: [x, -z, y]
+  basis_rotation_x_deg: 90.0
+  status: validated_on_frozen_manifests_and_real_isaac_probe
+  evidence:
+    formal_start_horizontal_error_max_m: 0.0
+    isaac_probe_report: results/slow_model_benchmark/isaac_scene_probe_2azQ1b91cZZ_90deg/probe_report.json
+episode:
+  success_radius_source: episode_goal_radius
+  target_found_positive: within_goal_radius_and_line_of_sight
+  max_slow_decisions: 24
+  max_fast_steps: 400
+  timeout_sim_seconds: 600.0
+  timeout_wall_seconds: 900.0
+  loop_window_decisions: 6
+  loop_repeat_threshold: 3
+slow_planner:
+  endpoint: tcp://10.100.100.128:8200
+  timeout_ms: 180000
+  synchronous_safe_hold: true
+  scan_headings_deg: [0.0, 90.0, 180.0, 270.0]
+  output_token_limit: 48
+  max_retries: 1
+fast_policy:
+  endpoint: tcp://10.100.100.128:8100
+  expected_model_variant: qwen2.5-vl-omninav-legacy
+  expected_precision_mode: bf16
+  expected_input_contract: slowfast_original_7view
+  require_trained_action_head: true
+  target_hz: 5.0
+  max_waypoint_m: 0.60
+  safety_fallback: oracle_graph_bearing
+controller:
+  model: simplified_kinematic_capsule
+  capsule_radius_m: 0.28
+  capsule_height_m: 0.55
+  max_linear_speed_mps: 0.35
+  max_yaw_rate_rps: 0.8
+  control_hz: 20.0
+  collision_definition: selected_view_depth_guard_breach
+camera:
+  width: 640
+  height: 360
+  horizontal_fov_deg: 90.0
+  source: isaac_render_product
+evidence:
+  video:
+    enabled: true
+    required: true
+    frame_stride_fast_steps: 10
+    fps: 2.0
+    codec: libx264
+    quality: 7
+statistics:
+  bootstrap_samples: 20000
+  confidence_level: 0.95

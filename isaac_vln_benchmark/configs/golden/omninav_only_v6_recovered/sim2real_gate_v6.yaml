@@ -1,0 +1,11 @@
+required:
+  omninav_success_count: 6
+  mean_path_m: 3.0
+  move_forward_count: 1
+  stale_discard_count: 20
+  timebase_error_count: 0
+  episode_mismatch_count: 0
+  missing_timestamp_count: 0
+  collision_count: 0
+  stale_action_executed: 0
+  max_linear_x_mps: 0.20

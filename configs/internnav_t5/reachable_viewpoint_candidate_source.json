@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "kind": "t5_reachable_viewpoint_candidate_source_config",
+  "candidate_type": "reachable_free_space_viewpoint",
+  "source": "deterministic_current_costmap_free_space",
+  "online_enabled": false,
+  "coordinate_contract": {
+    "relative_xz_frame": "base_link",
+    "absolute_coordinate_field": "grid_xy",
+    "absolute_frame_field": "candidate_xy_frame",
+    "candidate_xy_frame_value": "exact OccupancyGrid.header.frame_id",
+    "map_frame_assumed": false
+  },
+  "extraction": {
+    "free_max_value": 0,
+    "nearest_free_radius_cells": 6,
+    "minimum_distance_m": 0.75,
+    "preferred_distance_m": 3.0,
+    "maximum_distance_m": 5.0,
+    "angular_sectors": 8,
+    "maximum_candidates": 8,
+    "reachability": "eight_connected_dijkstra_with_diagonal_corner_cut_forbidden",
+    "sector_selection": "nearest_to_preferred_distance_then_shortest_geodesic_then_cell"
+  },
+  "slow_planner_v1_compatibility": {
+    "status": "BLOCKED",
+    "blocker_code": "SLOW_PLANNER_V1_FRONTIER_SEMANTICS_BLOCKED",
+    "conversion_to_candidate_frontiers_allowed": false,
+    "online_control_allowed": false
+  },
+  "authority": {
+    "model_request": false,
+    "navigation_goal": false,
+    "cmd_vel": false,
+    "terminal_stop": false
+  },
+  "oracle_inputs": {
+    "instruction": false,
+    "goal": false,
+    "reference_path": false,
+    "success_state": false
+  }
+}

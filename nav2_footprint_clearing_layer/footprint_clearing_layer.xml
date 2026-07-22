@@ -1,0 +1,8 @@
+<library path="nav2_footprint_clearing_layer">
+  <class
+    name="nav2_footprint_clearing_layer::FootprintClearingLayer"
+    type="nav2_footprint_clearing_layer::FootprintClearingLayer"
+    base_class_type="nav2_costmap_2d::Layer">
+    <description>Fail-closed, pose-verified clearing of only the current robot footprint.</description>
+  </class>
+</library>

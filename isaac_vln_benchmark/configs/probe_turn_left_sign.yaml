@@ -1,0 +1,21 @@
+benchmark:
+  name: probe_turn_left_sign
+  ros_domain_id: 42
+  max_duration_sec: 5.0
+
+probe:
+  primitive: turn_left
+  distance_m: 0.0
+  yaw_deg: 35.0
+  speed_mps: 0.0
+  ttl_sec: 1.0
+  command_repeat_sec: 3.0
+  command_publish_interval_sec: 0.2
+  reset_task_id: simple_001_seed0
+  reset_scene_id: straight_001
+  reset_settle_sec: 1.5
+  reset_discovery_timeout_sec: 4.0
+  reset_publish_interval_sec: 0.2
+
+targets:
+  path_m_min: 999.0

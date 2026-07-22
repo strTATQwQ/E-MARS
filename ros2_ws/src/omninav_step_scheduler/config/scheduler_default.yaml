@@ -1,0 +1,119 @@
+mission:
+  max_duration_sec: 180
+  success_hold_sec: 2.0
+
+omninav:
+  enabled: true
+  target_rate_hz: 6.0
+  max_inflight_requests: 1
+  queue_size: 1
+  max_action_age_sec: 0.5
+  min_confidence: 0.50
+  low_confidence_count_for_step: 2
+  frame_count: 3
+  use_left_right: true
+  use_history: false
+
+internnav:
+  enabled: false
+  max_action_age_sec: 0.5
+  action_topic: "/internnav/action_json"
+
+progress_monitor:
+  enabled: true
+  window_sec: 8.0
+  min_progress_m: 0.5
+  max_forward_without_goal_update: 6
+  max_same_action_ratio: 0.85
+  trigger_step_on_no_progress: true
+  trigger_lookaround_on_forward_bias: true
+
+step:
+  enabled: true
+  endpoint: "http://127.0.0.1:8080/v1/chat/completions"
+  model: "Step-3.7-Flash"
+  max_tokens: 80
+  temperature: 0.0
+  timeout_sec: 3.0
+  multimodal_timeout_sec: 3.5
+  min_interval_sec: 8.0
+  max_calls_per_minute: 6
+  call_on_every_step: false
+  multimodal_policy: "event_only"
+  use_streaming: true
+
+triggers:
+  mission_start: true
+  candidate_goal_reached: true
+  completion_verification: true
+  semantic_ambiguity: true
+  omninav_low_confidence_twice: true
+  no_progress_timeout_sec: 15.0
+  target_not_seen_after_m: 5.0
+  instruction_changed_by_user: true
+  safety_stop_requires_explanation: true
+  map_semantic_conflict: true
+
+pending_policy:
+  allow_move_while_step: true
+  default: "hold_position"
+  thinking_speed_limit_mps: 0.30
+  thinking_max_distance_m: 0.30
+  thinking_max_yaw_deg: 10.0
+  scan_yaw_deg: 15.0
+  scan_yaw_rate: 0.15
+  stop_if_step_multimodal: true
+  stop_if_near_goal: true
+  stop_if_near_intersection: true
+  stop_if_near_doorway: true
+  stop_if_dynamic_obstacle: true
+  stop_if_human_within_m: 2.0
+  stop_if_obstacle_within_m: 0.8
+
+primitive:
+  normal_speed_mps: 0.45
+  thinking_speed_mps: 0.12
+  max_linear_x: 0.45
+  max_linear_y: 0.0
+  max_yaw_rate: 0.35
+  max_forward_horizon_m: 0.75
+  cmd_vel_ttl_sec: 0.3
+  accel_limit_mps2: 0.15
+  stop_after_each_primitive: false
+  lane_centering_enabled: true
+  lane_center_y_m: 0.0
+  lane_center_lookahead_m: 2.0
+  lane_center_gain: 0.8
+  lane_center_max_yaw_rate: 0.28
+
+route_choice_bridge:
+  turn_yaw_deg: 35.0
+  forward_distance_m: 0.35
+  ttl_sec: 0.75
+
+semantic_stop_bridge:
+  ttl_sec: 0.5
+
+stale_gate:
+  step_result_ttl_sec: 3.0
+  step_pose_delta_m: 0.30
+  step_yaw_delta_deg: 15.0
+  multimodal_step_pose_delta_m: 0.20
+  multimodal_step_yaw_delta_deg: 10.0
+  omninav_pose_delta_m: 0.30
+  omninav_yaw_delta_deg: 15.0
+
+safety:
+  dry_run: true
+  require_deadman_for_real_motion: true
+  require_enable_motion_env: true
+  enable_motion_env_name: "GO2_ENABLE_MOTION"
+  stop_on_estop: true
+  stop_on_local_warning: true
+  output_topic: "/safe_cmd_vel"
+
+logging:
+  output_dir: "runs/latest_scheduler"
+  write_jsonl: true
+  write_csv: true
+  log_images: false

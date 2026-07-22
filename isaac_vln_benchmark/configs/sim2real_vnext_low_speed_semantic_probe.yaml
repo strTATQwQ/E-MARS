@@ -1,0 +1,18 @@
+benchmark:
+  name: sim2real_vnext_low_speed_semantic_probe
+  timeout_sec_default: 220
+  seeds: [0]
+  modes:
+    - omninav_step_route_stop_sim2real_low_speed
+
+tasks:
+  semantic_target:
+    ids: [semantic_001]
+    count: 1
+    timeout_sec: 220
+
+policy:
+  real_step_required: true
+  max_linear_x_mps: 0.20
+  actual_speed_limit_mps: 0.20
+  real_robot: disabled

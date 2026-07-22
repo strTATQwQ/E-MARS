@@ -1,0 +1,10 @@
+uint32 protocol_version
+string next_episode_id
+uint64 expected_reset_generation
+uint64 reset_barrier_sequence_id
+---
+uint8 status_code
+string status_message
+string episode_id
+uint64 reset_generation
+uint64 reset_barrier_sequence_id

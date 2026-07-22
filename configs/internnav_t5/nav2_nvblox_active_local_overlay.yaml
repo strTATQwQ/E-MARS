@@ -1,0 +1,15 @@
+# T5 completion_sim only. This overlay is materialized on top of the selected
+# static-global + LiDAR-local Nav2 candidate. It never replaces either core
+# layer and never adds Nvblox to the global costmap.
+local_costmap:
+  local_costmap:
+    ros__parameters:
+      plugins: [voxel_layer, nvblox_layer, inflation_layer]
+      nvblox_layer:
+        plugin: nvblox::nav2::NvbloxCostmapLayer
+        # The supervisor enables the layer only after fresh depth, LiDAR, GT
+        # odometry, and ten new valid slices have all been observed.
+        enabled: false
+        nav2_costmap_global_frame: odom
+        nvblox_map_slice_topic: nvblox_node/static_map_slice
+        convert_to_binary_costmap: true

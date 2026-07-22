@@ -1,0 +1,17 @@
+{
+  "benchmark": {
+    "name": "target_verify_bench",
+    "timeout_sec_default": 30,
+    "seeds": [0, 1, 2],
+    "modes": [
+      "omninav_only",
+      "internnav_only",
+      "step_verify_only",
+      "omninav_step_verify",
+      "internnav_step_verify"
+    ]
+  },
+  "tasks": {
+    "target_verify": {"count": 3, "timeout_sec": 30}
+  }
+}

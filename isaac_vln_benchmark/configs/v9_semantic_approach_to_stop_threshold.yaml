@@ -1,0 +1,22 @@
+benchmark:
+  name: v9_semantic_approach_to_stop_threshold
+  timeout_sec_default: 80
+  seeds: [0, 1, 2]
+  modes:
+    - v9_semantic_forced_approach
+    - v9_semantic_omninav_approach
+    - v9_semantic_omninav_with_approach_assist
+
+tasks:
+  semantic_target:
+    count: 1
+    timeout_sec: 80
+
+targets:
+  forced_approach_episodes: 3
+  forced_approach_reached_stop_threshold_min: 3
+  forced_approach_semantic_success_min: 2
+  collision_count: 0
+  stale_action_executed: 0
+  runtime_stale_discards: 0
+  timebase_error_count: 0

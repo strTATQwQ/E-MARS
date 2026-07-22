@@ -1,0 +1,8 @@
+safety:
+  dry_run: false
+  require_deadman_for_real_motion: false
+  require_enable_motion_env: false
+  enable_motion_env_name: "GO2_ENABLE_MOTION"
+  stop_on_estop: true
+  stop_on_local_warning: true
+  output_topic: "/safe_cmd_vel"

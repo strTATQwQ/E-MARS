@@ -1,0 +1,9 @@
+stale_gate:
+  step_result_ttl_sec: 30.0
+  step_pose_delta_m: 0.50
+  step_yaw_delta_deg: 30.0
+  multimodal_step_pose_delta_m: 0.30
+  multimodal_step_yaw_delta_deg: 20.0
+  omninav_pose_delta_m: 0.50
+  omninav_yaw_delta_deg: 30.0
+  max_clock_skew_sec: 0.25

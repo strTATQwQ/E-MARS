@@ -1,0 +1,513 @@
+{
+  "allowed_evidence_kinds": [
+    "completion_sim",
+    "synthetic"
+  ],
+  "baseline_factors": {
+    "history_mode": "on",
+    "recovery_mode": "off",
+    "system_mode": "full_system1_system2",
+    "termination_mode": "model_stop",
+    "trajectory_mode": "full_trajectory",
+    "view_mode": "go2_view"
+  },
+  "comparisons": [
+    {
+      "axis": "system_mode",
+      "candidate_variant": "full_system1_system2",
+      "comparison_block": "system",
+      "comparison_id": "system2_gap_to_oracle_high_level",
+      "component": "system2",
+      "effect_kind": "replacement_gap",
+      "interpretation": "model System2 relative to an oracle high-level replacement; not a pure on/off causal effect",
+      "oracle_assisted": true,
+      "reference_variant": "oracle_high_level_system1"
+    },
+    {
+      "axis": "system_mode",
+      "candidate_variant": "full_system1_system2",
+      "comparison_block": "system",
+      "comparison_id": "system1_gap_to_oracle_local_path",
+      "component": "system1",
+      "effect_kind": "replacement_gap",
+      "interpretation": "model System1 trajectory relative to an oracle local-path replacement; not a pure on/off causal effect",
+      "oracle_assisted": true,
+      "reference_variant": "system2_oracle_local_path"
+    },
+    {
+      "axis": "trajectory_mode",
+      "candidate_variant": "full_trajectory",
+      "comparison_block": "trajectory",
+      "comparison_id": "full_trajectory_vs_endpoint",
+      "component": "trajectory_endpoint",
+      "effect_kind": "paired_contribution",
+      "interpretation": "full trajectory relative to endpoint-only output",
+      "oracle_assisted": false,
+      "reference_variant": "endpoint"
+    },
+    {
+      "axis": "trajectory_mode",
+      "candidate_variant": "full_trajectory",
+      "comparison_block": "trajectory",
+      "comparison_id": "full_trajectory_vs_straight_line",
+      "component": "trajectory_straight_line",
+      "effect_kind": "paired_contribution",
+      "interpretation": "full trajectory relative to a straight-line transform",
+      "oracle_assisted": false,
+      "reference_variant": "straight_line"
+    },
+    {
+      "axis": "termination_mode",
+      "candidate_variant": "model_stop",
+      "comparison_block": "stop",
+      "comparison_id": "model_stop_gap_to_oracle_termination",
+      "component": "stop",
+      "effect_kind": "gap_to_oracle",
+      "interpretation": "model STOP gap to oracle termination; diagnostic upper bound, never model credit",
+      "oracle_assisted": true,
+      "reference_variant": "oracle_termination"
+    },
+    {
+      "axis": "history_mode",
+      "candidate_variant": "history_on",
+      "comparison_block": "history",
+      "comparison_id": "history_on_vs_off",
+      "component": "history",
+      "effect_kind": "paired_contribution",
+      "interpretation": "history enabled relative to history disabled",
+      "oracle_assisted": false,
+      "reference_variant": "history_off"
+    },
+    {
+      "axis": "recovery_mode",
+      "candidate_variant": "recovery_on",
+      "comparison_block": "recovery",
+      "comparison_id": "recovery_on_vs_off",
+      "component": "recovery",
+      "effect_kind": "paired_contribution",
+      "interpretation": "recovery enabled relative to recovery disabled; requires observed recovery triggers",
+      "oracle_assisted": false,
+      "reference_variant": "recovery_off"
+    },
+    {
+      "axis": "view_mode",
+      "candidate_variant": "go2_view",
+      "comparison_block": "view",
+      "comparison_id": "go2_view_vs_h1_view",
+      "component": "view",
+      "effect_kind": "paired_contribution",
+      "interpretation": "Go2 visual input relative to H1 visual input; RGB-only with mapping and safety geometry frozen",
+      "oracle_assisted": false,
+      "reference_variant": "h1_view"
+    }
+  ],
+  "completion_sim_invariants": {
+    "bounded_velocity_required": true,
+    "forbid_model_execution_in_worker": true,
+    "forbid_model_finetuning": true,
+    "forbid_nvfp4": true,
+    "forbid_step_3_7": true,
+    "mapping_and_safety_geometry": "go2_frozen",
+    "simulation_estop_required": true,
+    "strict_evidence_unchanged": true,
+    "view_scope": "internvla_rgb_only",
+    "warning_allowlist": [
+      "recorder_partial_frame",
+      "tf_nearest_or_latest",
+      "source_timeout_extended",
+      "watchdog_extended",
+      "costmap_current_extended",
+      "collision_monitor_warn_only",
+      "nvblox_shadow",
+      "render_stamp_deviation"
+    ]
+  },
+  "control_repeat_variants": [
+    "full_system1_system2",
+    "full_trajectory",
+    "model_stop",
+    "history_on",
+    "recovery_off",
+    "go2_view"
+  ],
+  "factor_levels": {
+    "history_mode": [
+      "on",
+      "off"
+    ],
+    "recovery_mode": [
+      "on",
+      "off"
+    ],
+    "system_mode": [
+      "full_system1_system2",
+      "oracle_high_level_system1",
+      "system2_oracle_local_path"
+    ],
+    "termination_mode": [
+      "model_stop",
+      "oracle_termination"
+    ],
+    "trajectory_mode": [
+      "full_trajectory",
+      "endpoint",
+      "straight_line"
+    ],
+    "view_mode": [
+      "go2_view",
+      "h1_view"
+    ]
+  },
+  "forbidden_targets": [
+    "real_go2",
+    "hardware_motion"
+  ],
+  "matrix_id": "internnav_t4_6_completion_sim_ablation_v1",
+  "metrics": [
+    {
+      "benefit_direction": "higher",
+      "metric_id": "sr",
+      "path": "official_metrics.sr",
+      "unit": "fraction"
+    },
+    {
+      "benefit_direction": "higher",
+      "metric_id": "os",
+      "path": "official_metrics.os",
+      "unit": "fraction"
+    },
+    {
+      "benefit_direction": "higher",
+      "metric_id": "spl",
+      "path": "official_metrics.spl",
+      "unit": "fraction"
+    },
+    {
+      "benefit_direction": "lower",
+      "metric_id": "ne_m",
+      "path": "official_metrics.ne_m",
+      "unit": "m"
+    },
+    {
+      "benefit_direction": "lower",
+      "metric_id": "stuck",
+      "path": "diagnostics.stuck",
+      "unit": "fraction"
+    },
+    {
+      "benefit_direction": "lower",
+      "metric_id": "latency_system1_mean_ms",
+      "path": "diagnostics.latency_ms.system1.mean",
+      "unit": "ms"
+    },
+    {
+      "benefit_direction": "lower",
+      "metric_id": "latency_system1_p95_ms",
+      "path": "diagnostics.latency_ms.system1.p95",
+      "unit": "ms"
+    },
+    {
+      "benefit_direction": "lower",
+      "metric_id": "latency_system2_mean_ms",
+      "path": "diagnostics.latency_ms.system2.mean",
+      "unit": "ms"
+    },
+    {
+      "benefit_direction": "lower",
+      "metric_id": "latency_system2_p95_ms",
+      "path": "diagnostics.latency_ms.system2.p95",
+      "unit": "ms"
+    },
+    {
+      "benefit_direction": "lower",
+      "metric_id": "latency_end_to_end_mean_ms",
+      "path": "diagnostics.latency_ms.end_to_end.mean",
+      "unit": "ms"
+    },
+    {
+      "benefit_direction": "lower",
+      "metric_id": "latency_end_to_end_p95_ms",
+      "path": "diagnostics.latency_ms.end_to_end.p95",
+      "unit": "ms"
+    }
+  ],
+  "oracle_termination_contract": {
+    "distance_source": "evaluator_ground_truth",
+    "interpretation": "diagnostic_upper_bound",
+    "requires_episode_identity_match": true,
+    "requires_original_model_stop_observation": true,
+    "scope": "termination_only",
+    "threshold_m": 2.5,
+    "threshold_source": "frozen_evaluator_success_radius",
+    "unstable_reasons": [
+      "stop_unstable_missing",
+      "stop_unstable_premature",
+      "stop_unstable_oscillatory"
+    ]
+  },
+  "pairing": {
+    "minimum_episode_count": 20,
+    "pairing_keys": [
+      "dataset_sha256",
+      "episode_id",
+      "episode_ordinal",
+      "seed"
+    ],
+    "same_dataset_sha256_required": true,
+    "same_episode_manifest_sha256_required": true,
+    "same_episode_order_required": true
+  },
+  "runtime_policy": "completion_sim",
+  "runtime_profiles": {
+    "completion_sim": {
+      "path": "configs/runtime/completion_sim.yaml",
+      "sha256": "5219f2d9d6496dcff889f563677e60c666aed322b07776dd7da61295b0d090cc"
+    },
+    "strict_evidence": {
+      "path": "configs/runtime/strict_evidence.yaml",
+      "sha256": "96e3c3fba54ff14c3ce245c2acaca9aa2848c074d00d1d8b99f661f262e5ba50"
+    }
+  },
+  "schema_version": 1,
+  "schemas": {
+    "aggregate": "configs/completion_sim/ablation/aggregate_schema_v1.json",
+    "episode_level": "configs/completion_sim/ablation/episode_level_schema_v1.json",
+    "episode_record": "configs/completion_sim/ablation/episode_record_schema_v1.json",
+    "variant_config": "configs/completion_sim/ablation/variant_config_schema_v1.json"
+  },
+  "statistics": {
+    "bootstrap_replicates": 2000,
+    "confidence_level": 0.95,
+    "seed_namespace": "internnav-t4.6-ablation-v1"
+  },
+  "status": "FROZEN",
+  "target": "isaac_simulation_only",
+  "variants": [
+    {
+      "comparison_block": "system",
+      "comparison_ids": [
+        "system2_gap_to_oracle_high_level",
+        "system1_gap_to_oracle_local_path"
+      ],
+      "factors": {
+        "history_mode": "on",
+        "recovery_mode": "off",
+        "system_mode": "full_system1_system2",
+        "termination_mode": "model_stop",
+        "trajectory_mode": "full_trajectory",
+        "view_mode": "go2_view"
+      },
+      "role": "candidate",
+      "variant_id": "full_system1_system2"
+    },
+    {
+      "comparison_block": "system",
+      "comparison_ids": [
+        "system2_gap_to_oracle_high_level"
+      ],
+      "factors": {
+        "history_mode": "on",
+        "recovery_mode": "off",
+        "system_mode": "oracle_high_level_system1",
+        "termination_mode": "model_stop",
+        "trajectory_mode": "full_trajectory",
+        "view_mode": "go2_view"
+      },
+      "role": "reference",
+      "variant_id": "oracle_high_level_system1"
+    },
+    {
+      "comparison_block": "system",
+      "comparison_ids": [
+        "system1_gap_to_oracle_local_path"
+      ],
+      "factors": {
+        "history_mode": "on",
+        "recovery_mode": "off",
+        "system_mode": "system2_oracle_local_path",
+        "termination_mode": "model_stop",
+        "trajectory_mode": "full_trajectory",
+        "view_mode": "go2_view"
+      },
+      "role": "reference",
+      "variant_id": "system2_oracle_local_path"
+    },
+    {
+      "comparison_block": "trajectory",
+      "comparison_ids": [
+        "full_trajectory_vs_endpoint",
+        "full_trajectory_vs_straight_line"
+      ],
+      "factors": {
+        "history_mode": "on",
+        "recovery_mode": "off",
+        "system_mode": "full_system1_system2",
+        "termination_mode": "model_stop",
+        "trajectory_mode": "full_trajectory",
+        "view_mode": "go2_view"
+      },
+      "role": "candidate",
+      "variant_id": "full_trajectory"
+    },
+    {
+      "comparison_block": "trajectory",
+      "comparison_ids": [
+        "full_trajectory_vs_endpoint"
+      ],
+      "factors": {
+        "history_mode": "on",
+        "recovery_mode": "off",
+        "system_mode": "full_system1_system2",
+        "termination_mode": "model_stop",
+        "trajectory_mode": "endpoint",
+        "view_mode": "go2_view"
+      },
+      "role": "reference",
+      "variant_id": "endpoint"
+    },
+    {
+      "comparison_block": "trajectory",
+      "comparison_ids": [
+        "full_trajectory_vs_straight_line"
+      ],
+      "factors": {
+        "history_mode": "on",
+        "recovery_mode": "off",
+        "system_mode": "full_system1_system2",
+        "termination_mode": "model_stop",
+        "trajectory_mode": "straight_line",
+        "view_mode": "go2_view"
+      },
+      "role": "reference",
+      "variant_id": "straight_line"
+    },
+    {
+      "comparison_block": "stop",
+      "comparison_ids": [
+        "model_stop_gap_to_oracle_termination"
+      ],
+      "factors": {
+        "history_mode": "on",
+        "recovery_mode": "off",
+        "system_mode": "full_system1_system2",
+        "termination_mode": "model_stop",
+        "trajectory_mode": "full_trajectory",
+        "view_mode": "go2_view"
+      },
+      "role": "candidate",
+      "variant_id": "model_stop"
+    },
+    {
+      "comparison_block": "stop",
+      "comparison_ids": [
+        "model_stop_gap_to_oracle_termination"
+      ],
+      "factors": {
+        "history_mode": "on",
+        "recovery_mode": "off",
+        "system_mode": "full_system1_system2",
+        "termination_mode": "oracle_termination",
+        "trajectory_mode": "full_trajectory",
+        "view_mode": "go2_view"
+      },
+      "role": "reference",
+      "variant_id": "oracle_termination"
+    },
+    {
+      "comparison_block": "history",
+      "comparison_ids": [
+        "history_on_vs_off"
+      ],
+      "factors": {
+        "history_mode": "on",
+        "recovery_mode": "off",
+        "system_mode": "full_system1_system2",
+        "termination_mode": "model_stop",
+        "trajectory_mode": "full_trajectory",
+        "view_mode": "go2_view"
+      },
+      "role": "candidate",
+      "variant_id": "history_on"
+    },
+    {
+      "comparison_block": "history",
+      "comparison_ids": [
+        "history_on_vs_off"
+      ],
+      "factors": {
+        "history_mode": "off",
+        "recovery_mode": "off",
+        "system_mode": "full_system1_system2",
+        "termination_mode": "model_stop",
+        "trajectory_mode": "full_trajectory",
+        "view_mode": "go2_view"
+      },
+      "role": "reference",
+      "variant_id": "history_off"
+    },
+    {
+      "comparison_block": "recovery",
+      "comparison_ids": [
+        "recovery_on_vs_off"
+      ],
+      "factors": {
+        "history_mode": "on",
+        "recovery_mode": "on",
+        "system_mode": "full_system1_system2",
+        "termination_mode": "model_stop",
+        "trajectory_mode": "full_trajectory",
+        "view_mode": "go2_view"
+      },
+      "role": "candidate",
+      "variant_id": "recovery_on"
+    },
+    {
+      "comparison_block": "recovery",
+      "comparison_ids": [
+        "recovery_on_vs_off"
+      ],
+      "factors": {
+        "history_mode": "on",
+        "recovery_mode": "off",
+        "system_mode": "full_system1_system2",
+        "termination_mode": "model_stop",
+        "trajectory_mode": "full_trajectory",
+        "view_mode": "go2_view"
+      },
+      "role": "reference",
+      "variant_id": "recovery_off"
+    },
+    {
+      "comparison_block": "view",
+      "comparison_ids": [
+        "go2_view_vs_h1_view"
+      ],
+      "factors": {
+        "history_mode": "on",
+        "recovery_mode": "off",
+        "system_mode": "full_system1_system2",
+        "termination_mode": "model_stop",
+        "trajectory_mode": "full_trajectory",
+        "view_mode": "h1_view"
+      },
+      "role": "reference",
+      "variant_id": "h1_view"
+    },
+    {
+      "comparison_block": "view",
+      "comparison_ids": [
+        "go2_view_vs_h1_view"
+      ],
+      "factors": {
+        "history_mode": "on",
+        "recovery_mode": "off",
+        "system_mode": "full_system1_system2",
+        "termination_mode": "model_stop",
+        "trajectory_mode": "full_trajectory",
+        "view_mode": "go2_view"
+      },
+      "role": "candidate",
+      "variant_id": "go2_view"
+    }
+  ]
+}

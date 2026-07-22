@@ -1,0 +1,20 @@
+benchmark:
+  name: live_success_v12_route_controller_smoke
+  timeout_sec_default: 120
+  seeds: [0]
+  modes:
+    - omninav_step_route_stop_v12_screen
+
+tasks:
+  turn_choice:
+    count: 2
+    timeout_sec: 120
+
+targets:
+  episodes: 2
+  real_step_accepted: 2
+  correct_branch: 2
+  oracle_route_decision_count: 0
+  collision_count: 0
+  runtime_stale_discards: 0
+  stale_action_executed: 0

@@ -1,0 +1,38 @@
+benchmark:
+  name: step_route_choice_live
+  ros_domain_id: 42
+  duration_sec: 12
+  trigger_period_sec: 0.50
+  seeds: [0, 1, 2]
+  correct_branch_target_rate: 0.60
+
+mode:
+  name: step_route_choice_only
+  use_step: true
+  use_omninav: false
+  use_internnav: false
+  step_policy: event_triggered
+  step_triggers: [route_choice_only]
+  step_roles_only: true
+  real_step_required: true
+  external_step_triggers_only: true
+  pending_policy: stop
+  stale_gate_enabled: true
+
+tasks:
+  - task_id: turn_micro_left
+    scene_type: intersection_microbench
+    expected_route: left
+    instruction: "At the intersection, turn left toward the red cone."
+    target_object: red_cone_left
+  - task_id: turn_micro_right
+    scene_type: intersection_microbench
+    expected_route: right
+    instruction: "At the intersection, turn right toward the blue box."
+    target_object: blue_box_right
+
+step_output_schema:
+  route_choice: "left|right|front|scan|stop"
+  confidence: number_0_to_1
+  evidence: short
+  visible_in_view: "left|front|right|none"

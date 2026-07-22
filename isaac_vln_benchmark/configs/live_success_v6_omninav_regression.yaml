@@ -1,0 +1,28 @@
+benchmark:
+  name: live_success_v6_omninav_regression
+  timeout_sec_default: 135
+  seeds: [0, 1, 2]
+  modes:
+    - omninav_only
+
+tasks:
+  simple_navigation:
+    count: 2
+    timeout_sec: 135
+  turn_choice:
+    count: 2
+    timeout_sec: 120
+  semantic_target:
+    count: 1
+    timeout_sec: 120
+
+targets:
+  success_count: 6
+  clean_success_count: 4
+  mean_path_m: 3.0
+  move_forward_count_min: 1
+  max_linear_x_min: 0.001
+  stale_discards_max: 20
+  timebase_error_count: 0
+  collision_count: 0
+  stale_action_executed: 0

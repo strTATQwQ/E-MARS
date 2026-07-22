@@ -1,0 +1,13 @@
+internvla_ros2_msgs/NavigationCommand command
+---
+uint8 status_code
+string status_message
+string episode_id
+uint64 reset_generation
+uint64 sequence_id
+string request_id
+int8 discrete_action
+bool stop
+bool nav2_goal_sent
+bool nav2_plan_valid
+float64 resolution_latency_sec

@@ -1,0 +1,24 @@
+benchmark:
+  name: probe_safe_mux_clamp
+  ros_domain_id: 42
+  max_duration_sec: 8.0
+
+probe:
+  primitive: "move_forward"
+  distance_m: 0.5
+  speed_mps: 0.15
+  ttl_sec: 1.0
+  command_repeat_sec: 4.0
+  command_publish_interval_sec: 0.2
+  reset_task_id: "simple_001_seed0"
+  reset_scene_id: "straight_001"
+  reset_settle_sec: 1.5
+  reset_discovery_timeout_sec: 4.0
+  reset_publish_interval_sec: 0.2
+
+targets:
+  safe_linear_x_min: 0.001
+  max_linear_x_min: 0.001
+  path_m_min: 0.3
+  collision_count: 0
+  stale_discard_count: 0

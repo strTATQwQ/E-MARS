@@ -1,0 +1,5 @@
+overlay:
+  output_dir: runs/visual_overlay_live
+  record_overlay_state: true
+  record_events: true
+  render_png_sequence: true

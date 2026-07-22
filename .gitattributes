@@ -1,0 +1,4 @@
+*.sh text eol=lf
+configs/internnav_t5/attempt10_stale_nav2_recovery_manifest.json text eol=lf
+results/parallel/sensor_producer/producer_entrypoint_contract.json text eol=lf
+sensor_runtime/internnav_model_free_sensor.kit text eol=lf

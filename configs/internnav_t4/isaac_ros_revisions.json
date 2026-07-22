@@ -1,0 +1,25 @@
+{
+  "compatibility_decision": {
+    "activated": "release-4.5 / ROS 2 Jazzy / CUDA 13 isolated container",
+    "legacy_snapshot": "release-3.2 source archives retained for audit only; never activated",
+    "reason": "Blackwell-compatible runtime explicitly permitted for T4"
+  },
+  "commits": {
+    "isaac_ros_cli": "385bb5d59d5c5946753e5a8bd03991472c91210d",
+    "isaac_ros_common": "6ff6aec39a87179d7bb5b986c8aad1b52e56dc53",
+    "isaac_ros_nvblox": "f63c1dcae1f3c382196fe71427691caa1e1e9629",
+    "isaac_ros_visual_slam": "575961bcd9a96007f189177d90717a1d2963e7cf"
+  },
+  "host_bootstrap_patch": {
+    "scope": "official CLI host launcher only",
+    "changes": [
+      "Python 3.10 StrEnum compatibility fallback",
+      "restore executable bits lost while staging through Windows"
+    ],
+    "container_payload": "official release-4.5 Noble/Jazzy packages"
+  },
+  "isaac_ros_release": "release-4.5",
+  "ros_distro": "jazzy",
+  "cuda_major": 13,
+  "schema_version": 1
+}

@@ -1,0 +1,12 @@
+model_variant: qwen25_legacy
+repo: ${OMNINAV_REPO}
+model_path: ${OMNINAV_QWEN25_MODEL_PATH}
+helper_path: ${OMNINAV_HELPER_PATH}
+input_config: F_front_semantic_history_384tok
+input_contract: slowfast_original_7view
+attn_implementation: flash_attention_2
+waypoint_scale: 0.3
+legacy_waypoint_forward_axis: y
+bind: tcp://0.0.0.0:8100
+max_request_age_s: 1.0
+log_path: ${OMNINAV_RESULTS_DIR}/qwen25_bf16_model_service.jsonl

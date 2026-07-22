@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "candidate_id": "t5-active-isaac-epyc-dual-lane-v1",
+  "status": "ACTIVE_ENGINEERING_RESOURCE_MAP",
+  "effective_date": "2026-07-20",
+  "isaac_host": {
+    "host": "10.100.120.123",
+    "user": "song",
+    "role": "isaac_simulator_only"
+  },
+  "lanes": {
+    "a": {
+      "gpu": 0,
+      "cpuset": "0,2,4,6,8,10,12,14,16"
+    },
+    "b": {
+      "gpu": 1,
+      "cpuset": "1,3,5,7,9,11,13,15,17"
+    }
+  },
+  "adoption": {
+    "performance_comparison_required": false,
+    "performance_threshold_required": false,
+    "online_experiment_required_for_activation": false,
+    "reason": "user-selected fixed active T5 resource placement"
+  },
+  "scope": [
+    "run_t5_fast_prepare_online",
+    "run_t5_fast_lane_online",
+    "prepare_t5_isaac_workers",
+    "run_t5_distributed_isaac",
+    "run_t5_dgx_lane"
+  ],
+  "frozen_evidence_policy": {
+    "golden_bundle_v0_changed": false,
+    "d0_run_manifest_changed": false,
+    "topology_v0_changed": false,
+    "historical_results_reinterpreted": false
+  }
+}

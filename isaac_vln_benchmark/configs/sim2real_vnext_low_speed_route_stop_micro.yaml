@@ -1,0 +1,38 @@
+benchmark:
+  name: sim2real_vnext_low_speed_route_stop_micro
+  timeout_sec_default: 180
+  seeds: [0]
+  modes:
+    - omninav_step_route_stop_sim2real_low_speed
+
+tasks:
+  turn_choice:
+    ids: [turn_001, turn_002]
+    count: 2
+    timeout_sec: 180
+  semantic_target:
+    ids: [semantic_001]
+    count: 1
+    timeout_sec: 180
+
+targets:
+  route_success: 2
+  semantic_success: 1
+  safe_cmd_max_mps: 0.20
+  actual_speed_p95_mps: 0.20
+  actual_speed_raw_max_mps: 0.26
+  collision_count: 0
+  runtime_stale_discards: 0
+  timebase_error: 0
+  stale_action_executed: 0
+
+policy:
+  real_step_required: true
+  forced_oracle: forbidden
+  max_linear_x_mps: 0.20
+  max_yaw_rate_radps: 0.30
+  accel_limit_mps2: 0.08
+  decel_limit_mps2: 0.40
+  isaac_min_stable_linear_command: 0.0
+  low_speed_gait_servo: true
+  real_robot: disabled

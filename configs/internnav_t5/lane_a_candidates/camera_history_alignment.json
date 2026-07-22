@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "family_id": "camera_history_alignment",
+  "scope": "T5 completion_sim only",
+  "purpose": "Measure whether the frozen Go2 forward RGB-D view benefits from model history after the action/observation family winner is applied.",
+  "extends_family_winner": "action_observation_recovery",
+  "frozen_inputs": {
+    "camera": "existing go2_view RGB-D; no Isaac camera-file change in this candidate",
+    "rgb_shape_hwc": [480, 640, 3],
+    "depth_shape_hwc": [480, 640, 1],
+    "pose_source": "navigation_odometry",
+    "motion_observation_gate_required": true
+  },
+  "variants": [
+    {
+      "candidate_id": "b0_go2_history_off",
+      "runtime_overrides": {
+        "INTERNVLA_T4_VIEW_MODE": "go2_view",
+        "INTERNVLA_T4_HISTORY_MODE": "off"
+      }
+    },
+    {
+      "candidate_id": "b1_go2_history_on",
+      "runtime_overrides": {
+        "INTERNVLA_T4_VIEW_MODE": "go2_view",
+        "INTERNVLA_T4_HISTORY_MODE": "on"
+      }
+    }
+  ]
+}

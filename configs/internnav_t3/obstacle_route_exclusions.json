@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "episode_keys": [
+    "7158_1795",
+    "6898_1741",
+    "5627_1417",
+    "4009_976",
+    "1660_415",
+    "668_166",
+    "3555_880",
+    "1420_364",
+    "654_157",
+    "4084_1003",
+    "1803_448"
+  ],
+  "scenario_episode_pairs": [
+    "583_145:doorway",
+    "583_145:dynamic_crossing",
+    "6292_1573:dynamic_crossing"
+  ],
+  "superseded_exclusions": [
+    {
+      "episode_key": "5840_1474",
+      "evidence": "t3_obstacle_probe_attempt_019",
+      "outcome": "doorway success at step 8501 with zero physical collisions"
+    }
+  ],
+  "reason": "Frozen T3 obstacle NavigateToPose audit: 7158_1795 repeatedly reached the official stuck terminator. 6898_1741, 5627_1417, 4009_976, 1660_415, 668_166, and 3555_880 failed their configured static-map prefix-clearance preflights. Formal obstacle attempt 004 showed that 1420_364 remained safely stopped after sudden blockage without recovering a plan and 654_157 reached the official stuck terminator during dynamic crossing. Engineering probe 016 likewise rejected 4084_1003 under dynamic crossing and 1803_448 under sudden blockage. The earlier 5840_1474 preflight exclusion is superseded by a later full doorway success. Scenario-specific exclusions retain routes that passed the authoritative no-obstacle Oracle but failed only the listed obstacle assignment; all listed failures had zero physical collision."
+}

@@ -1,0 +1,53 @@
+schema_version: 1
+task:
+  family: OVON
+  formulation: open_vocabulary_object_goal_navigation
+  goal_input: object_category
+  explicitly_incompatible_inputs: [R2R_instruction, RxR_instruction, custom_target_found]
+checkpoint:
+  repository: chongchongjj/OmniNav_Slowfast
+  repository_transport: modelscope
+  revision: 3159d6893927e7043b837b27eddca090ba47c143
+  model_path: ${OMNINAV_SLOWFAST_MODEL_PATH}
+  dtype: bfloat16
+  expected_total_weight_bytes: 8167451146
+  shards:
+    - name: model-00001-of-00002.safetensors
+      bytes: 4997754944
+      sha256: 67c1faef206c3ae15d16e7851ffb2540059f0622e89bb1168ae73d638b367f74
+    - name: model-00002-of-00002.safetensors
+      bytes: 3169696202
+      sha256: 08392f3a27df28478a2774493388424a3ff498e2461994778e08485d6e14b0da
+  required_action_head_keys:
+    - query_action
+    - query_multihead_attn
+    - wp_predictor
+    - wp_predictor_angle
+    - arrive_predictor
+    - input_wp_encoder
+processor:
+  use_fast: false
+  required_special_tokens:
+    - <input_pos1>
+    - <input_pos2>
+    - <input_pos3>
+    - <input_pos4>
+    - <input_pos5>
+    - <input_target>
+    - <|NAV|>
+fast_input_contract:
+  name: slowfast_original_7view
+  history_frames: 4
+  current_views: [left, front, right]
+  input_waypoint_scale_m: 0.3
+  waypoint_count: 5
+  heading: atan2_sin_cos
+  arrive_logits: 5
+observed_nonmatching_checkpoint:
+  path: /home/railgun/ai-stack/models/OmniNav
+  repository: chongchongjj/OmniNav
+  revision: 279cd700e0c959f9c5826afac10a28de85b80ca8
+  shards_sha256:
+    - cf4652c007cafe3eccfb7d5a7a5088d2b1706b74a26fea6ea5ed77af380a2201
+    - ac3ab437446d958127947c6bb13b93286971fdfaa6e796d65d132125b46b9a67
+  allowed_for_t0: false

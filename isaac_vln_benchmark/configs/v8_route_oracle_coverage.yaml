@@ -1,0 +1,21 @@
+benchmark:
+  name: v8_route_oracle_coverage
+  timeout_sec_default: 120
+  seeds: [0, 1, 2]
+  modes:
+    - omninav_forced_route_stop_oracle_v8
+
+tasks:
+  turn_choice:
+    count: 2
+    timeout_sec: 120
+
+targets:
+  route_oracle_triggered_min: 6
+  route_stop_bridge_received_route_min: 6
+  turn_primitive_generated_min: 6
+  safe_cmd_vel_turn_nonzero_min: 6
+  entered_correct_branch_min: 4
+  collision_count: 0
+  stale_action_executed: 0
+  timebase_error_count: 0

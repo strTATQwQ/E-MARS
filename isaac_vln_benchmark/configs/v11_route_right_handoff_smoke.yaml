@@ -1,0 +1,25 @@
+benchmark:
+  name: v11_route_right_handoff_smoke
+  timeout_sec_default: 120
+  seeds: [0]
+  modes:
+    - omninav_forced_route_stop_oracle_v11
+
+tasks:
+  turn_choice:
+    ids: [turn_002]
+    count: 1
+    timeout_sec: 120
+
+targets:
+  decision_published_min: 1
+  rotate_phase_entered_min: 1
+  entered_correct_branch_min: 1
+  collision_count: 0
+  runtime_stale_discards: 0
+  timebase_error_count: 0
+  stale_action_executed: 0
+
+gate_policy:
+  step: FROZEN
+  real_robot: DISABLED

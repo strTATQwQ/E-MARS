@@ -1,0 +1,19 @@
+benchmark:
+  name: live_success_v14_omninav_orientation_probe
+  timeout_sec_default: 30
+  seeds: [0]
+  modes:
+    - omninav_orientation_none_v14_probe
+    - omninav_orientation_horizontal_v14_probe
+    - omninav_orientation_vertical_v14_probe
+    - omninav_orientation_both_v14_probe
+
+tasks:
+  simple_navigation:
+    ids: [simple_001]
+    count: 1
+    timeout_sec: 30
+
+evidence_policy:
+  qualification_evidence: false
+  locomotion_fidelity: ideal_kinematic

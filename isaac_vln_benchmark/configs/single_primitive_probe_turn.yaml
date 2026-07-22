@@ -1,0 +1,15 @@
+benchmark:
+  name: single_primitive_probe
+  ros_domain_id: 42
+  max_duration_sec: 7.0
+
+probe:
+  primitive: turn_left
+  distance_m: 0.5
+  yaw_deg: 30.0
+  ttl_sec: 1.0
+  command_repeat_sec: 4.0
+  command_publish_interval_sec: 0.2
+  target_path_m: 0.3
+  target_yaw_delta_deg: 20.0
+  expected_discards: 0

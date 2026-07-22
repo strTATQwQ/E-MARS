@@ -1,0 +1,1091 @@
+{
+  "base_seed": 2026071300,
+  "generator": "scripts/generate_isaac_backtest_manifest.py",
+  "phases": {
+    "formal": [
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_static_clutter_00",
+        "obstacle_category": "static_clutter",
+        "random_seed": 2026071300,
+        "scene_id": "formal_static_clutter_00",
+        "task_id": "formal_static_clutter_00"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_static_clutter_01",
+        "obstacle_category": "static_clutter",
+        "random_seed": 2026071301,
+        "scene_id": "formal_static_clutter_01",
+        "task_id": "formal_static_clutter_01"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_static_clutter_02",
+        "obstacle_category": "static_clutter",
+        "random_seed": 2026071302,
+        "scene_id": "formal_static_clutter_02",
+        "task_id": "formal_static_clutter_02"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_static_clutter_03",
+        "obstacle_category": "static_clutter",
+        "random_seed": 2026071303,
+        "scene_id": "formal_static_clutter_03",
+        "task_id": "formal_static_clutter_03"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_static_clutter_04",
+        "obstacle_category": "static_clutter",
+        "random_seed": 2026071304,
+        "scene_id": "formal_static_clutter_04",
+        "task_id": "formal_static_clutter_04"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_static_clutter_05",
+        "obstacle_category": "static_clutter",
+        "random_seed": 2026071305,
+        "scene_id": "formal_static_clutter_05",
+        "task_id": "formal_static_clutter_05"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_static_clutter_06",
+        "obstacle_category": "static_clutter",
+        "random_seed": 2026071306,
+        "scene_id": "formal_static_clutter_06",
+        "task_id": "formal_static_clutter_06"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_static_clutter_07",
+        "obstacle_category": "static_clutter",
+        "random_seed": 2026071307,
+        "scene_id": "formal_static_clutter_07",
+        "task_id": "formal_static_clutter_07"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_static_clutter_08",
+        "obstacle_category": "static_clutter",
+        "random_seed": 2026071308,
+        "scene_id": "formal_static_clutter_08",
+        "task_id": "formal_static_clutter_08"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_static_clutter_09",
+        "obstacle_category": "static_clutter",
+        "random_seed": 2026071309,
+        "scene_id": "formal_static_clutter_09",
+        "task_id": "formal_static_clutter_09"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_static_clutter_10",
+        "obstacle_category": "static_clutter",
+        "random_seed": 2026071310,
+        "scene_id": "formal_static_clutter_10",
+        "task_id": "formal_static_clutter_10"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_static_clutter_11",
+        "obstacle_category": "static_clutter",
+        "random_seed": 2026071311,
+        "scene_id": "formal_static_clutter_11",
+        "task_id": "formal_static_clutter_11"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_static_clutter_12",
+        "obstacle_category": "static_clutter",
+        "random_seed": 2026071312,
+        "scene_id": "formal_static_clutter_12",
+        "task_id": "formal_static_clutter_12"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_static_clutter_13",
+        "obstacle_category": "static_clutter",
+        "random_seed": 2026071313,
+        "scene_id": "formal_static_clutter_13",
+        "task_id": "formal_static_clutter_13"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_static_clutter_14",
+        "obstacle_category": "static_clutter",
+        "random_seed": 2026071314,
+        "scene_id": "formal_static_clutter_14",
+        "task_id": "formal_static_clutter_14"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_static_clutter_15",
+        "obstacle_category": "static_clutter",
+        "random_seed": 2026071315,
+        "scene_id": "formal_static_clutter_15",
+        "task_id": "formal_static_clutter_15"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_static_clutter_16",
+        "obstacle_category": "static_clutter",
+        "random_seed": 2026071316,
+        "scene_id": "formal_static_clutter_16",
+        "task_id": "formal_static_clutter_16"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_static_clutter_17",
+        "obstacle_category": "static_clutter",
+        "random_seed": 2026071317,
+        "scene_id": "formal_static_clutter_17",
+        "task_id": "formal_static_clutter_17"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_static_clutter_18",
+        "obstacle_category": "static_clutter",
+        "random_seed": 2026071318,
+        "scene_id": "formal_static_clutter_18",
+        "task_id": "formal_static_clutter_18"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_static_clutter_19",
+        "obstacle_category": "static_clutter",
+        "random_seed": 2026071319,
+        "scene_id": "formal_static_clutter_19",
+        "task_id": "formal_static_clutter_19"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_narrow_door_00",
+        "obstacle_category": "narrow_door",
+        "random_seed": 2026071400,
+        "scene_id": "formal_narrow_door_00",
+        "task_id": "formal_narrow_door_00"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_narrow_door_01",
+        "obstacle_category": "narrow_door",
+        "random_seed": 2026071401,
+        "scene_id": "formal_narrow_door_01",
+        "task_id": "formal_narrow_door_01"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_narrow_door_02",
+        "obstacle_category": "narrow_door",
+        "random_seed": 2026071402,
+        "scene_id": "formal_narrow_door_02",
+        "task_id": "formal_narrow_door_02"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_narrow_door_03",
+        "obstacle_category": "narrow_door",
+        "random_seed": 2026071403,
+        "scene_id": "formal_narrow_door_03",
+        "task_id": "formal_narrow_door_03"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_narrow_door_04",
+        "obstacle_category": "narrow_door",
+        "random_seed": 2026071404,
+        "scene_id": "formal_narrow_door_04",
+        "task_id": "formal_narrow_door_04"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_narrow_door_05",
+        "obstacle_category": "narrow_door",
+        "random_seed": 2026071405,
+        "scene_id": "formal_narrow_door_05",
+        "task_id": "formal_narrow_door_05"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_narrow_door_06",
+        "obstacle_category": "narrow_door",
+        "random_seed": 2026071406,
+        "scene_id": "formal_narrow_door_06",
+        "task_id": "formal_narrow_door_06"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_narrow_door_07",
+        "obstacle_category": "narrow_door",
+        "random_seed": 2026071407,
+        "scene_id": "formal_narrow_door_07",
+        "task_id": "formal_narrow_door_07"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_narrow_door_08",
+        "obstacle_category": "narrow_door",
+        "random_seed": 2026071408,
+        "scene_id": "formal_narrow_door_08",
+        "task_id": "formal_narrow_door_08"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_narrow_door_09",
+        "obstacle_category": "narrow_door",
+        "random_seed": 2026071409,
+        "scene_id": "formal_narrow_door_09",
+        "task_id": "formal_narrow_door_09"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_narrow_door_10",
+        "obstacle_category": "narrow_door",
+        "random_seed": 2026071410,
+        "scene_id": "formal_narrow_door_10",
+        "task_id": "formal_narrow_door_10"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_narrow_door_11",
+        "obstacle_category": "narrow_door",
+        "random_seed": 2026071411,
+        "scene_id": "formal_narrow_door_11",
+        "task_id": "formal_narrow_door_11"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_narrow_door_12",
+        "obstacle_category": "narrow_door",
+        "random_seed": 2026071412,
+        "scene_id": "formal_narrow_door_12",
+        "task_id": "formal_narrow_door_12"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_narrow_door_13",
+        "obstacle_category": "narrow_door",
+        "random_seed": 2026071413,
+        "scene_id": "formal_narrow_door_13",
+        "task_id": "formal_narrow_door_13"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_narrow_door_14",
+        "obstacle_category": "narrow_door",
+        "random_seed": 2026071414,
+        "scene_id": "formal_narrow_door_14",
+        "task_id": "formal_narrow_door_14"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_narrow_door_15",
+        "obstacle_category": "narrow_door",
+        "random_seed": 2026071415,
+        "scene_id": "formal_narrow_door_15",
+        "task_id": "formal_narrow_door_15"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_narrow_door_16",
+        "obstacle_category": "narrow_door",
+        "random_seed": 2026071416,
+        "scene_id": "formal_narrow_door_16",
+        "task_id": "formal_narrow_door_16"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_narrow_door_17",
+        "obstacle_category": "narrow_door",
+        "random_seed": 2026071417,
+        "scene_id": "formal_narrow_door_17",
+        "task_id": "formal_narrow_door_17"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_narrow_door_18",
+        "obstacle_category": "narrow_door",
+        "random_seed": 2026071418,
+        "scene_id": "formal_narrow_door_18",
+        "task_id": "formal_narrow_door_18"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_narrow_door_19",
+        "obstacle_category": "narrow_door",
+        "random_seed": 2026071419,
+        "scene_id": "formal_narrow_door_19",
+        "task_id": "formal_narrow_door_19"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_narrow_corridor_00",
+        "obstacle_category": "narrow_corridor",
+        "random_seed": 2026071500,
+        "scene_id": "formal_narrow_corridor_00",
+        "task_id": "formal_narrow_corridor_00"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_narrow_corridor_01",
+        "obstacle_category": "narrow_corridor",
+        "random_seed": 2026071501,
+        "scene_id": "formal_narrow_corridor_01",
+        "task_id": "formal_narrow_corridor_01"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_narrow_corridor_02",
+        "obstacle_category": "narrow_corridor",
+        "random_seed": 2026071502,
+        "scene_id": "formal_narrow_corridor_02",
+        "task_id": "formal_narrow_corridor_02"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_narrow_corridor_03",
+        "obstacle_category": "narrow_corridor",
+        "random_seed": 2026071503,
+        "scene_id": "formal_narrow_corridor_03",
+        "task_id": "formal_narrow_corridor_03"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_narrow_corridor_04",
+        "obstacle_category": "narrow_corridor",
+        "random_seed": 2026071504,
+        "scene_id": "formal_narrow_corridor_04",
+        "task_id": "formal_narrow_corridor_04"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_narrow_corridor_05",
+        "obstacle_category": "narrow_corridor",
+        "random_seed": 2026071505,
+        "scene_id": "formal_narrow_corridor_05",
+        "task_id": "formal_narrow_corridor_05"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_narrow_corridor_06",
+        "obstacle_category": "narrow_corridor",
+        "random_seed": 2026071506,
+        "scene_id": "formal_narrow_corridor_06",
+        "task_id": "formal_narrow_corridor_06"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_narrow_corridor_07",
+        "obstacle_category": "narrow_corridor",
+        "random_seed": 2026071507,
+        "scene_id": "formal_narrow_corridor_07",
+        "task_id": "formal_narrow_corridor_07"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_narrow_corridor_08",
+        "obstacle_category": "narrow_corridor",
+        "random_seed": 2026071508,
+        "scene_id": "formal_narrow_corridor_08",
+        "task_id": "formal_narrow_corridor_08"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_narrow_corridor_09",
+        "obstacle_category": "narrow_corridor",
+        "random_seed": 2026071509,
+        "scene_id": "formal_narrow_corridor_09",
+        "task_id": "formal_narrow_corridor_09"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_narrow_corridor_10",
+        "obstacle_category": "narrow_corridor",
+        "random_seed": 2026071510,
+        "scene_id": "formal_narrow_corridor_10",
+        "task_id": "formal_narrow_corridor_10"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_narrow_corridor_11",
+        "obstacle_category": "narrow_corridor",
+        "random_seed": 2026071511,
+        "scene_id": "formal_narrow_corridor_11",
+        "task_id": "formal_narrow_corridor_11"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_narrow_corridor_12",
+        "obstacle_category": "narrow_corridor",
+        "random_seed": 2026071512,
+        "scene_id": "formal_narrow_corridor_12",
+        "task_id": "formal_narrow_corridor_12"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_narrow_corridor_13",
+        "obstacle_category": "narrow_corridor",
+        "random_seed": 2026071513,
+        "scene_id": "formal_narrow_corridor_13",
+        "task_id": "formal_narrow_corridor_13"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_narrow_corridor_14",
+        "obstacle_category": "narrow_corridor",
+        "random_seed": 2026071514,
+        "scene_id": "formal_narrow_corridor_14",
+        "task_id": "formal_narrow_corridor_14"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_narrow_corridor_15",
+        "obstacle_category": "narrow_corridor",
+        "random_seed": 2026071515,
+        "scene_id": "formal_narrow_corridor_15",
+        "task_id": "formal_narrow_corridor_15"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_narrow_corridor_16",
+        "obstacle_category": "narrow_corridor",
+        "random_seed": 2026071516,
+        "scene_id": "formal_narrow_corridor_16",
+        "task_id": "formal_narrow_corridor_16"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_narrow_corridor_17",
+        "obstacle_category": "narrow_corridor",
+        "random_seed": 2026071517,
+        "scene_id": "formal_narrow_corridor_17",
+        "task_id": "formal_narrow_corridor_17"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_narrow_corridor_18",
+        "obstacle_category": "narrow_corridor",
+        "random_seed": 2026071518,
+        "scene_id": "formal_narrow_corridor_18",
+        "task_id": "formal_narrow_corridor_18"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_narrow_corridor_19",
+        "obstacle_category": "narrow_corridor",
+        "random_seed": 2026071519,
+        "scene_id": "formal_narrow_corridor_19",
+        "task_id": "formal_narrow_corridor_19"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_corner_dead_end_00",
+        "obstacle_category": "corner_dead_end",
+        "random_seed": 2026071600,
+        "scene_id": "formal_corner_dead_end_00",
+        "task_id": "formal_corner_dead_end_00"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_corner_dead_end_01",
+        "obstacle_category": "corner_dead_end",
+        "random_seed": 2026071601,
+        "scene_id": "formal_corner_dead_end_01",
+        "task_id": "formal_corner_dead_end_01"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_corner_dead_end_02",
+        "obstacle_category": "corner_dead_end",
+        "random_seed": 2026071602,
+        "scene_id": "formal_corner_dead_end_02",
+        "task_id": "formal_corner_dead_end_02"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_corner_dead_end_03",
+        "obstacle_category": "corner_dead_end",
+        "random_seed": 2026071603,
+        "scene_id": "formal_corner_dead_end_03",
+        "task_id": "formal_corner_dead_end_03"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_corner_dead_end_04",
+        "obstacle_category": "corner_dead_end",
+        "random_seed": 2026071604,
+        "scene_id": "formal_corner_dead_end_04",
+        "task_id": "formal_corner_dead_end_04"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_corner_dead_end_05",
+        "obstacle_category": "corner_dead_end",
+        "random_seed": 2026071605,
+        "scene_id": "formal_corner_dead_end_05",
+        "task_id": "formal_corner_dead_end_05"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_corner_dead_end_06",
+        "obstacle_category": "corner_dead_end",
+        "random_seed": 2026071606,
+        "scene_id": "formal_corner_dead_end_06",
+        "task_id": "formal_corner_dead_end_06"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_corner_dead_end_07",
+        "obstacle_category": "corner_dead_end",
+        "random_seed": 2026071607,
+        "scene_id": "formal_corner_dead_end_07",
+        "task_id": "formal_corner_dead_end_07"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_corner_dead_end_08",
+        "obstacle_category": "corner_dead_end",
+        "random_seed": 2026071608,
+        "scene_id": "formal_corner_dead_end_08",
+        "task_id": "formal_corner_dead_end_08"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_corner_dead_end_09",
+        "obstacle_category": "corner_dead_end",
+        "random_seed": 2026071609,
+        "scene_id": "formal_corner_dead_end_09",
+        "task_id": "formal_corner_dead_end_09"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_corner_dead_end_10",
+        "obstacle_category": "corner_dead_end",
+        "random_seed": 2026071610,
+        "scene_id": "formal_corner_dead_end_10",
+        "task_id": "formal_corner_dead_end_10"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_corner_dead_end_11",
+        "obstacle_category": "corner_dead_end",
+        "random_seed": 2026071611,
+        "scene_id": "formal_corner_dead_end_11",
+        "task_id": "formal_corner_dead_end_11"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_corner_dead_end_12",
+        "obstacle_category": "corner_dead_end",
+        "random_seed": 2026071612,
+        "scene_id": "formal_corner_dead_end_12",
+        "task_id": "formal_corner_dead_end_12"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_corner_dead_end_13",
+        "obstacle_category": "corner_dead_end",
+        "random_seed": 2026071613,
+        "scene_id": "formal_corner_dead_end_13",
+        "task_id": "formal_corner_dead_end_13"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_corner_dead_end_14",
+        "obstacle_category": "corner_dead_end",
+        "random_seed": 2026071614,
+        "scene_id": "formal_corner_dead_end_14",
+        "task_id": "formal_corner_dead_end_14"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_corner_dead_end_15",
+        "obstacle_category": "corner_dead_end",
+        "random_seed": 2026071615,
+        "scene_id": "formal_corner_dead_end_15",
+        "task_id": "formal_corner_dead_end_15"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_corner_dead_end_16",
+        "obstacle_category": "corner_dead_end",
+        "random_seed": 2026071616,
+        "scene_id": "formal_corner_dead_end_16",
+        "task_id": "formal_corner_dead_end_16"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_corner_dead_end_17",
+        "obstacle_category": "corner_dead_end",
+        "random_seed": 2026071617,
+        "scene_id": "formal_corner_dead_end_17",
+        "task_id": "formal_corner_dead_end_17"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_corner_dead_end_18",
+        "obstacle_category": "corner_dead_end",
+        "random_seed": 2026071618,
+        "scene_id": "formal_corner_dead_end_18",
+        "task_id": "formal_corner_dead_end_18"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_corner_dead_end_19",
+        "obstacle_category": "corner_dead_end",
+        "random_seed": 2026071619,
+        "scene_id": "formal_corner_dead_end_19",
+        "task_id": "formal_corner_dead_end_19"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_dynamic_crossing_00",
+        "obstacle_category": "dynamic_crossing",
+        "random_seed": 2026071700,
+        "scene_id": "formal_dynamic_crossing_00",
+        "task_id": "formal_dynamic_crossing_00"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_dynamic_crossing_01",
+        "obstacle_category": "dynamic_crossing",
+        "random_seed": 2026071701,
+        "scene_id": "formal_dynamic_crossing_01",
+        "task_id": "formal_dynamic_crossing_01"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_dynamic_crossing_02",
+        "obstacle_category": "dynamic_crossing",
+        "random_seed": 2026071702,
+        "scene_id": "formal_dynamic_crossing_02",
+        "task_id": "formal_dynamic_crossing_02"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_dynamic_crossing_03",
+        "obstacle_category": "dynamic_crossing",
+        "random_seed": 2026071703,
+        "scene_id": "formal_dynamic_crossing_03",
+        "task_id": "formal_dynamic_crossing_03"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_dynamic_crossing_04",
+        "obstacle_category": "dynamic_crossing",
+        "random_seed": 2026071704,
+        "scene_id": "formal_dynamic_crossing_04",
+        "task_id": "formal_dynamic_crossing_04"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_dynamic_crossing_05",
+        "obstacle_category": "dynamic_crossing",
+        "random_seed": 2026071705,
+        "scene_id": "formal_dynamic_crossing_05",
+        "task_id": "formal_dynamic_crossing_05"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_dynamic_crossing_06",
+        "obstacle_category": "dynamic_crossing",
+        "random_seed": 2026071706,
+        "scene_id": "formal_dynamic_crossing_06",
+        "task_id": "formal_dynamic_crossing_06"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_dynamic_crossing_07",
+        "obstacle_category": "dynamic_crossing",
+        "random_seed": 2026071707,
+        "scene_id": "formal_dynamic_crossing_07",
+        "task_id": "formal_dynamic_crossing_07"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_dynamic_crossing_08",
+        "obstacle_category": "dynamic_crossing",
+        "random_seed": 2026071708,
+        "scene_id": "formal_dynamic_crossing_08",
+        "task_id": "formal_dynamic_crossing_08"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_dynamic_crossing_09",
+        "obstacle_category": "dynamic_crossing",
+        "random_seed": 2026071709,
+        "scene_id": "formal_dynamic_crossing_09",
+        "task_id": "formal_dynamic_crossing_09"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_dynamic_crossing_10",
+        "obstacle_category": "dynamic_crossing",
+        "random_seed": 2026071710,
+        "scene_id": "formal_dynamic_crossing_10",
+        "task_id": "formal_dynamic_crossing_10"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_dynamic_crossing_11",
+        "obstacle_category": "dynamic_crossing",
+        "random_seed": 2026071711,
+        "scene_id": "formal_dynamic_crossing_11",
+        "task_id": "formal_dynamic_crossing_11"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_dynamic_crossing_12",
+        "obstacle_category": "dynamic_crossing",
+        "random_seed": 2026071712,
+        "scene_id": "formal_dynamic_crossing_12",
+        "task_id": "formal_dynamic_crossing_12"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_dynamic_crossing_13",
+        "obstacle_category": "dynamic_crossing",
+        "random_seed": 2026071713,
+        "scene_id": "formal_dynamic_crossing_13",
+        "task_id": "formal_dynamic_crossing_13"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_dynamic_crossing_14",
+        "obstacle_category": "dynamic_crossing",
+        "random_seed": 2026071714,
+        "scene_id": "formal_dynamic_crossing_14",
+        "task_id": "formal_dynamic_crossing_14"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_dynamic_crossing_15",
+        "obstacle_category": "dynamic_crossing",
+        "random_seed": 2026071715,
+        "scene_id": "formal_dynamic_crossing_15",
+        "task_id": "formal_dynamic_crossing_15"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_dynamic_crossing_16",
+        "obstacle_category": "dynamic_crossing",
+        "random_seed": 2026071716,
+        "scene_id": "formal_dynamic_crossing_16",
+        "task_id": "formal_dynamic_crossing_16"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_dynamic_crossing_17",
+        "obstacle_category": "dynamic_crossing",
+        "random_seed": 2026071717,
+        "scene_id": "formal_dynamic_crossing_17",
+        "task_id": "formal_dynamic_crossing_17"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_dynamic_crossing_18",
+        "obstacle_category": "dynamic_crossing",
+        "random_seed": 2026071718,
+        "scene_id": "formal_dynamic_crossing_18",
+        "task_id": "formal_dynamic_crossing_18"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_dynamic_crossing_19",
+        "obstacle_category": "dynamic_crossing",
+        "random_seed": 2026071719,
+        "scene_id": "formal_dynamic_crossing_19",
+        "task_id": "formal_dynamic_crossing_19"
+      },
+      {
+        "benchmark_group": "natural_language",
+        "episode_key": "formal_natural_00",
+        "obstacle_category": "semantic_navigation",
+        "random_seed": 2026072300,
+        "scene_id": "formal_natural_00",
+        "task_id": "formal_natural_00"
+      },
+      {
+        "benchmark_group": "natural_language",
+        "episode_key": "formal_natural_01",
+        "obstacle_category": "semantic_navigation",
+        "random_seed": 2026072301,
+        "scene_id": "formal_natural_01",
+        "task_id": "formal_natural_01"
+      },
+      {
+        "benchmark_group": "natural_language",
+        "episode_key": "formal_natural_02",
+        "obstacle_category": "semantic_navigation",
+        "random_seed": 2026072302,
+        "scene_id": "formal_natural_02",
+        "task_id": "formal_natural_02"
+      },
+      {
+        "benchmark_group": "natural_language",
+        "episode_key": "formal_natural_03",
+        "obstacle_category": "semantic_navigation",
+        "random_seed": 2026072303,
+        "scene_id": "formal_natural_03",
+        "task_id": "formal_natural_03"
+      },
+      {
+        "benchmark_group": "natural_language",
+        "episode_key": "formal_natural_04",
+        "obstacle_category": "semantic_navigation",
+        "random_seed": 2026072304,
+        "scene_id": "formal_natural_04",
+        "task_id": "formal_natural_04"
+      },
+      {
+        "benchmark_group": "natural_language",
+        "episode_key": "formal_natural_05",
+        "obstacle_category": "semantic_navigation",
+        "random_seed": 2026072305,
+        "scene_id": "formal_natural_05",
+        "task_id": "formal_natural_05"
+      },
+      {
+        "benchmark_group": "natural_language",
+        "episode_key": "formal_natural_06",
+        "obstacle_category": "semantic_navigation",
+        "random_seed": 2026072306,
+        "scene_id": "formal_natural_06",
+        "task_id": "formal_natural_06"
+      },
+      {
+        "benchmark_group": "natural_language",
+        "episode_key": "formal_natural_07",
+        "obstacle_category": "semantic_navigation",
+        "random_seed": 2026072307,
+        "scene_id": "formal_natural_07",
+        "task_id": "formal_natural_07"
+      },
+      {
+        "benchmark_group": "natural_language",
+        "episode_key": "formal_natural_08",
+        "obstacle_category": "semantic_navigation",
+        "random_seed": 2026072308,
+        "scene_id": "formal_natural_08",
+        "task_id": "formal_natural_08"
+      },
+      {
+        "benchmark_group": "natural_language",
+        "episode_key": "formal_natural_09",
+        "obstacle_category": "semantic_navigation",
+        "random_seed": 2026072309,
+        "scene_id": "formal_natural_09",
+        "task_id": "formal_natural_09"
+      },
+      {
+        "benchmark_group": "complex_semantic",
+        "episode_key": "formal_complex_00",
+        "obstacle_category": "semantic_navigation",
+        "random_seed": 2026072400,
+        "scene_id": "formal_complex_00",
+        "task_id": "formal_complex_00"
+      },
+      {
+        "benchmark_group": "complex_semantic",
+        "episode_key": "formal_complex_01",
+        "obstacle_category": "semantic_navigation",
+        "random_seed": 2026072401,
+        "scene_id": "formal_complex_01",
+        "task_id": "formal_complex_01"
+      },
+      {
+        "benchmark_group": "complex_semantic",
+        "episode_key": "formal_complex_02",
+        "obstacle_category": "semantic_navigation",
+        "random_seed": 2026072402,
+        "scene_id": "formal_complex_02",
+        "task_id": "formal_complex_02"
+      },
+      {
+        "benchmark_group": "complex_semantic",
+        "episode_key": "formal_complex_03",
+        "obstacle_category": "semantic_navigation",
+        "random_seed": 2026072403,
+        "scene_id": "formal_complex_03",
+        "task_id": "formal_complex_03"
+      },
+      {
+        "benchmark_group": "complex_semantic",
+        "episode_key": "formal_complex_04",
+        "obstacle_category": "semantic_navigation",
+        "random_seed": 2026072404,
+        "scene_id": "formal_complex_04",
+        "task_id": "formal_complex_04"
+      },
+      {
+        "benchmark_group": "complex_semantic",
+        "episode_key": "formal_complex_05",
+        "obstacle_category": "semantic_navigation",
+        "random_seed": 2026072405,
+        "scene_id": "formal_complex_05",
+        "task_id": "formal_complex_05"
+      },
+      {
+        "benchmark_group": "complex_semantic",
+        "episode_key": "formal_complex_06",
+        "obstacle_category": "semantic_navigation",
+        "random_seed": 2026072406,
+        "scene_id": "formal_complex_06",
+        "task_id": "formal_complex_06"
+      },
+      {
+        "benchmark_group": "complex_semantic",
+        "episode_key": "formal_complex_07",
+        "obstacle_category": "semantic_navigation",
+        "random_seed": 2026072407,
+        "scene_id": "formal_complex_07",
+        "task_id": "formal_complex_07"
+      },
+      {
+        "benchmark_group": "complex_semantic",
+        "episode_key": "formal_complex_08",
+        "obstacle_category": "semantic_navigation",
+        "random_seed": 2026072408,
+        "scene_id": "formal_complex_08",
+        "task_id": "formal_complex_08"
+      },
+      {
+        "benchmark_group": "complex_semantic",
+        "episode_key": "formal_complex_09",
+        "obstacle_category": "semantic_navigation",
+        "random_seed": 2026072409,
+        "scene_id": "formal_complex_09",
+        "task_id": "formal_complex_09"
+      },
+      {
+        "benchmark_group": "complex_semantic",
+        "episode_key": "formal_complex_10",
+        "obstacle_category": "semantic_navigation",
+        "random_seed": 2026072410,
+        "scene_id": "formal_complex_10",
+        "task_id": "formal_complex_10"
+      },
+      {
+        "benchmark_group": "complex_semantic",
+        "episode_key": "formal_complex_11",
+        "obstacle_category": "semantic_navigation",
+        "random_seed": 2026072411,
+        "scene_id": "formal_complex_11",
+        "task_id": "formal_complex_11"
+      },
+      {
+        "benchmark_group": "complex_semantic",
+        "episode_key": "formal_complex_12",
+        "obstacle_category": "semantic_navigation",
+        "random_seed": 2026072412,
+        "scene_id": "formal_complex_12",
+        "task_id": "formal_complex_12"
+      },
+      {
+        "benchmark_group": "complex_semantic",
+        "episode_key": "formal_complex_13",
+        "obstacle_category": "semantic_navigation",
+        "random_seed": 2026072413,
+        "scene_id": "formal_complex_13",
+        "task_id": "formal_complex_13"
+      },
+      {
+        "benchmark_group": "complex_semantic",
+        "episode_key": "formal_complex_14",
+        "obstacle_category": "semantic_navigation",
+        "random_seed": 2026072414,
+        "scene_id": "formal_complex_14",
+        "task_id": "formal_complex_14"
+      },
+      {
+        "benchmark_group": "complex_semantic",
+        "episode_key": "formal_complex_15",
+        "obstacle_category": "semantic_navigation",
+        "random_seed": 2026072415,
+        "scene_id": "formal_complex_15",
+        "task_id": "formal_complex_15"
+      },
+      {
+        "benchmark_group": "complex_semantic",
+        "episode_key": "formal_complex_16",
+        "obstacle_category": "semantic_navigation",
+        "random_seed": 2026072416,
+        "scene_id": "formal_complex_16",
+        "task_id": "formal_complex_16"
+      },
+      {
+        "benchmark_group": "complex_semantic",
+        "episode_key": "formal_complex_17",
+        "obstacle_category": "semantic_navigation",
+        "random_seed": 2026072417,
+        "scene_id": "formal_complex_17",
+        "task_id": "formal_complex_17"
+      },
+      {
+        "benchmark_group": "complex_semantic",
+        "episode_key": "formal_complex_18",
+        "obstacle_category": "semantic_navigation",
+        "random_seed": 2026072418,
+        "scene_id": "formal_complex_18",
+        "task_id": "formal_complex_18"
+      },
+      {
+        "benchmark_group": "complex_semantic",
+        "episode_key": "formal_complex_19",
+        "obstacle_category": "semantic_navigation",
+        "random_seed": 2026072419,
+        "scene_id": "formal_complex_19",
+        "task_id": "formal_complex_19"
+      }
+    ],
+    "smoke": [
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_static_clutter_00",
+        "obstacle_category": "static_clutter",
+        "random_seed": 2026071300,
+        "scene_id": "formal_static_clutter_00",
+        "task_id": "formal_static_clutter_00"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_narrow_door_00",
+        "obstacle_category": "narrow_door",
+        "random_seed": 2026071400,
+        "scene_id": "formal_narrow_door_00",
+        "task_id": "formal_narrow_door_00"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_narrow_corridor_00",
+        "obstacle_category": "narrow_corridor",
+        "random_seed": 2026071500,
+        "scene_id": "formal_narrow_corridor_00",
+        "task_id": "formal_narrow_corridor_00"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_corner_dead_end_00",
+        "obstacle_category": "corner_dead_end",
+        "random_seed": 2026071600,
+        "scene_id": "formal_corner_dead_end_00",
+        "task_id": "formal_corner_dead_end_00"
+      },
+      {
+        "benchmark_group": "obstacle_avoidance",
+        "episode_key": "formal_dynamic_crossing_00",
+        "obstacle_category": "dynamic_crossing",
+        "random_seed": 2026071700,
+        "scene_id": "formal_dynamic_crossing_00",
+        "task_id": "formal_dynamic_crossing_00"
+      }
+    ]
+  },
+  "schema_version": 1
+}

@@ -1,0 +1,37 @@
+uint8 OP_CANCEL_AND_DISABLE=1
+uint8 OP_CLEAR_MODEL_CACHE=2
+uint8 OP_REQUEST_REPLAN=3
+
+uint8 STATUS_OK=0
+uint8 STATUS_INVALID=2
+uint8 STATUS_STALE=3
+uint8 STATUS_TIMEOUT=4
+uint8 STATUS_CONFLICT=5
+uint8 STATUS_INTERNAL=8
+
+string episode_id
+uint64 reset_generation
+string goal_id
+string recovery_id
+string operation_id
+builtin_interfaces/Time deadline
+uint8 operation
+string[] excluded_absolute_sha256
+string[] excluded_shape_sha256
+---
+bool success
+uint8 status_code
+string status_message
+string episode_id
+uint64 reset_generation
+string goal_id
+string recovery_id
+string operation_id
+uint8 operation
+uint64 cache_epoch
+string trajectory_absolute_sha256
+string trajectory_shape_sha256
+bool motion_disabled
+float64 measured_linear_speed_peak_mps
+float64 measured_angular_speed_peak_rps
+bool safety_fresh

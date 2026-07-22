@@ -1,0 +1,7 @@
+uint32 protocol_version
+string reason
+bool force
+---
+uint8 status_code
+string status_message
+bool accepted

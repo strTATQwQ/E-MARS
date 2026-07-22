@@ -1,0 +1,40 @@
+[package]
+title = "InternNav Model-Free Sensor"
+description = "Minimal headless physics and camera experience for 01R"
+version = "1.0.0"
+
+[dependencies]
+"isaacsim.core.api" = {}
+"isaacsim.sensors.camera" = {}
+"isaacsim.sensors.experimental.physics" = {}
+"isaacsim.simulation_app" = {}
+"omni.kit.loop-isaac" = {}
+
+[settings]
+app.name = "InternNav Model-Free Sensor"
+app.version = "1.0.0"
+app.vulkan = true
+app.fastShutdown = true
+app.enableDeveloperWarnings = false
+app.content.emptyStageOnStart = true
+app.file.ignoreUnsavedStage = true
+app.gatherRenderResults = true
+app.asyncRendering = false
+app.useFabricSceneDelegate = true
+app.hydraEngine.waitIdle = true
+app.updateOrder.checkForHydraRenderComplete = 1000
+app.settings.persistent = false
+app.settings.fabricDefaultStageFrameHistoryCount = 3
+app.runLoops.main.manualModeEnabled = true
+app.runLoops.main.rateLimitEnabled = false
+app.renderer.resolution.width = 640
+app.renderer.resolution.height = 480
+app.renderer.skipWhileMinimized = false
+app.renderer.sleepMsOnFocus = 0
+app.renderer.sleepMsOutOfFocus = 0
+renderer.asyncInit = true
+renderer.gpuEnumeration.glInterop.enabled = false
+omni.replicator.asyncRendering = false
+persistent.omni.replicator.captureOnPlay = true
+rtx.hydra.supportMultiTickRate = true
+rtx.rendering.perSensorTickTlas = true

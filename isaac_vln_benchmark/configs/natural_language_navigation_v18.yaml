@@ -1,0 +1,300 @@
+{
+  "schema_version": 1,
+  "benchmark": "hierarchical_semantic_navigation_v18",
+  "local_navigation_owner": "OmniNav",
+  "semantic_executive": "Step",
+  "qualification_evidence": false,
+  "tasks": [
+    {
+      "task_id": "ref_01", "category": "referential", "scene_template": "corridor_with_intersection", "instruction": "Find the red fire extinguisher beside the exit sign and stop near it.", "timeout_sec": 150,
+      "judge": {"target_id": "fire_extinguisher_1", "relation_id": "exit_sign_1", "required_sequence": ["find", "approach", "verify"]},
+      "oracle_plan": [
+        {"subgoal_type": "find", "target": "red fire extinguisher", "relation": "beside the exit sign", "constraints": [], "completion_evidence": "confirmed fresh target track", "recovery": "scan", "confidence": 1.0},
+        {"subgoal_type": "approach", "target": "red fire extinguisher", "relation": "beside the exit sign", "constraints": [], "completion_evidence": "confirmed track is within task stop distance", "recovery": "scan", "confidence": 1.0},
+        {"subgoal_type": "verify", "target": "red fire extinguisher", "relation": "beside the exit sign", "constraints": [], "completion_evidence": "target identity and safe stop are confirmed", "recovery": "stop", "confidence": 1.0}
+      ]
+    },
+    {
+      "task_id": "ref_02", "category": "referential", "scene_template": "ambiguous_targets", "instruction": "Go to the blue box next to the doorway, not the blue box near the cones.", "timeout_sec": 150,
+      "judge": {"target_id": "blue_box_door", "distractor_id": "blue_box_cones", "required_sequence": ["find", "approach", "verify"]},
+      "oracle_plan": [
+        {"subgoal_type": "find", "target": "blue box", "relation": "next to the doorway and not near the cones", "constraints": ["reject the box near the cones"], "completion_evidence": "doorway and blue box are associated in fresh observations", "recovery": "scan", "confidence": 1.0},
+        {"subgoal_type": "approach", "target": "blue box next to the doorway", "relation": "next to the doorway", "constraints": [], "completion_evidence": "selected box track is within task stop distance", "recovery": "backtrack", "confidence": 1.0},
+        {"subgoal_type": "verify", "target": "blue box next to the doorway", "relation": "not near the cones", "constraints": [], "completion_evidence": "correct instance and safe stop are confirmed", "recovery": "stop", "confidence": 1.0}
+      ]
+    },
+    {
+      "task_id": "ref_03", "category": "referential", "scene_template": "doorway_room", "instruction": "Approach the chair beside the table, not the chair by the door.", "timeout_sec": 150,
+      "judge": {"target_id": "chair_table", "distractor_id": "chair_door", "required_sequence": ["find", "approach", "verify"]},
+      "oracle_plan": [
+        {"subgoal_type": "find", "target": "chair", "relation": "beside the table and not by the door", "constraints": ["reject the chair by the door"], "completion_evidence": "chair and table relation is confirmed", "recovery": "scan", "confidence": 1.0},
+        {"subgoal_type": "approach", "target": "chair beside the table", "relation": "beside the table", "constraints": [], "completion_evidence": "selected chair is within task stop distance", "recovery": "scan", "confidence": 1.0},
+        {"subgoal_type": "verify", "target": "chair beside the table", "relation": "not by the door", "constraints": [], "completion_evidence": "correct chair and safe stop are confirmed", "recovery": "stop", "confidence": 1.0}
+      ]
+    },
+    {
+      "task_id": "ref_04", "category": "referential", "scene_template": "lobby_two_doors", "instruction": "Enter the door immediately to the right of the elevator.", "timeout_sec": 150,
+      "judge": {"target_id": "door_elevator_right", "required_sequence": ["find", "enter", "verify"]},
+      "oracle_plan": [
+        {"subgoal_type": "find", "target": "door", "relation": "immediately right of the elevator", "constraints": [], "completion_evidence": "elevator and adjacent right door are jointly observed", "recovery": "scan", "confidence": 1.0},
+        {"subgoal_type": "enter", "target": "door right of the elevator", "relation": "immediately right of the elevator", "constraints": [], "completion_evidence": "door threshold has been crossed", "recovery": "backtrack", "confidence": 1.0},
+        {"subgoal_type": "verify", "target": "room beyond the elevator-side door", "relation": "inside", "constraints": [], "completion_evidence": "robot is inside and the elevator is behind", "recovery": "stop", "confidence": 1.0}
+      ]
+    },
+    {
+      "task_id": "ref_05", "category": "referential", "scene_template": "long_hall_two_signs", "instruction": "Stop at the exit sign above the farther doorway.", "timeout_sec": 160,
+      "judge": {"target_id": "exit_sign_far", "distractor_id": "exit_sign_near", "required_sequence": ["pass", "find", "approach", "verify"]},
+      "oracle_plan": [
+        {"subgoal_type": "pass", "target": "near doorway", "relation": "first doorway", "constraints": ["do not stop at the near sign"], "completion_evidence": "first doorway is behind the robot", "recovery": "scan", "confidence": 1.0},
+        {"subgoal_type": "find", "target": "exit sign", "relation": "above the farther doorway", "constraints": [], "completion_evidence": "far doorway sign is confirmed", "recovery": "scan", "confidence": 1.0},
+        {"subgoal_type": "approach", "target": "far exit sign", "relation": "above the farther doorway", "constraints": [], "completion_evidence": "far sign is within task stop distance", "recovery": "backtrack", "confidence": 1.0},
+        {"subgoal_type": "verify", "target": "far exit sign", "relation": "near doorway has already been passed", "constraints": [], "completion_evidence": "far instance and safe stop are confirmed", "recovery": "stop", "confidence": 1.0}
+      ]
+    },
+    {
+      "task_id": "ref_06", "category": "referential", "scene_template": "cluttered_hallway", "instruction": "Find the cone closest to the fire extinguisher.", "timeout_sec": 150,
+      "judge": {"target_id": "cone_near_extinguisher", "required_sequence": ["find", "approach", "verify"]},
+      "oracle_plan": [
+        {"subgoal_type": "find", "target": "traffic cone", "relation": "closest to the fire extinguisher", "constraints": ["compare all visible cones"], "completion_evidence": "cone-extinguisher proximity relation is confirmed", "recovery": "scan", "confidence": 1.0},
+        {"subgoal_type": "approach", "target": "cone closest to the fire extinguisher", "relation": "closest", "constraints": [], "completion_evidence": "selected cone is within task stop distance", "recovery": "scan", "confidence": 1.0},
+        {"subgoal_type": "verify", "target": "selected cone", "relation": "closest to the fire extinguisher", "constraints": [], "completion_evidence": "correct cone and safe stop are confirmed", "recovery": "stop", "confidence": 1.0}
+      ]
+    },
+    {
+      "task_id": "ref_07", "category": "referential", "scene_template": "two_room_lounge", "instruction": "Enter the room with the plant to the left of the sofa.", "timeout_sec": 160,
+      "judge": {"target_id": "room_plant_sofa", "required_sequence": ["find", "enter", "verify"]},
+      "oracle_plan": [
+        {"subgoal_type": "find", "target": "room entrance", "relation": "room contains a plant left of a sofa", "constraints": [], "completion_evidence": "plant-sofa relation is observed through the entrance", "recovery": "scan", "confidence": 1.0},
+        {"subgoal_type": "enter", "target": "room with plant and sofa", "relation": "plant is left of sofa", "constraints": [], "completion_evidence": "room threshold is crossed", "recovery": "backtrack", "confidence": 1.0},
+        {"subgoal_type": "verify", "target": "room with plant and sofa", "relation": "inside", "constraints": [], "completion_evidence": "plant remains left of sofa from inside the room", "recovery": "stop", "confidence": 1.0}
+      ]
+    },
+    {
+      "task_id": "ref_08", "category": "referential", "scene_template": "similar_red_signs", "instruction": "Go to the red exit sign, not the red advertising poster.", "timeout_sec": 150,
+      "judge": {"target_id": "red_exit_sign", "distractor_id": "red_poster", "required_sequence": ["find", "approach", "verify"]},
+      "oracle_plan": [
+        {"subgoal_type": "find", "target": "red exit sign", "relation": "not the advertising poster", "constraints": ["verify the exit symbol"], "completion_evidence": "exit symbol is visible on the selected sign", "recovery": "scan", "confidence": 1.0},
+        {"subgoal_type": "approach", "target": "red exit sign", "relation": "not the poster", "constraints": [], "completion_evidence": "exit sign is within task stop distance", "recovery": "scan", "confidence": 1.0},
+        {"subgoal_type": "verify", "target": "red exit sign", "relation": "exit symbol is present", "constraints": [], "completion_evidence": "identity and safe stop are confirmed", "recovery": "stop", "confidence": 1.0}
+      ]
+    },
+    {
+      "task_id": "ref_09", "category": "referential", "scene_template": "three_door_corridor", "instruction": "Find the blue bin just after the second door.", "timeout_sec": 160,
+      "judge": {"target_id": "blue_bin_after_door_2", "required_sequence": ["pass", "pass", "find", "approach"]},
+      "oracle_plan": [
+        {"subgoal_type": "pass", "target": "first door", "relation": "first in travel order", "constraints": ["continue searching"], "completion_evidence": "first door is behind the robot", "recovery": "scan", "confidence": 1.0},
+        {"subgoal_type": "pass", "target": "second door", "relation": "second in travel order", "constraints": [], "completion_evidence": "second door is behind the robot", "recovery": "scan", "confidence": 1.0},
+        {"subgoal_type": "find", "target": "blue bin", "relation": "just after the second door", "constraints": [], "completion_evidence": "blue bin is confirmed after the second door", "recovery": "backtrack", "confidence": 1.0},
+        {"subgoal_type": "approach", "target": "blue bin", "relation": "after the second door", "constraints": [], "completion_evidence": "blue bin is within task stop distance", "recovery": "stop", "confidence": 1.0}
+      ]
+    },
+    {
+      "task_id": "ref_10", "category": "referential", "scene_template": "furniture_cluster", "instruction": "Stop by the chair between the table and the blue box.", "timeout_sec": 150,
+      "judge": {"target_id": "chair_between", "required_sequence": ["find", "approach", "verify"]},
+      "oracle_plan": [
+        {"subgoal_type": "find", "target": "chair", "relation": "between the table and blue box", "constraints": [], "completion_evidence": "both reference objects bracket the selected chair", "recovery": "scan", "confidence": 1.0},
+        {"subgoal_type": "approach", "target": "chair between table and blue box", "relation": "between", "constraints": [], "completion_evidence": "selected chair is within task stop distance", "recovery": "scan", "confidence": 1.0},
+        {"subgoal_type": "verify", "target": "selected chair", "relation": "between table and blue box", "constraints": [], "completion_evidence": "relation and safe stop are confirmed", "recovery": "stop", "confidence": 1.0}
+      ]
+    },
+
+    {
+      "task_id": "comp_01", "category": "compositional", "scene_template": "lobby_to_office", "instruction": "Pass the reception desk, enter the second doorway, then stop at the fire extinguisher.", "timeout_sec": 210,
+      "judge": {"target_id": "office_extinguisher", "required_sequence": ["pass", "enter", "find", "approach", "verify"]},
+      "oracle_plan": [
+        {"subgoal_type": "pass", "target": "reception desk", "relation": "before the office corridor", "constraints": [], "completion_evidence": "reception desk is behind the robot", "recovery": "scan", "confidence": 1.0},
+        {"subgoal_type": "enter", "target": "second doorway", "relation": "second doorway after reception", "constraints": ["do not enter the first doorway"], "completion_evidence": "second doorway threshold is crossed", "recovery": "backtrack", "confidence": 1.0},
+        {"subgoal_type": "find", "target": "fire extinguisher", "relation": "inside the selected room", "constraints": [], "completion_evidence": "confirmed extinguisher track", "recovery": "scan", "confidence": 1.0},
+        {"subgoal_type": "approach", "target": "fire extinguisher", "relation": "inside the selected room", "constraints": [], "completion_evidence": "target is within task stop distance", "recovery": "scan", "confidence": 1.0},
+        {"subgoal_type": "verify", "target": "fire extinguisher", "relation": "after reception and second doorway", "constraints": [], "completion_evidence": "ordered route and safe stop are confirmed", "recovery": "stop", "confidence": 1.0}
+      ]
+    },
+    {
+      "task_id": "comp_02", "category": "compositional", "scene_template": "kitchen_detour", "instruction": "Go past the sofa, avoid entering the kitchen, and take the next door to the printer.", "timeout_sec": 210,
+      "judge": {"target_id": "printer_1", "forbidden_region": "kitchen", "required_sequence": ["pass", "enter", "find", "approach"]},
+      "oracle_plan": [
+        {"subgoal_type": "pass", "target": "sofa", "relation": "before the kitchen junction", "constraints": ["do not enter the kitchen"], "completion_evidence": "sofa is behind the robot", "recovery": "scan", "confidence": 1.0},
+        {"subgoal_type": "enter", "target": "next non-kitchen door", "relation": "after the sofa", "constraints": ["avoid the kitchen"], "completion_evidence": "non-kitchen door threshold is crossed", "recovery": "backtrack", "confidence": 1.0},
+        {"subgoal_type": "find", "target": "printer", "relation": "inside the selected room", "constraints": [], "completion_evidence": "printer is confirmed", "recovery": "scan", "confidence": 1.0},
+        {"subgoal_type": "approach", "target": "printer", "relation": "inside the selected room", "constraints": [], "completion_evidence": "printer is within task stop distance", "recovery": "stop", "confidence": 1.0}
+      ]
+    },
+    {
+      "task_id": "comp_03", "category": "compositional", "scene_template": "gallery_loop", "instruction": "Pass the blue sculpture, turn into the corridor with two posters, and find the exit sign at its end.", "timeout_sec": 220,
+      "judge": {"target_id": "gallery_exit", "required_sequence": ["pass", "enter", "find", "approach"]},
+      "oracle_plan": [
+        {"subgoal_type": "pass", "target": "blue sculpture", "relation": "before the poster corridor", "constraints": [], "completion_evidence": "blue sculpture is behind the robot", "recovery": "scan", "confidence": 1.0},
+        {"subgoal_type": "enter", "target": "corridor with two posters", "relation": "after the blue sculpture", "constraints": [], "completion_evidence": "both posters identify the entered corridor", "recovery": "backtrack", "confidence": 1.0},
+        {"subgoal_type": "find", "target": "exit sign", "relation": "at the end of the poster corridor", "constraints": [], "completion_evidence": "exit sign is confirmed beyond both posters", "recovery": "scan", "confidence": 1.0},
+        {"subgoal_type": "approach", "target": "exit sign", "relation": "at corridor end", "constraints": [], "completion_evidence": "exit sign is within task stop distance", "recovery": "stop", "confidence": 1.0}
+      ]
+    },
+    {
+      "task_id": "comp_04", "category": "compositional", "scene_template": "elevator_crossing", "instruction": "Enter the lobby, pass the elevator, then take the left door and verify the red chair.", "timeout_sec": 220,
+      "judge": {"target_id": "red_chair_left_room", "required_sequence": ["enter", "pass", "enter", "find", "verify"]},
+      "oracle_plan": [
+        {"subgoal_type": "enter", "target": "lobby", "relation": "main lobby entrance", "constraints": [], "completion_evidence": "lobby threshold is crossed", "recovery": "scan", "confidence": 1.0},
+        {"subgoal_type": "pass", "target": "elevator", "relation": "inside the lobby", "constraints": [], "completion_evidence": "elevator is behind the robot", "recovery": "scan", "confidence": 1.0},
+        {"subgoal_type": "enter", "target": "left door", "relation": "after the elevator", "constraints": [], "completion_evidence": "left door threshold is crossed", "recovery": "backtrack", "confidence": 1.0},
+        {"subgoal_type": "find", "target": "red chair", "relation": "inside the left room", "constraints": [], "completion_evidence": "red chair is confirmed", "recovery": "scan", "confidence": 1.0},
+        {"subgoal_type": "verify", "target": "red chair", "relation": "inside the left room after the elevator", "constraints": [], "completion_evidence": "ordered route and target identity are confirmed", "recovery": "stop", "confidence": 1.0}
+      ]
+    },
+    {
+      "task_id": "comp_05", "category": "compositional", "scene_template": "three_landmark_route", "instruction": "Walk past the plant and the water cooler in that order, then enter the door with the green sign.", "timeout_sec": 220,
+      "judge": {"target_id": "green_sign_door", "required_sequence": ["pass", "pass", "find", "enter", "verify"]},
+      "oracle_plan": [
+        {"subgoal_type": "pass", "target": "plant", "relation": "first landmark", "constraints": [], "completion_evidence": "plant is behind the robot", "recovery": "scan", "confidence": 1.0},
+        {"subgoal_type": "pass", "target": "water cooler", "relation": "after the plant", "constraints": [], "completion_evidence": "water cooler is behind the robot after the plant", "recovery": "scan", "confidence": 1.0},
+        {"subgoal_type": "find", "target": "door with green sign", "relation": "after the water cooler", "constraints": [], "completion_evidence": "green sign and door are jointly confirmed", "recovery": "scan", "confidence": 1.0},
+        {"subgoal_type": "enter", "target": "green-sign door", "relation": "after plant and water cooler", "constraints": [], "completion_evidence": "door threshold is crossed", "recovery": "backtrack", "confidence": 1.0},
+        {"subgoal_type": "verify", "target": "room beyond green-sign door", "relation": "inside", "constraints": [], "completion_evidence": "ordered landmarks and room entry are confirmed", "recovery": "stop", "confidence": 1.0}
+      ]
+    },
+    {
+      "task_id": "comp_06", "category": "compositional", "scene_template": "conference_wing", "instruction": "Find the conference-room sign, enter that room, and stop by the table nearest the screen.", "timeout_sec": 220,
+      "judge": {"target_id": "table_near_screen", "required_sequence": ["find", "enter", "find", "approach", "verify"]},
+      "oracle_plan": [
+        {"subgoal_type": "find", "target": "conference-room sign", "relation": "marks the destination room", "constraints": [], "completion_evidence": "conference-room text is confirmed", "recovery": "scan", "confidence": 1.0},
+        {"subgoal_type": "enter", "target": "conference room", "relation": "beneath the conference-room sign", "constraints": [], "completion_evidence": "room threshold is crossed", "recovery": "backtrack", "confidence": 1.0},
+        {"subgoal_type": "find", "target": "table", "relation": "nearest the presentation screen", "constraints": ["compare visible tables"], "completion_evidence": "nearest table-screen relation is confirmed", "recovery": "scan", "confidence": 1.0},
+        {"subgoal_type": "approach", "target": "table nearest the screen", "relation": "nearest", "constraints": [], "completion_evidence": "selected table is within task stop distance", "recovery": "scan", "confidence": 1.0},
+        {"subgoal_type": "verify", "target": "selected table", "relation": "nearest the screen", "constraints": [], "completion_evidence": "correct table and safe stop are confirmed", "recovery": "stop", "confidence": 1.0}
+      ]
+    },
+    {
+      "task_id": "comp_07", "category": "compositional", "scene_template": "mailroom_route", "instruction": "Pass the mailboxes, skip the first open door, enter the second open door, and find the blue cart.", "timeout_sec": 220,
+      "judge": {"target_id": "blue_cart", "required_sequence": ["pass", "pass", "enter", "find", "approach"]},
+      "oracle_plan": [
+        {"subgoal_type": "pass", "target": "mailboxes", "relation": "before the open doors", "constraints": [], "completion_evidence": "mailboxes are behind the robot", "recovery": "scan", "confidence": 1.0},
+        {"subgoal_type": "pass", "target": "first open door", "relation": "first after the mailboxes", "constraints": ["do not enter"], "completion_evidence": "first open door is behind the robot", "recovery": "scan", "confidence": 1.0},
+        {"subgoal_type": "enter", "target": "second open door", "relation": "second after the mailboxes", "constraints": [], "completion_evidence": "second open door threshold is crossed", "recovery": "backtrack", "confidence": 1.0},
+        {"subgoal_type": "find", "target": "blue cart", "relation": "inside the selected room", "constraints": [], "completion_evidence": "blue cart is confirmed", "recovery": "scan", "confidence": 1.0},
+        {"subgoal_type": "approach", "target": "blue cart", "relation": "inside the selected room", "constraints": [], "completion_evidence": "blue cart is within task stop distance", "recovery": "stop", "confidence": 1.0}
+      ]
+    },
+    {
+      "task_id": "comp_08", "category": "compositional", "scene_template": "double_intersection", "instruction": "At the first junction follow the red sign, at the next junction follow the blue sign, then stop at the printer.", "timeout_sec": 230,
+      "judge": {"target_id": "printer_double_turn", "required_sequence": ["pass", "pass", "find", "approach", "verify"]},
+      "oracle_plan": [
+        {"subgoal_type": "pass", "target": "first junction red sign", "relation": "select the corridor indicated by the red sign", "constraints": [], "completion_evidence": "first junction is crossed with red sign behind", "recovery": "backtrack", "confidence": 1.0},
+        {"subgoal_type": "pass", "target": "second junction blue sign", "relation": "select the corridor indicated by the blue sign", "constraints": [], "completion_evidence": "second junction is crossed with blue sign behind", "recovery": "backtrack", "confidence": 1.0},
+        {"subgoal_type": "find", "target": "printer", "relation": "after both signed junctions", "constraints": [], "completion_evidence": "printer is confirmed", "recovery": "scan", "confidence": 1.0},
+        {"subgoal_type": "approach", "target": "printer", "relation": "after both signed junctions", "constraints": [], "completion_evidence": "printer is within task stop distance", "recovery": "scan", "confidence": 1.0},
+        {"subgoal_type": "verify", "target": "printer", "relation": "after red then blue signs", "constraints": [], "completion_evidence": "ordered route and safe stop are confirmed", "recovery": "stop", "confidence": 1.0}
+      ]
+    },
+    {
+      "task_id": "comp_09", "category": "compositional", "scene_template": "office_return", "instruction": "Find the copier, pass it, enter the doorway beyond it, and stop at the yellow bin.", "timeout_sec": 220,
+      "judge": {"target_id": "yellow_bin", "required_sequence": ["find", "pass", "enter", "find", "approach"]},
+      "oracle_plan": [
+        {"subgoal_type": "find", "target": "copier", "relation": "before the destination doorway", "constraints": [], "completion_evidence": "copier is confirmed", "recovery": "scan", "confidence": 1.0},
+        {"subgoal_type": "pass", "target": "copier", "relation": "continue beyond it", "constraints": [], "completion_evidence": "copier is behind the robot", "recovery": "scan", "confidence": 1.0},
+        {"subgoal_type": "enter", "target": "doorway beyond the copier", "relation": "immediately beyond copier", "constraints": [], "completion_evidence": "doorway threshold is crossed", "recovery": "backtrack", "confidence": 1.0},
+        {"subgoal_type": "find", "target": "yellow bin", "relation": "inside the selected room", "constraints": [], "completion_evidence": "yellow bin is confirmed", "recovery": "scan", "confidence": 1.0},
+        {"subgoal_type": "approach", "target": "yellow bin", "relation": "inside the selected room", "constraints": [], "completion_evidence": "yellow bin is within task stop distance", "recovery": "stop", "confidence": 1.0}
+      ]
+    },
+    {
+      "task_id": "comp_10", "category": "compositional", "scene_template": "library_route", "instruction": "Enter the library, pass the first bookshelf row, and stop at the reading table under the clock.", "timeout_sec": 220,
+      "judge": {"target_id": "reading_table_clock", "required_sequence": ["enter", "pass", "find", "approach", "verify"]},
+      "oracle_plan": [
+        {"subgoal_type": "enter", "target": "library", "relation": "library entrance", "constraints": [], "completion_evidence": "library threshold is crossed", "recovery": "scan", "confidence": 1.0},
+        {"subgoal_type": "pass", "target": "first bookshelf row", "relation": "first row after entrance", "constraints": [], "completion_evidence": "first bookshelf row is behind the robot", "recovery": "scan", "confidence": 1.0},
+        {"subgoal_type": "find", "target": "reading table", "relation": "under the clock", "constraints": [], "completion_evidence": "clock is observed above the selected table", "recovery": "scan", "confidence": 1.0},
+        {"subgoal_type": "approach", "target": "reading table under the clock", "relation": "under the clock", "constraints": [], "completion_evidence": "selected table is within task stop distance", "recovery": "scan", "confidence": 1.0},
+        {"subgoal_type": "verify", "target": "reading table", "relation": "under the clock after first shelf row", "constraints": [], "completion_evidence": "ordered route and safe stop are confirmed", "recovery": "stop", "confidence": 1.0}
+      ]
+    },
+
+    {
+      "task_id": "rec_01", "category": "recovery", "scene_template": "blocked_path_recovery", "instruction": "Find the fire extinguisher; if the direct hallway is blocked, use another visible corridor.", "timeout_sec": 220,
+      "judge": {"target_id": "fire_extinguisher_3", "injected_event": "blocked_path_detected", "required_recovery": "backtrack"},
+      "oracle_plan": [
+        {"subgoal_type": "find", "target": "fire extinguisher", "relation": "reachable through an alternate corridor", "constraints": ["do not continue into a blocked corridor"], "completion_evidence": "confirmed target track from a reachable corridor", "recovery": "backtrack", "confidence": 1.0},
+        {"subgoal_type": "approach", "target": "fire extinguisher", "relation": "via the unblocked corridor", "constraints": [], "completion_evidence": "target is within task stop distance", "recovery": "backtrack", "confidence": 1.0},
+        {"subgoal_type": "verify", "target": "fire extinguisher", "relation": "reached without entering blocked corridor", "constraints": [], "completion_evidence": "target and safe stop are confirmed", "recovery": "stop", "confidence": 1.0}
+      ]
+    },
+    {
+      "task_id": "rec_02", "category": "recovery", "scene_template": "temporarily_occluded_target", "instruction": "Go to the red cone; if it disappears behind the partition, scan until it is seen again.", "timeout_sec": 190,
+      "judge": {"target_id": "red_cone_occluded", "injected_event": "target_track_lost", "required_recovery": "scan"},
+      "oracle_plan": [
+        {"subgoal_type": "find", "target": "red cone", "relation": "beyond the partition", "constraints": ["require a fresh reacquired track"], "completion_evidence": "red cone track is reacquired after occlusion", "recovery": "scan", "confidence": 1.0},
+        {"subgoal_type": "approach", "target": "red cone", "relation": "beyond the partition", "constraints": [], "completion_evidence": "reacquired target is within task stop distance", "recovery": "scan", "confidence": 1.0},
+        {"subgoal_type": "verify", "target": "red cone", "relation": "same instance seen before occlusion", "constraints": [], "completion_evidence": "identity continuity and safe stop are confirmed", "recovery": "stop", "confidence": 1.0}
+      ]
+    },
+    {
+      "task_id": "rec_03", "category": "recovery", "scene_template": "missing_landmark", "instruction": "Enter the door marked Storage; if no Storage sign is visible after scanning, ask for clarification.", "timeout_sec": 180,
+      "judge": {"target_id": null, "injected_event": "semantic_low_confidence", "required_recovery": "ask"},
+      "oracle_plan": [
+        {"subgoal_type": "find", "target": "Storage sign", "relation": "marks the requested door", "constraints": ["do not guess an unmarked door"], "completion_evidence": "Storage text is confirmed", "recovery": "ask", "confidence": 1.0},
+        {"subgoal_type": "ask", "target": "operator clarification", "relation": "Storage sign is absent", "constraints": ["hold position"], "completion_evidence": "operator identifies an alternative landmark", "recovery": "stop", "confidence": 1.0}
+      ]
+    },
+    {
+      "task_id": "rec_04", "category": "recovery", "scene_template": "ambiguous_identical_doors", "instruction": "Use the meeting-room door; if two identical meeting-room signs remain ambiguous, ask which one.", "timeout_sec": 180,
+      "judge": {"target_id": null, "injected_event": "semantic_low_confidence", "required_recovery": "ask"},
+      "oracle_plan": [
+        {"subgoal_type": "find", "target": "meeting-room door", "relation": "must be uniquely identifiable", "constraints": ["do not choose between identical unresolved signs"], "completion_evidence": "one meeting-room door is uniquely grounded", "recovery": "ask", "confidence": 1.0},
+        {"subgoal_type": "ask", "target": "operator clarification", "relation": "two meeting-room doors remain ambiguous", "constraints": ["hold position"], "completion_evidence": "operator supplies a distinguishing relation", "recovery": "stop", "confidence": 1.0}
+      ]
+    },
+    {
+      "task_id": "rec_05", "category": "recovery", "scene_template": "wrong_turn_recovery", "instruction": "Go to the printer beyond the blue sign; if the blue sign is behind you but no printer appears, backtrack to the sign.", "timeout_sec": 220,
+      "judge": {"target_id": "printer_blue_sign", "injected_event": "no_progress_timeout", "required_recovery": "backtrack"},
+      "oracle_plan": [
+        {"subgoal_type": "pass", "target": "blue sign", "relation": "before the printer", "constraints": [], "completion_evidence": "blue sign is behind the robot", "recovery": "backtrack", "confidence": 1.0},
+        {"subgoal_type": "find", "target": "printer", "relation": "beyond the blue sign", "constraints": [], "completion_evidence": "printer is confirmed after the blue sign", "recovery": "backtrack", "confidence": 1.0},
+        {"subgoal_type": "approach", "target": "printer", "relation": "beyond the blue sign", "constraints": [], "completion_evidence": "printer is within task stop distance", "recovery": "scan", "confidence": 1.0},
+        {"subgoal_type": "verify", "target": "printer", "relation": "after the blue sign", "constraints": [], "completion_evidence": "route order and safe stop are confirmed", "recovery": "stop", "confidence": 1.0}
+      ]
+    },
+    {
+      "task_id": "rec_06", "category": "recovery", "scene_template": "closed_destination_door", "instruction": "Enter the office with the red nameplate; if its door is closed, stop and ask for another destination.", "timeout_sec": 180,
+      "judge": {"target_id": "red_nameplate_office", "injected_event": "blocked_path_detected", "required_recovery": "ask"},
+      "oracle_plan": [
+        {"subgoal_type": "find", "target": "office with red nameplate", "relation": "requested destination", "constraints": [], "completion_evidence": "red nameplate and office door are confirmed", "recovery": "ask", "confidence": 1.0},
+        {"subgoal_type": "enter", "target": "red-nameplate office", "relation": "through its door", "constraints": ["do not force a closed door"], "completion_evidence": "office threshold is crossed", "recovery": "ask", "confidence": 1.0},
+        {"subgoal_type": "ask", "target": "alternative destination", "relation": "requested door is closed", "constraints": ["hold position"], "completion_evidence": "operator provides another destination", "recovery": "stop", "confidence": 1.0}
+      ]
+    },
+    {
+      "task_id": "rec_07", "category": "recovery", "scene_template": "false_positive_target", "instruction": "Find the exit sign; if a red poster is mistaken for it, reject the poster and continue scanning.", "timeout_sec": 190,
+      "judge": {"target_id": "exit_sign_after_poster", "distractor_id": "red_poster", "injected_event": "target_track_lost", "required_recovery": "scan"},
+      "oracle_plan": [
+        {"subgoal_type": "find", "target": "exit sign", "relation": "must display an exit symbol", "constraints": ["reject advertising posters"], "completion_evidence": "exit symbol is confirmed on a fresh track", "recovery": "scan", "confidence": 1.0},
+        {"subgoal_type": "approach", "target": "confirmed exit sign", "relation": "not the red poster", "constraints": [], "completion_evidence": "exit sign is within task stop distance", "recovery": "scan", "confidence": 1.0},
+        {"subgoal_type": "verify", "target": "exit sign", "relation": "exit symbol present", "constraints": [], "completion_evidence": "identity and safe stop are confirmed", "recovery": "stop", "confidence": 1.0}
+      ]
+    },
+    {
+      "task_id": "rec_08", "category": "recovery", "scene_template": "instruction_correction", "instruction": "Go to the blue box, but follow a later operator correction if the requested color changes.", "timeout_sec": 200,
+      "judge": {"target_id": "green_box_corrected", "injected_event": "clarification_received", "required_recovery": "stop"},
+      "oracle_plan": [
+        {"subgoal_type": "find", "target": "blue box", "relation": "initial instruction target", "constraints": ["stop selection when instruction changes"], "completion_evidence": "blue box is confirmed or instruction is corrected", "recovery": "stop", "confidence": 1.0},
+        {"subgoal_type": "find", "target": "corrected-color box", "relation": "latest operator instruction", "constraints": ["discard the old target track"], "completion_evidence": "new target is confirmed after correction", "recovery": "scan", "confidence": 1.0},
+        {"subgoal_type": "approach", "target": "corrected-color box", "relation": "latest instruction target", "constraints": [], "completion_evidence": "corrected target is within task stop distance", "recovery": "stop", "confidence": 1.0}
+      ]
+    },
+    {
+      "task_id": "rec_09", "category": "recovery", "scene_template": "loop_detection", "instruction": "Find the green door; if the same lobby is observed twice without progress, backtrack and choose another corridor.", "timeout_sec": 230,
+      "judge": {"target_id": "green_door_alt_corridor", "injected_event": "no_progress_timeout", "required_recovery": "backtrack"},
+      "oracle_plan": [
+        {"subgoal_type": "find", "target": "green door", "relation": "reachable without repeating the lobby loop", "constraints": ["avoid repeating the same lobby sequence"], "completion_evidence": "green door is confirmed from a new corridor", "recovery": "backtrack", "confidence": 1.0},
+        {"subgoal_type": "enter", "target": "green door", "relation": "reached through the alternate corridor", "constraints": [], "completion_evidence": "green door threshold is crossed", "recovery": "backtrack", "confidence": 1.0},
+        {"subgoal_type": "verify", "target": "room beyond green door", "relation": "inside", "constraints": [], "completion_evidence": "entry is confirmed without another loop", "recovery": "stop", "confidence": 1.0}
+      ]
+    },
+    {
+      "task_id": "rec_10", "category": "recovery", "scene_template": "low_confidence_end_state", "instruction": "Stop at the fire extinguisher only when its identity is certain; otherwise scan, then ask if uncertainty remains.", "timeout_sec": 190,
+      "judge": {"target_id": "fire_extinguisher_low_conf", "injected_event": "semantic_low_confidence", "required_recovery": "scan"},
+      "oracle_plan": [
+        {"subgoal_type": "find", "target": "fire extinguisher", "relation": "identity must be certain", "constraints": ["do not stop on a low-confidence track"], "completion_evidence": "two fresh observations confirm the extinguisher", "recovery": "scan", "confidence": 1.0},
+        {"subgoal_type": "approach", "target": "confirmed fire extinguisher", "relation": "same confirmed instance", "constraints": [], "completion_evidence": "confirmed target is within task stop distance", "recovery": "scan", "confidence": 1.0},
+        {"subgoal_type": "verify", "target": "fire extinguisher", "relation": "identity remains certain at stop", "constraints": [], "completion_evidence": "identity and safe stop are confirmed", "recovery": "ask", "confidence": 1.0}
+      ]
+    }
+  ]
+}

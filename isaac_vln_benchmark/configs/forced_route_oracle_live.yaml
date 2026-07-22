@@ -1,0 +1,37 @@
+benchmark:
+  name: forced_route_oracle_live
+  ros_domain_id: 42
+  duration_sec: 20
+  publish_period_sec: 0.20
+  route_publish_duration_sec: 8.0
+  correct_branch_target_rate: 0.80
+  collision_count: 0
+  stale_action_executed: 0
+
+mode:
+  name: forced_route_oracle
+  use_step: false
+  use_omninav: false
+  use_internnav: false
+  pending_policy: none
+  stale_gate_enabled: true
+
+tasks:
+  - task_id: turn_micro_left
+    scene_type: intersection_microbench
+    expected_route: left
+    instruction: "At the intersection, turn left toward the red cone."
+    target_object: red_cone_left
+  - task_id: turn_micro_right
+    scene_type: intersection_microbench
+    expected_route: right
+    instruction: "At the intersection, turn right toward the blue box."
+    target_object: blue_box_right
+
+route_oracle:
+  topic: /oracle/route_choice_json
+  intersection_distance_m: 0.75
+  left_object: red_cone
+  right_object: blue_box
+  confidence: 1.0
+

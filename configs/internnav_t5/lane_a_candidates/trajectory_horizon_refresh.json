@@ -1,0 +1,61 @@
+{
+  "schema_version": 2,
+  "family_id": "trajectory_horizon_refresh",
+  "scope": "exact T5 Isaac completion_sim lane only",
+  "purpose": "Compare the upstream 32-trajectory mean against deterministic depth/geometry non-oracle reranking, then bound horizon, refresh and expiry after upstream family winners are fixed.",
+  "extends_family_winners": [
+    "action_observation_recovery",
+    "camera_history_alignment"
+  ],
+  "rerank_contract": {
+    "candidate_count": 32,
+    "input": "current normalized D435i depth plus candidate-local XY only",
+    "forbidden_inputs": [
+      "episode success",
+      "goal pose",
+      "global map",
+      "simulator ground truth",
+      "oracle action"
+    ],
+    "malformed_candidate_behavior": "deterministic upstream mean fallback plus trajectory_rerank_records.jsonl",
+    "default_enabled": false
+  },
+  "invariants": {
+    "motion_observation_gate_required": true,
+    "bounded_velocity_required": true,
+    "stale_command_safe_stop_required": true,
+    "real_go2_allowed": false
+  },
+  "variants": [
+    {
+      "candidate_id": "c0_upstream_mean",
+      "runtime_overrides": {
+        "INTERNVLA_T5_TRAJECTORY_RERANK": "0",
+        "INTERNVLA_T4_PROGRESS_HORIZON_SEC": "5.0",
+        "INTERNVLA_T4_REFRESH_DISTANCE_M": "0.30",
+        "INTERNVLA_T4_REFRESH_TIME_SEC": "2.0",
+        "INTERNVLA_T4_TRAJECTORY_VALIDITY_SEC": "5.0"
+      }
+    },
+    {
+      "candidate_id": "c1_depth_geometry_rerank",
+      "runtime_overrides": {
+        "INTERNVLA_T5_TRAJECTORY_RERANK": "1",
+        "INTERNVLA_T4_PROGRESS_HORIZON_SEC": "5.0",
+        "INTERNVLA_T4_REFRESH_DISTANCE_M": "0.30",
+        "INTERNVLA_T4_REFRESH_TIME_SEC": "2.0",
+        "INTERNVLA_T4_TRAJECTORY_VALIDITY_SEC": "5.0"
+      }
+    },
+    {
+      "candidate_id": "c2_rerank_short_fresh",
+      "runtime_overrides": {
+        "INTERNVLA_T5_TRAJECTORY_RERANK": "1",
+        "INTERNVLA_T4_PROGRESS_HORIZON_SEC": "4.0",
+        "INTERNVLA_T4_REFRESH_DISTANCE_M": "0.20",
+        "INTERNVLA_T4_REFRESH_TIME_SEC": "1.5",
+        "INTERNVLA_T4_TRAJECTORY_VALIDITY_SEC": "3.0"
+      }
+    }
+  ]
+}

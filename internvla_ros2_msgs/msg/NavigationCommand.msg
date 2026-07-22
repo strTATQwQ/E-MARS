@@ -1,0 +1,16 @@
+std_msgs/Header header
+uint32 protocol_version
+string episode_id
+uint64 reset_generation
+uint64 sequence_id
+string request_id
+string observation_digest
+builtin_interfaces/Time valid_until
+int8 discrete_action
+bool stop
+uint8 action_source
+uint8 trajectory_source
+bool trajectory_valid
+nav_msgs/Path local_path
+float64[3] global_gps
+float64[4] global_rotation_wxyz

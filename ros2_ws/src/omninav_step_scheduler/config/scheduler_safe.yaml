@@ -1,0 +1,19 @@
+mission:
+  max_duration_sec: 180
+omninav:
+  target_rate_hz: 4.0
+  min_confidence: 0.60
+step:
+  max_tokens: 80
+  min_interval_sec: 6.0
+pending_policy:
+  allow_move_while_step: false
+  stop_if_step_multimodal: true
+primitive:
+  normal_speed_mps: 0.12
+  max_linear_x: 0.15
+  max_yaw_rate: 0.25
+safety:
+  dry_run: true
+logging:
+  output_dir: "runs/latest_scheduler"

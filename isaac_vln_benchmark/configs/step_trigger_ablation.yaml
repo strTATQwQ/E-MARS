@@ -1,0 +1,28 @@
+{
+  "benchmark": {
+    "name": "step_trigger_ablation",
+    "timeout_sec_default": 120,
+    "seeds": [0, 1, 2],
+    "modes": [
+      "omninav_only",
+      "step_omninav_mission_start_only",
+      "step_omninav_stuck_replan_only",
+      "step_omninav_goal_verify_only",
+      "step_omninav_semantic_ambiguity_only",
+      "step_omninav_route_choice_only",
+      "step_omninav_all_events_current",
+      "internnav_only",
+      "step_internnav_mission_start_only",
+      "step_internnav_stuck_replan_only",
+      "step_internnav_goal_verify_only",
+      "step_internnav_semantic_ambiguity_only",
+      "step_internnav_route_choice_only",
+      "step_internnav_all_events_current"
+    ]
+  },
+  "tasks": {
+    "simple_navigation": {"count": 2, "timeout_sec": 135},
+    "turn_choice": {"count": 2, "timeout_sec": 120},
+    "semantic_target": {"count": 1, "timeout_sec": 120}
+  }
+}

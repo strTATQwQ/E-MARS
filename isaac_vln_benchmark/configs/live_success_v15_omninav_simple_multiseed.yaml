@@ -1,0 +1,20 @@
+benchmark:
+  name: live_success_v15_omninav_simple_multiseed
+  timeout_sec_default: 60
+  seeds: [0, 1, 2, 3, 4]
+  modes:
+    - omninav_simple_norm020_v15_probe
+
+tasks:
+  simple_navigation:
+    ids: [simple_001]
+    count: 1
+    timeout_sec: 60
+
+evidence_policy:
+  qualification_evidence: false
+  locomotion_fidelity: ideal_kinematic
+  purpose: omninav_short_waypoint_multiseed_repeat
+
+camera_contract:
+  omninav_prefer_synthetic_primary: true

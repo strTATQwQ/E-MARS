@@ -1,0 +1,22 @@
+benchmark:
+  name: v8_semantic_stop_coverage
+  timeout_sec_default: 120
+  seeds: [0, 1, 2]
+  modes:
+    - omninav_semantic_stop_coverage_v8
+
+tasks:
+  semantic_target:
+    count: 1
+    timeout_sec: 120
+
+targets:
+  target_visible_first_time_min: 3
+  semantic_stop_oracle_triggered_min: 3
+  bridge_received_stop_min: 3
+  safe_cmd_vel_zero_after_trigger_min: 3
+  semantic_target_success_min: 1
+  visible_to_stop_latency_max_sec: 2.0
+  collision_count: 0
+  stale_action_executed: 0
+  timebase_error_count: 0

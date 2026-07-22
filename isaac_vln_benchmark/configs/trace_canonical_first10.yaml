@@ -1,0 +1,24 @@
+benchmark:
+  name: trace_canonical_first10
+  ros_domain_id: 42
+  duration_sec: 10.0
+  modes: ["omninav_only"]
+  reset_scene_id: "straight_001"
+  reset_settle_sec: 1.5
+  reset_discovery_timeout_sec: 4.0
+  reset_publish_interval_sec: 0.2
+
+tasks:
+  - simple_001_seed0
+  - simple_001_seed1
+  - simple_002_seed0
+
+targets:
+  allowed_roots:
+    - model_outputs_turn_only
+    - parser_maps_forward_to_turn
+    - safe_mux_clamps_linear_x
+    - stale_discards_actions
+    - queue_empty_or_no_model_response
+    - isaac_does_not_move_despite_cmd
+    - unknown

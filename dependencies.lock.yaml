@@ -1,0 +1,30 @@
+schema_version: 1
+generated_at: "2026-07-11"
+repositories:
+  InternNav:
+    path: InternNav
+    remote: https://github.com/InternRobotics/InternNav.git
+    commit: 7a5c62400ac45b313d9b709c740b64191556a242
+    dirty: true
+    patch: evidence/dependency_patches/InternNav-7a5c624-local.patch
+    submodules:
+      internnav/model/basemodel/LongCLIP:
+        commit: 3966af9ae9331666309a22128468b734db4672a7
+        dirty: true
+      third_party/diffusion-policy:
+        commit: 5ba07ac6661db573af695b419a7947ecb704690f
+        initialized: false
+  go2_ros2_sdk:
+    path: go2_ros2_sdk
+    remote: https://github.com/abizovnuralem/go2_ros2_sdk.git
+    commit: 4e186b5f89bfec1f32c85676cbe22d4958e4f0fa
+    dirty: false
+  unitree_ros2:
+    path: unitree_ros2
+    remote: https://github.com/unitreerobotics/unitree_ros2.git
+    commit: 668d1ec5a05d1c38d3306bdca7d59f2ba3581a88
+    dirty: false
+runtime_facts:
+  internnav_identity: CmaAgent/system1/fallback_static_cma_tokens
+  full_internvla_n1: false
+  real_go2_autonomy_enabled: false

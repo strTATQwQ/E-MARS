@@ -1,0 +1,37 @@
+benchmark:
+  name: live_success_v16_sensor_route_left_micro
+  timeout_sec_default: 90
+  seeds: [0]
+  modes: [step_route_sensor_only_v16_micro]
+
+tasks:
+  turn_choice:
+    ids: [turn_001]
+    count: 1
+    timeout_sec: 90
+
+camera_contract:
+  omninav_prefer_synthetic_primary: false
+  omninav_image_topic: /camera/front/isaac_image
+  step_image_topic: /camera/front/isaac_image
+  depth_topic: /camera/front/depth
+  camera_info_topic: /camera/front/camera_info
+
+evidence_policy:
+  require_real_step_http: true
+  require_actual_isaac_viewport: true
+  require_grounded_sam_local: true
+  require_sensor_only_controller: true
+  allow_mock_or_fallback: false
+  qualification_evidence: false
+  locomotion_fidelity: ideal_kinematic
+
+gates:
+  correct_branch: 1
+  perception_latency_p95_sec: 5.0
+  step_latency_p95_sec: 7.0
+  oracle_context_leakage: 0
+  collision: 0
+  runtime_stale: 0
+  timebase_error: 0
+  stale_action_executed: 0

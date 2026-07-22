@@ -1,0 +1,19 @@
+uint32 protocol_version
+string episode_id
+uint64 reset_generation
+uint64 sequence_id
+string request_id
+string snapshot_id
+string observation_digest
+internvla_ros2_msgs/NavigationCommand fallback_command
+---
+int32 status_code
+string status_message
+string episode_id
+uint64 reset_generation
+uint64 sequence_id
+string request_id
+string snapshot_id
+string token
+builtin_interfaces/Time prepared_sim_time
+CandidateFrontier[] frontiers

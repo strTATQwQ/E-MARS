@@ -1,0 +1,119 @@
+schema_version: 1
+experiment_name: step3_isaac_mp3d_graph_nav_quickstart
+map_setting: oracle_connectivity_graph
+
+model:
+  variant: step3_vl_10b_bf16
+  model_path: ${STEP3_VL_10B_MODEL_PATH}
+  revision: 5026053b0c2f5dfaa08fc2d149384162c3c8bca1
+  transformers_version: 4.57.6
+  checkpoint_key_mapping: step3_flat_checkpoint_to_nested_v1
+  precision: bf16
+  processor_use_fast: false
+  multi_crop: true
+  fix_mistral_regex: true
+  require_clean_checkpoint_load: true
+  require_all_parameters_bf16: true
+  temperature: 0.0
+  do_sample: false
+  max_new_tokens: 32
+  reasoning_tokens: 20
+  batch_size: 1
+  pacore: false
+  retries: 0
+  fallback: none
+  reasoning_mode: bounded_private_then_schema_score
+  split_policy: true
+
+service:
+  bind: tcp://0.0.0.0:8210
+  endpoint: tcp://10.100.100.128:8210
+  timeout_ms: 60000
+  max_request_age_s: 120.0
+  log_path: results/step3_stop_fix/service/service.jsonl
+
+data:
+  manifest_root: results/slow_model_benchmark
+  connectivity_root: /home/song/InternNav/data/matterport_connectivity_archive/connectivity
+  collision_asset_root: results/slow_model_benchmark/mp3d_collision_v4
+  calibration_manifest: results/slow_model_benchmark/nvfp4_calibration_episodes.jsonl
+  canary_manifest: results/slow_model_benchmark/smoke_episodes.jsonl
+  pilot_source_manifest: results/slow_model_benchmark/pilot_episodes.jsonl
+  split_policy: train_offline__val_seen_canary_and_disjoint_episode_pilot
+
+coordinate_transform:
+  habitat_xyz_to_isaac_xyz: [x, -z, y]
+  basis_rotation_x_deg: 90.0
+  nominal_camera_height_m: 1.40
+  status: validated_on_frozen_manifests_and_real_isaac_probe
+
+camera:
+  width: 640
+  height: 360
+  horizontal_fov_deg: 90.0
+  source: isaac_render_product
+  candidate_view: current_viewpoint_looking_along_connectivity_edge
+  include_depth_in_model_request: false
+
+candidates:
+  ordering: ascending_target_viewpoint_source_index
+  id_definition: zero_based_ordinal_in_fixed_order
+  expose_to_model: [candidate_id, relative_heading_deg, graph_distance_m, rgb]
+  move_semantics: direct_switch_to_target_viewpoint
+  yaw_after_move: executed_edge_absolute_bearing
+
+metrics:
+  goal_node: nearest_included_viewpoint_to_episode_goal
+  success_positive: graph_ne_to_goal_node_lte_episode_goal_radius
+  success: explicit_stop_and_success_positive
+  oracle_success: any_visited_node_success_positive
+  ne: final_graph_shortest_distance_to_goal_node_m
+  spl: success_times_shortest_over_max_shortest_executed
+
+gate0:
+  scenes:
+    1pXnuDYAj8r: [34, 26, 7]
+    2n8kARJN3HM: [93, 11, 5]
+  require_meters_per_unit: 1.0
+  require_up_axis: Z
+  require_collision_meshes: true
+  min_center_depth_m: 0.30
+  min_rgb_std: 2.0
+
+gate1:
+  expected_episodes: 5
+  require_successes: 5
+  render_real_isaac: true
+
+gate2:
+  scenes: [5LpN3gDmAk7]
+  snapshots: 20
+  ordinary_move: 10
+  obvious_turn: 5
+  stop: 5
+  ordinary_abs_heading_max_deg: 45.0
+  turn_abs_heading_min_deg: 60.0
+  min_json_parse_rate: 0.95
+  min_candidate_id_valid_rate: 1.0
+  require_move_and_stop: true
+
+gate3:
+  max_episodes: 5
+  max_model_calls_per_episode: 10
+  min_successes: 1
+  early_stop_after_failures: 3
+  invalid_id_stop_all: true
+  same_node_visit_limit: 3
+  save_video: false
+
+gate4:
+  max_episodes: 20
+  scenes: [1LXtFkjw3qL, 1pXnuDYAj8r, 29hnd4uzFmX]
+  episode_ids:
+    1LXtFkjw3qL: [313, 312, 302, 201, 269, 710, 303]
+    1pXnuDYAj8r: [280, 251, 752, 227, 382, 778, 531]
+    29hnd4uzFmX: [41, 613, 612, 40, 89, 376]
+  max_model_calls_per_episode: 12
+  require_nonzero_success: true
+  same_node_visit_limit: 3
+  save_video: false

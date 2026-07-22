@@ -1,0 +1,85 @@
+# Codex/workspace caches
+.codex-tmp/
+.env.local
+.pytest_cache/
+**/.pytest_cache/
+**/.pytest-tmp*/
+**/__pycache__/
+*.py[cod]
+
+# Benchmark and test artifacts
+isaac_vln_benchmark/runs/*
+!isaac_vln_benchmark/runs/README.md
+isaac_vln_benchmark/data/
+isaac_vln_benchmark/checkpoints/
+isaac_vln_benchmark/scene_data/
+isaac_vln_benchmark/**/*.bag
+isaac_vln_benchmark/**/*.db3
+test_results/
+
+# ROS/colcon generated output
+**/build/
+**/install/
+**/log/
+
+# InternNav data/checkpoint artifacts; keep source and configs visible.
+InternNav/data/
+InternNav/datasets/
+InternNav/checkpoints/
+InternNav/ckpts/
+InternNav/pretrained/
+InternNav/pretrained_models/
+InternNav/outputs/
+InternNav/runs/
+InternNav/logs/
+InternNav/wandb/
+InternNav/**/*.pth
+InternNav/**/*.pt
+InternNav/**/*.safetensors
+InternNav/**/*.ckpt
+InternNav/**/*.bin
+InternNav/**/*.tar
+InternNav/**/*.tar.gz
+InternNav/**/*.zip
+
+# Large local captures and temporary archives
+*.mp4
+*.tgz
+*.tar.gz
+
+# Independent upstream repositories and machine mirrors
+InternNav/
+go2_ros2_sdk/
+unitree_ros2/
+remote_bench/
+remote_epyc/
+moonlight-backups/
+moonlight-screen*.png
+
+# Public source repository: never commit evaluation inputs or outputs.
+results/
+reports/
+evidence/
+handoffs/
+**/runs/
+**/results/
+**/reports/
+**/evidence/
+**/handoffs/
+**/logs/
+**/recordings/
+**/screenshots/
+**/videos/
+**/generated/
+**/*manifest*.json
+*.jsonl
+*.csv
+*.log
+*.bag
+*.db3
+*.png
+*.jpg
+*.jpeg
+*.mp4
+*.mov
+*.avi

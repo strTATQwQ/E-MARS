@@ -1,0 +1,39 @@
+benchmark:
+  name: live_success_small_v4
+  timeout_sec_default: 120
+  seeds: [0, 1, 2]
+  modes:
+    - omninav_only
+    - omninav_forced_route_stop_oracle
+    - step_route_stop_v4
+    - internnav_cma_baseline
+    - step_only_baseline
+
+tasks:
+  simple_navigation:
+    count: 2
+    timeout_sec: 135
+  turn_choice:
+    count: 2
+    timeout_sec: 120
+  semantic_target:
+    count: 1
+    timeout_sec: 120
+
+targets:
+  best_success_count: 8
+  best_clean_success_count: 6
+  turn_choice_success_min: 1
+  semantic_target_success_min: 1
+  collision_count: 0
+  stale_action_executed: 0
+  stale_discards_less_than_v3_step_route_stop: 24
+
+guard:
+  forced_route_oracle_correct_branch_rate: 0.80
+  forced_stop_oracle_accuracy: 0.90
+  step_route_choice_correct_branch_rate: 0.60
+  step_semantic_stop_accuracy: 0.75
+  no_real_go2_motion: true
+  require_actions_through_safe_mux: true
+

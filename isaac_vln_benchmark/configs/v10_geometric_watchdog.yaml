@@ -1,0 +1,20 @@
+benchmark:
+  name: v10_geometric_watchdog
+  timeout_sec_default: 60
+  seeds: [0, 1, 2]
+  modes:
+    - v10_geometric_watchdog
+
+tasks:
+  turn_choice:
+    count: 2
+    timeout_sec: 60
+  semantic_target:
+    count: 1
+    timeout_sec: 60
+
+targets:
+  route_phases: [advance, rotate, enter, verify]
+  semantic_phases: [orient, approach, stop, verify]
+  timeout_default: stop
+  blind_forward_disabled: true

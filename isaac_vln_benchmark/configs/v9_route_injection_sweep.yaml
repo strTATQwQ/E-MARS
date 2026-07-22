@@ -1,0 +1,27 @@
+benchmark:
+  name: v9_route_injection_sweep
+  timeout_sec_default: 55
+  seeds: [0, 1, 2]
+  modes:
+    - v9_route_injection_x15
+    - v9_route_injection_x20
+    - v9_route_injection_x25
+    - v9_route_injection_x30
+    - v9_route_injection_preintersection
+    - v9_route_injection_near_intersection
+
+tasks:
+  turn_choice:
+    count: 2
+    timeout_sec: 55
+
+targets:
+  per_window_episodes: 6
+  bridge_received_route_min: 6
+  turn_primitive_generated_min: 6
+  safe_cmd_vel_turn_nonzero_min: 6
+  entered_correct_branch_min: 4
+  collision_count: 0
+  stale_action_executed: 0
+  runtime_stale_discards: 0
+  timebase_error_count: 0

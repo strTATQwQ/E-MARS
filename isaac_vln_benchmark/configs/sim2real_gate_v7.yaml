@@ -1,0 +1,10 @@
+required:
+  max_linear_x_mps_real_gate: 0.20
+  route_choice_correct_branch_rate_min: 0.60
+  semantic_stop_accuracy_min: 0.75
+  visible_to_stop_latency_max_sec: 2.0
+  collision_count_required: 0
+  stale_action_executed_required: 0
+  timebase_error_required: 0
+  parse_error_required: 0
+  stale_discard_count_max: 0

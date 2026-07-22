@@ -1,0 +1,37 @@
+schema_version: 1
+gate: T0.0
+task_family: OVON
+official_source:
+  root: /home/railgun/ai-stack/src/OmniNav
+  runner: infer_ovon_slowfast/run_nav_ovon_omni.py
+  runner_sha256: 308bd370b3e5fcf284fd9579c935751c29c0925c3280e91aeb5a848adf3f44a5
+  qwen_utils_sha256: 7ca7aa43d9b38b77634c7439f30421b57a5b374adc88eac3a3b166dbc1673f99
+  evaluation_mode: point-goal
+runtime:
+  host: dgx-spark
+  python: ${OMNINAV_HABITAT_PYTHON}
+  required_python: "3.7"
+  required_habitat_sim: "0.2.3"
+  required_habitat_lab: "0.2.3_waypoint"
+  model_device: cuda
+data:
+  root: ${OMNINAV_OVON_DATA_ROOT}
+  required_paths:
+    - dataset/hm3d/val
+    - dataset/embodied_scan
+    - dataset/embodied_bench_data/embodied_bench_data/ovon
+    - dataset/embodied_bench_data/embodied_bench_data/our-set/ovon_full_set.json
+episodes:
+  count: 6
+  min_count: 5
+  max_count: 10
+  seed: 42
+  max_steps: 4000
+gate_thresholds:
+  minimum_successes: 1
+  require_official_processor: true
+  require_history_frames: 4
+  require_special_tokens: true
+  require_action_head: true
+  reject_infinite_start_goal_geodesic_as_success: true
+output: results/omninav_t0/t0_0_habitat

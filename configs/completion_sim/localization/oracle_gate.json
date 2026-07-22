@@ -1,0 +1,16 @@
+{
+  "episode_count": 10,
+  "fallback_disposition": "PASS_WITH_DEVIATION",
+  "maximum_collision_count": 0,
+  "maximum_fall_count": 0,
+  "maximum_generation_contamination_count": 0,
+  "maximum_switch_rotation_jump_rad": 1e-09,
+  "maximum_switch_translation_jump_m": 1e-09,
+  "minimum_success_count": 8,
+  "profile": "completion_sim",
+  "require_deviation_when_gt_selected": true,
+  "require_fresh_result_dir": true,
+  "runtime_target": "isaac_simulation",
+  "schema_version": 1,
+  "sensor_odometry_fallback_status": "STRICT_EXTENSION_PENDING"
+}

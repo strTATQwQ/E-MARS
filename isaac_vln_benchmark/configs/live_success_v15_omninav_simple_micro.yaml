@@ -1,0 +1,22 @@
+benchmark:
+  name: live_success_v15_omninav_simple_micro
+  timeout_sec_default: 45
+  seeds: [0]
+  modes:
+    - omninav_simple_norm020_v15_probe
+    - omninav_simple_norm015_v15_probe
+    - omninav_simple_norm010_v15_probe
+
+tasks:
+  simple_navigation:
+    ids: [simple_001]
+    count: 1
+    timeout_sec: 45
+
+evidence_policy:
+  qualification_evidence: false
+  locomotion_fidelity: ideal_kinematic
+  purpose: omninav_short_waypoint_parser_micro
+
+camera_contract:
+  omninav_prefer_synthetic_primary: true

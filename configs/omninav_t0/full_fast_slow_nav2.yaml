@@ -1,0 +1,44 @@
+schema_version: 1
+gate: T0.3
+requires_gate: T0.2
+task_family: OVON
+slow_planner:
+  checkpoint_config: configs/omninav_t0/checkpoint.yaml
+  native_prompt_and_processor_required: true
+  native_output_parser_first: true
+  unified_frontier_schema_after_native_parse: true
+  force_json_prompt: false
+  max_fallback_rate: 0.05
+frontier:
+  max_invalid_rate: 0.05
+fast_policy:
+  endpoint: tcp://10.100.100.128:8100
+  minimum_hz: 2.0
+adapter_config: configs/omninav_t0/nav2_oracle.yaml
+canary:
+  episodes: 5
+  minimum_successes: 1
+  timeout_minutes: 30
+pilot:
+  episodes: 20
+  minimum_success_rate: 0.20
+  timeout_minutes: 180
+formal:
+  episodes: 110
+  allowed_only_after_pilot_pass: true
+metrics:
+  - oracle_termination_success
+  - active_stop_success
+  - spl
+  - navigation_error
+  - collisions
+  - loops
+  - fast_latency
+  - slow_latency
+  - nav2_latency
+  - fast_hz
+  - nav2_control_hz
+  - slow_hold
+  - waypoint_rejection_rate
+  - recovery_count
+output: results/omninav_t0/t0_3_full_fast_slow_nav2

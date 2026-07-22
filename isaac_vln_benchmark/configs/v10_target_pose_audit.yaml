@@ -1,0 +1,13 @@
+benchmark:
+  name: v10_target_pose_audit
+  modes: []
+
+semantic:
+  tasks: [semantic_001]
+  scene_type: corridor_with_intersection
+  stop_threshold_m: 2.5
+
+targets:
+  pose_valid: true
+  same_frame: true
+  target_id_matches_success_judge: true

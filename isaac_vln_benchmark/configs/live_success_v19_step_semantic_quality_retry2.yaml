@@ -1,0 +1,47 @@
+benchmark:
+  name: live_success_v19_step_semantic_quality_retry2
+  timeout_sec_default: 210
+  seeds: [0]
+  preserve_task_ids: true
+  preserve_task_seeds: true
+  modes: [omninav_step_semantic_executive]
+  tasks_source: configs/generated/v19_step_semantic_quality_tasks.yaml
+
+tasks:
+  semantic_navigation:
+    ids: [comp_07, rec_02]
+    count: 2
+    timeout_sec: 210
+
+runtime:
+  scenes_source: configs/generated/natural_language_navigation_v19_scenes.yaml
+  runtime_profile: v19_local_marker_v2
+  instrumented_semantic_markers: true
+  geometry_judge_is_oracle_only: true
+
+camera_contract:
+  omninav_prefer_synthetic_primary: false
+  step_image_topic: /camera/front/isaac_image
+  fresh_image_max_age_sec: 0.75
+
+gates:
+  type_accuracy_min: 0.80
+  target_relation_accuracy_min: 0.80
+  sequence_accuracy_min: 0.80
+  recovery_accuracy_min: 0.80
+  step_latency_p95_max_sec: 7.0
+  closed_loop_success_min: 2
+  parse_error: 0
+  fallback: 0
+  oracle_leakage: 0
+  collision: 0
+  runtime_stale: 0
+  timebase_error: 0
+  stale_action_executed: 0
+
+scope:
+  evidence_scope: instrumented_public_marker_semantic_instruction_following
+  completion_evidence_client_default_is_reported: true
+  local_navigation_owner: OmniNav
+  semantic_executive_owner: Step
+  qualification_evidence: false

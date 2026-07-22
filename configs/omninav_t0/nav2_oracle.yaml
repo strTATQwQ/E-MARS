@@ -1,0 +1,47 @@
+schema_version: 1
+gate: T0.1
+requires_gate: T0.0
+task_family: OVON
+runtime:
+  real_isaac_required: true
+  isaac_host: epyc
+  ros_domain_id: 42
+  robot: simplified_kinematic_capsule
+  depth_guard_may_terminate_episode: false
+map:
+  type: static_oracle
+  frame_id: map
+  robot_frame_id: base_link
+  odom_frame_id: odom
+  yaml: ${OMNINAV_T0_MAP_YAML}
+  unknown_is_traversable: false
+  lethal_cost: 65
+coordinate_transform:
+  habitat_xyz_to_isaac_xyz: [x, -z, y]
+  basis_rotation_x_deg: 90.0
+  fast_head_raw_xy: cumulative_metric_after_scale
+  fast_heading: atan2_sin_cos
+  ros_local_axes: {forward: x, left: y}
+adapter:
+  max_waypoint_age_s: 0.75
+  min_waypoint_m: 0.05
+  max_waypoint_m: 3.0
+  max_goal_jump_m: 2.0
+  max_semantic_deviation_deg: 90.0
+  update_nav2_only_on: [initial_goal, goal_reached, path_invalid, subgoal_changed]
+  never_snap_or_rotate_semantic_goal: true
+nav2:
+  planner_action: /compute_path_to_pose
+  navigator_action: /navigate_to_pose
+  controller_hz: 20.0
+  goal_tolerance_m: 0.25
+  episode_timeout_s: 180.0
+diagnostics:
+  required: 5
+  types: [straight_1, straight_2, turn_left, turn_right, doorway]
+dataset_episodes: 10
+gate_thresholds:
+  diagnostics_successes: 5
+  dataset_successes: 9
+  forbid_frame_scale_collision_success_errors: true
+output: results/omninav_t0/t0_1_nav2_oracle

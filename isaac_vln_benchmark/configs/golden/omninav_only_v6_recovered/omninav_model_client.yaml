@@ -1,0 +1,28 @@
+model_clients:
+  omninav:
+    repo: "/home/railgun/ai-stack/src/OmniNav"
+    model_path: "/home/railgun/ai-stack/models/OmniNav"
+    helper_module_path: "/home/railgun/dgx-unitree/remote_bench/omninav_token_sweep.py"
+    extra_python_paths:
+      - "/home/railgun/ai-stack/venvs/omninav-fa/lib/python3.12/site-packages"
+      - "/home/railgun/ai-stack/venvs/navila/lib/python3.12/site-packages"
+    config_name: "F_front_semantic_history_384tok"
+    attn_implementation: "flash_attention_2"
+    autoload: true
+    synthetic_fallback: true
+    synthetic_width: 640
+    synthetic_height: 569
+    front_image_topic: "/camera/front/image"
+    left_image_topic: ""
+    right_image_topic: ""
+    ttl_sec: 1.0
+    stop_arrive_threshold: 0.75
+    stop_distance_m: 0.04
+    min_waypoint_norm_m: 0.03
+    turn_threshold_deg: 12.0
+    hard_turn_threshold_deg: 28.0
+    waypoint_forward_axis: "y"
+    forward_yaw_threshold_deg: 20.0
+    forward_min_x_m: 0.05
+    forward_min_m: 0.05
+    history_limit: 32

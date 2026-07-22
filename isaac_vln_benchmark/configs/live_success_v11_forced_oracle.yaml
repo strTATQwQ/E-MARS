@@ -1,0 +1,38 @@
+benchmark:
+  name: live_success_v11_forced_oracle_upper_bound
+  timeout_sec_default: 135
+  seeds: [0, 1, 2]
+  modes:
+    - omninav_only_v11_matched
+    - omninav_forced_route_stop_oracle_v11
+
+tasks:
+  simple_navigation:
+    count: 2
+    timeout_sec: 135
+  turn_choice:
+    count: 2
+    timeout_sec: 120
+  semantic_target:
+    count: 1
+    timeout_sec: 120
+
+targets:
+  baseline_episodes: 15
+  oracle_episodes: 15
+  forced_success_min: 8
+  forced_clean_min: 6
+  success_delta_min: 2
+  clean_delta_min: 2
+  turn_choice_success_min: 1
+  semantic_target_success_min: 1
+  simple_navigation_regression_max: 0
+  runtime_stale_discards: 0
+  timebase_error_count: 0
+  collision_count: 0
+  stale_action_executed: 0
+
+gate_policy:
+  requires_phase1_run: phase1_semantic_waypoint_brake_j_20260711
+  step: FROZEN
+  real_robot: DISABLED

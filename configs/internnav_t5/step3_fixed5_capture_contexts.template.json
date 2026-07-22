@@ -1,0 +1,78 @@
+{
+  "agent_pose_encoding": "dataset_start_position_xyz_plus_rotation_xyzw",
+  "candidate_frontier_source": "deterministic_frozen_replay_triplet_not_live_nav2",
+  "cases": [
+    {
+      "agent_pose": [0.0, 0.0, 0.0, 0.0],
+      "candidate_frontiers": [
+        {
+          "bearing_deg": 0.0,
+          "distance_m": 1.0,
+          "frontier_id": 0,
+          "relative_xz": [0.0, 1.0]
+        }
+      ],
+      "case_id": "REQUIRED_UNIQUE_CASE_0",
+      "compact_history": [],
+      "episode_key": "REQUIRED_FROZEN_EPISODE_KEY_0",
+      "instruction": "REQUIRED_FROZEN_INSTRUCTION_0",
+      "snapshot_id": "b::REQUIRED_EPISODE_ID_0::0::0",
+      "source_snapshot_sidecar": "REQUIRED_REAL_CAPTURE_0/revc_snapshots/REQUIRED_CAPTURE_ID/snapshot.json",
+      "source_snapshot_sidecar_sha256": "REQUIRED_LOWERCASE_SHA256",
+      "visited_frontiers": []
+    },
+    {
+      "agent_pose": [0.0, 0.0, 0.0, 0.0],
+      "candidate_frontiers": [],
+      "case_id": "REQUIRED_UNIQUE_CASE_1",
+      "compact_history": [],
+      "episode_key": "REQUIRED_FROZEN_EPISODE_KEY_1",
+      "instruction": "REQUIRED_FROZEN_INSTRUCTION_1",
+      "snapshot_id": "b::REQUIRED_EPISODE_ID_1::0::0",
+      "source_snapshot_sidecar": "REQUIRED_REAL_CAPTURE_1/revc_snapshots/REQUIRED_CAPTURE_ID/snapshot.json",
+      "source_snapshot_sidecar_sha256": "REQUIRED_LOWERCASE_SHA256",
+      "visited_frontiers": []
+    },
+    {
+      "agent_pose": [0.0, 0.0, 0.0, 0.0],
+      "candidate_frontiers": [],
+      "case_id": "REQUIRED_UNIQUE_CASE_2",
+      "compact_history": [],
+      "episode_key": "REQUIRED_FROZEN_EPISODE_KEY_2",
+      "instruction": "REQUIRED_FROZEN_INSTRUCTION_2",
+      "snapshot_id": "b::REQUIRED_EPISODE_ID_2::0::0",
+      "source_snapshot_sidecar": "REQUIRED_REAL_CAPTURE_2/revc_snapshots/REQUIRED_CAPTURE_ID/snapshot.json",
+      "source_snapshot_sidecar_sha256": "REQUIRED_LOWERCASE_SHA256",
+      "visited_frontiers": []
+    },
+    {
+      "agent_pose": [0.0, 0.0, 0.0, 0.0],
+      "candidate_frontiers": [],
+      "case_id": "REQUIRED_UNIQUE_CASE_3",
+      "compact_history": [],
+      "episode_key": "REQUIRED_FROZEN_EPISODE_KEY_3",
+      "instruction": "REQUIRED_FROZEN_INSTRUCTION_3",
+      "snapshot_id": "b::REQUIRED_EPISODE_ID_3::0::0",
+      "source_snapshot_sidecar": "REQUIRED_REAL_CAPTURE_3/revc_snapshots/REQUIRED_CAPTURE_ID/snapshot.json",
+      "source_snapshot_sidecar_sha256": "REQUIRED_LOWERCASE_SHA256",
+      "visited_frontiers": []
+    },
+    {
+      "agent_pose": [0.0, 0.0, 0.0, 0.0],
+      "candidate_frontiers": [],
+      "case_id": "REQUIRED_UNIQUE_CASE_4",
+      "compact_history": [],
+      "episode_key": "REQUIRED_FROZEN_EPISODE_KEY_4",
+      "instruction": "REQUIRED_FROZEN_INSTRUCTION_4",
+      "snapshot_id": "b::REQUIRED_EPISODE_ID_4::0::0",
+      "source_snapshot_sidecar": "REQUIRED_REAL_CAPTURE_4/revc_snapshots/REQUIRED_CAPTURE_ID/snapshot.json",
+      "source_snapshot_sidecar_sha256": "REQUIRED_LOWERCASE_SHA256",
+      "visited_frontiers": []
+    }
+  ],
+  "evaluation_scope": "interface_screening_only",
+  "frozen": true,
+  "kind": "t5_lane_b_step3_fixed5_capture_contexts",
+  "revc_contract_sha256": "eab073d07280a4fb7efeb26cd914961c6acafd83d92b060bf9883b9c62bd8149",
+  "schema_version": 1
+}

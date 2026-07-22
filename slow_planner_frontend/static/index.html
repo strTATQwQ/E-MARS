@@ -1,0 +1,874 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <title>VLA Nav Panel · Lane B</title>
+    <style>
+      :root {
+        --bg: #0b0c0f;
+        --surface-1: #121419;
+        --surface-2: #171a20;
+        --surface-3: #1d2027;
+        --border: #2a2e36;
+        --border-strong: #3a3f4b;
+        --text: #e6e9ef;
+        --muted: #8b919c;
+        --accent: #8b7cf6;
+        --accent-soft: rgba(139, 124, 246, .16);
+        --ok: #53c88b;
+        --warn: #e8b44f;
+        --danger: #ee6b73;
+        --cyan: #55b9e9;
+        --radius: 4px;
+      }
+      * { box-sizing: border-box; }
+      html { background: var(--bg); }
+      body {
+        margin: 0;
+        min-height: 100dvh;
+        color: var(--text);
+        background: var(--bg);
+        font: 13px/1.4 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        font-variant-numeric: tabular-nums;
+      }
+      .mono { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+      .muted { color: var(--muted); }
+      .topbar {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        height: 44px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 0 12px;
+        border-bottom: 1px solid var(--border);
+        background: rgba(11, 12, 15, .96);
+        backdrop-filter: blur(12px);
+      }
+      .brand { display: flex; align-items: center; gap: 9px; min-width: 0; }
+      .brand-mark { width: 3px; height: 20px; border-radius: 2px; background: var(--accent); }
+      .brand strong { font-size: 13px; letter-spacing: .015em; white-space: nowrap; }
+      .brand span { color: var(--muted); font-size: 11px; white-space: nowrap; }
+      .topbar-spacer { flex: 1; }
+      .top-meta { display: flex; align-items: center; gap: 14px; min-width: 0; color: var(--muted); font-size: 11px; }
+      .top-meta .snapshot { max-width: 340px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .connection { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
+      .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--warn); }
+      .dot.live { background: var(--ok); box-shadow: 0 0 0 3px rgba(83, 200, 139, .12); }
+      .dot.down { background: var(--danger); box-shadow: 0 0 0 3px rgba(238, 107, 115, .12); }
+      .tag {
+        display: inline-flex;
+        align-items: center;
+        min-height: 20px;
+        padding: 2px 7px;
+        border: 1px solid rgba(139, 124, 246, .35);
+        border-radius: 3px;
+        color: #c8c0ff;
+        background: var(--accent-soft);
+        font: 700 10px/1.2 ui-monospace, SFMono-Regular, Consolas, monospace;
+        letter-spacing: .055em;
+        text-transform: uppercase;
+      }
+      main { width: 100%; padding: 8px; }
+      .panel {
+        min-width: 0;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: var(--surface-1);
+        overflow: hidden;
+      }
+      .panel-head, .tile-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        min-width: 0;
+        border-bottom: 1px solid var(--border);
+        background: var(--surface-2);
+      }
+      .panel-head { height: 33px; padding: 0 10px; }
+      .panel-head h2 {
+        margin: 0;
+        font-size: 11px;
+        line-height: 1;
+        letter-spacing: .055em;
+        text-transform: uppercase;
+      }
+      .panel-head .meta { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: 10px; }
+
+      /* The first content row is intentionally a single, compact instrument strip. */
+      .gauge-strip {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: var(--border);
+        gap: 1px;
+        overflow: hidden;
+      }
+      .gauge {
+        position: relative;
+        min-width: 0;
+        height: 78px;
+        padding: 9px 10px 8px;
+        background: var(--surface-1);
+      }
+      .gauge::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 2px; background: var(--accent); opacity: .65; }
+      .gauge[data-tone="ok"]::before { background: var(--ok); }
+      .gauge[data-tone="warn"]::before { background: var(--warn); }
+      .gauge[data-tone="danger"]::before { background: var(--danger); }
+      .gauge-label { color: var(--muted); font: 700 9px/1 ui-monospace, SFMono-Regular, Consolas, monospace; letter-spacing: .09em; text-transform: uppercase; }
+      .gauge-value { display: block; margin-top: 7px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 18px; line-height: 1; font-weight: 650; letter-spacing: -.025em; }
+      .gauge-detail { display: block; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font: 9px/1.1 ui-monospace, SFMono-Regular, Consolas, monospace; }
+      .gauge-track { position: absolute; inset: auto 10px 7px; height: 2px; overflow: hidden; background: #262a31; }
+      .gauge-track > i { display: block; width: 0; height: 100%; background: var(--accent); transition: width .24s ease; }
+      .gauge[data-tone="ok"] .gauge-track > i { background: var(--ok); }
+      .gauge[data-tone="warn"] .gauge-track > i { background: var(--warn); }
+      .gauge[data-tone="danger"] .gauge-track > i { background: var(--danger); }
+
+      .workspace {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) minmax(0, 1fr);
+        grid-template-areas: "parameters llm cameras";
+        gap: 8px;
+        align-items: start;
+      }
+      .rail { display: grid; min-width: 0; gap: 8px; align-content: start; }
+      .parameter-column { grid-area: parameters; }
+      .llm-column { grid-area: llm; min-width: 0; }
+      .camera-column { grid-area: cameras; }
+      .llm-column .mission-panel { min-height: calc(100dvh - 60px); }
+      .live-camera-grid { display: grid; grid-template-columns: 1fr; gap: 1px; background: var(--border); }
+      .sensor-tile { min-width: 0; background: #08090c; }
+      .tile-head { height: 28px; padding: 0 9px; }
+      .tile-name { font: 700 10px/1 ui-monospace, SFMono-Regular, Consolas, monospace; letter-spacing: .06em; text-transform: uppercase; }
+      .tile-stamp { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font: 9px/1 ui-monospace, SFMono-Regular, Consolas, monospace; }
+      .camera-row { display: grid; grid-template-columns: 1fr; gap: 8px; }
+      .camera-panel { display: flex; min-height: 0; flex-direction: column; background: #08090c; }
+      .camera-frame { position: relative; min-height: 0; aspect-ratio: 4 / 3; display: grid; place-items: center; overflow: hidden; background: #08090c; }
+      .camera-frame img { width: 100%; height: 100%; object-fit: contain; display: none; background: #08090c; }
+      .camera-frame img.ready { display: block; }
+      .empty { color: #666d78; font: 10px/1 ui-monospace, SFMono-Regular, Consolas, monospace; letter-spacing: .07em; }
+      .rear-panel { grid-column: auto; }
+      .content { padding: 11px 12px 13px; }
+      .mission-panel, .decision-panel, .trace-panel, .robot-panel, .runtime-panel { display: flex; flex-direction: column; }
+      .decision-panel { box-shadow: inset 0 2px 0 var(--accent); }
+      .mission-panel {
+        position: relative;
+        border-color: rgba(85, 185, 233, .58);
+        background: linear-gradient(180deg, rgba(85, 185, 233, .055), var(--surface-1) 34%);
+        box-shadow: inset 0 3px 0 var(--cyan), 0 0 0 1px rgba(85, 185, 233, .08), 0 12px 34px rgba(0, 0, 0, .24);
+      }
+      .mission-panel .panel-head {
+        height: auto;
+        min-height: 56px;
+        padding: 8px 12px;
+        border-bottom-color: rgba(85, 185, 233, .28);
+        background: linear-gradient(90deg, rgba(85, 185, 233, .16), rgba(139, 124, 246, .08));
+      }
+      .llm-heading { display: grid; gap: 3px; min-width: 0; }
+      .llm-heading h2 { font-size: 15px; letter-spacing: .04em; }
+      .llm-kicker { color: var(--cyan); font: 700 8px/1 ui-monospace, SFMono-Regular, Consolas, monospace; letter-spacing: .14em; text-transform: uppercase; }
+      .llm-subtitle { overflow: hidden; color: var(--muted); font: 9px/1.2 ui-monospace, SFMono-Regular, Consolas, monospace; text-overflow: ellipsis; white-space: nowrap; }
+      .llm-head-status { display: flex; align-items: center; gap: 6px; }
+      .llm-ready-tag { border-color: rgba(85, 185, 233, .4); color: #bceaff; background: rgba(85, 185, 233, .12); }
+      .mission-panel .content, .decision-panel .content, .trace-panel .content, .robot-panel .content, .runtime-panel .content { flex: 1; }
+      .mission-state {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        gap: 6px 9px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid var(--border);
+        font-size: 10px;
+      }
+      .mission-state span:nth-child(odd) { color: var(--muted); }
+      .mission-state span:nth-child(even) { text-align: right; overflow-wrap: anywhere; }
+      .context-strip {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 1px;
+        margin: 10px 0;
+        border: 1px solid rgba(85, 185, 233, .24);
+        background: var(--border);
+      }
+      .context-stat { min-width: 0; padding: 8px 9px; background: rgba(10, 16, 21, .9); }
+      .context-stat span { display: block; color: var(--muted); font: 700 8px/1 ui-monospace, SFMono-Regular, Consolas, monospace; letter-spacing: .08em; text-transform: uppercase; }
+      .context-stat strong { display: block; margin-top: 5px; overflow: hidden; color: #ccefff; font: 650 12px/1.1 ui-monospace, SFMono-Regular, Consolas, monospace; text-overflow: ellipsis; white-space: nowrap; }
+      .reasoning-block { margin: 10px 0; }
+      .reasoning-head { display: flex; align-items: end; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
+      .reasoning-head .section-label { margin: 0; color: #bceaff; }
+      .reasoning-policy { color: var(--muted); font: 8px/1.2 ui-monospace, SFMono-Regular, Consolas, monospace; text-align: right; }
+      .reasoning-chain { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 5px; }
+      .reasoning-stage {
+        position: relative;
+        min-width: 0;
+        min-height: 65px;
+        padding: 8px;
+        border: 1px solid var(--border);
+        border-radius: 3px;
+        background: #0b0e12;
+      }
+      .reasoning-stage::after { content: ""; position: absolute; top: 17px; right: -6px; z-index: 2; width: 6px; height: 1px; background: rgba(85, 185, 233, .45); }
+      .reasoning-stage:last-child::after { display: none; }
+      .reasoning-index { color: var(--cyan); font: 700 8px/1 ui-monospace, SFMono-Regular, Consolas, monospace; }
+      .reasoning-name { display: block; margin-top: 6px; overflow: hidden; font-size: 10px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+      .reasoning-status { display: block; margin-top: 5px; color: var(--muted); font: 8px/1.2 ui-monospace, SFMono-Regular, Consolas, monospace; letter-spacing: .04em; text-transform: uppercase; }
+      .reasoning-stage[data-state="ready"] { border-color: rgba(85, 185, 233, .42); background: rgba(85, 185, 233, .08); }
+      .reasoning-stage[data-state="ready"] .reasoning-status { color: #bceaff; }
+      .conversation {
+        display: grid;
+        gap: 7px;
+        max-height: 210px;
+        margin: 10px 0;
+        overflow-y: auto;
+        scrollbar-color: var(--border-strong) transparent;
+      }
+      .message {
+        padding: 8px 9px;
+        border: 1px solid var(--border);
+        border-radius: 3px;
+        background: var(--surface-2);
+        font-size: 11px;
+        overflow-wrap: anywhere;
+      }
+      .message.user { margin-left: 16px; border-color: rgba(85, 185, 233, .35); background: rgba(85, 185, 233, .08); }
+      .message.system { margin-right: 16px; }
+      .message-meta { display: block; margin-bottom: 4px; color: var(--muted); font: 8px/1 ui-monospace, SFMono-Regular, Consolas, monospace; letter-spacing: .07em; text-transform: uppercase; }
+      .mission-form { display: grid; gap: 7px; }
+      .mission-form textarea {
+        width: 100%;
+        min-height: 82px;
+        resize: vertical;
+        padding: 9px 10px;
+        border: 1px solid var(--border-strong);
+        border-radius: 3px;
+        outline: none;
+        color: var(--text);
+        background: #0d0f13;
+        font: 12px/1.45 Inter, ui-sans-serif, system-ui, sans-serif;
+      }
+      .mission-form textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+      .mission-actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+      .mission-limit { color: var(--muted); font: 9px/1 ui-monospace, SFMono-Regular, Consolas, monospace; }
+      .stage-button {
+        min-height: 28px;
+        padding: 0 10px;
+        border: 1px solid rgba(139, 124, 246, .55);
+        border-radius: 3px;
+        color: #ded9ff;
+        background: rgba(139, 124, 246, .18);
+        font: 700 10px/1 ui-monospace, SFMono-Regular, Consolas, monospace;
+        letter-spacing: .045em;
+        text-transform: uppercase;
+        cursor: pointer;
+      }
+      .stage-button:hover { background: rgba(139, 124, 246, .28); }
+      .stage-button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+      .mission-note { margin: 8px 0 0; color: var(--warn); font: 9px/1.4 ui-monospace, SFMono-Regular, Consolas, monospace; }
+      .section-label { margin: 12px 0 6px; color: var(--muted); font: 700 9px/1 ui-monospace, SFMono-Regular, Consolas, monospace; letter-spacing: .09em; text-transform: uppercase; }
+      .section-label:first-child { margin-top: 0; }
+      .decision { padding: 1px 0 11px; border-bottom: 1px solid var(--border); }
+      .intent { margin: 5px 0 4px; font-size: 19px; line-height: 1.18; font-weight: 600; letter-spacing: -.025em; overflow-wrap: anywhere; }
+      .confidence { color: var(--ok); font-size: 10px; }
+      .pipeline-list { display: grid; gap: 1px; margin: 0 0 10px; background: var(--border); }
+      .pipeline-stage {
+        display: grid;
+        grid-template-columns: 8px minmax(78px, .7fr) minmax(0, 1fr);
+        gap: 7px;
+        align-items: center;
+        min-height: 34px;
+        padding: 5px 7px;
+        background: var(--surface-1);
+      }
+      .stage-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
+      .pipeline-stage[data-tone="ok"] .stage-dot { background: var(--ok); }
+      .pipeline-stage[data-tone="warn"] .stage-dot { background: var(--warn); }
+      .pipeline-stage[data-tone="danger"] .stage-dot { background: var(--danger); }
+      .stage-name { font-size: 10px; font-weight: 650; }
+      .stage-copy { min-width: 0; text-align: right; }
+      .stage-status { display: block; color: var(--text); font: 700 9px/1.2 ui-monospace, SFMono-Regular, Consolas, monospace; text-transform: uppercase; }
+      .stage-detail { display: block; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font: 8px/1.2 ui-monospace, SFMono-Regular, Consolas, monospace; }
+      .event-console {
+        height: 178px;
+        overflow-y: auto;
+        padding: 7px 8px;
+        border: 1px solid var(--border);
+        background: #08090c;
+        color: #bbc2cd;
+        font: 9px/1.45 ui-monospace, SFMono-Regular, Consolas, monospace;
+        scrollbar-color: var(--border-strong) transparent;
+      }
+      .trace-line { display: grid; grid-template-columns: 52px 58px minmax(0, 1fr); gap: 6px; }
+      .trace-line + .trace-line { margin-top: 4px; }
+      .trace-time, .trace-stage { color: var(--muted); }
+      .trace-stage { text-transform: uppercase; }
+      .trace-message { overflow-wrap: anywhere; }
+      dl { display: grid; grid-template-columns: minmax(92px, .72fr) minmax(0, 1fr); gap: 6px 10px; margin: 10px 0 0; }
+      dt { color: var(--muted); font-size: 11px; }
+      dd { margin: 0; text-align: right; font-size: 11px; overflow-wrap: anywhere; }
+      .warning-list { margin: 10px 0 0; padding: 8px 9px; border-left: 2px solid var(--warn); background: rgba(232, 180, 79, .08); list-style: none; color: var(--warn); font: 10px/1.4 ui-monospace, SFMono-Regular, Consolas, monospace; }
+      .warning-list:empty { display: none; }
+      .warning-list li + li { margin-top: 4px; }
+      footer { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 27px; padding: 0 4px; color: var(--muted); font-size: 10px; }
+      @media (max-width: 1180px) {
+        .top-meta .snapshot, .top-meta #updated { display: none; }
+        .gauge { padding-inline: 7px; }
+        .gauge-value { font-size: 15px; }
+        .gauge-track { inset-inline: 7px; }
+      }
+      @media (max-width: 980px) {
+        .workspace {
+          grid-template-columns: minmax(250px, 1fr) minmax(0, 2fr);
+          grid-template-areas: "parameters llm" "cameras cameras";
+        }
+        .camera-column { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        .camera-column .live-panel { grid-column: 1 / -1; }
+        .camera-column .live-camera-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      }
+      @media (max-width: 780px) {
+        .workspace { grid-template-columns: 1fr; grid-template-areas: "llm" "parameters" "cameras"; }
+        .camera-column { grid-template-columns: 1fr; }
+        .camera-column .live-panel { grid-column: auto; }
+        .camera-column .live-camera-grid { grid-template-columns: 1fr; }
+        .llm-column .mission-panel { min-height: 0; }
+        .reasoning-chain { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .reasoning-stage::after { display: none; }
+      }
+      @media (max-width: 680px) {
+        .topbar { position: static; }
+        .brand span { display: none; }
+        .top-meta { gap: 8px; }
+        .gauge-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .gauge { height: 69px; }
+        .context-strip { grid-template-columns: 1fr; }
+        .reasoning-chain { grid-template-columns: 1fr; }
+        dl { grid-template-columns: minmax(100px, .72fr) minmax(0, 1fr); gap: 6px 10px; }
+        dd { margin: 0; text-align: right; }
+        footer { align-items: flex-start; flex-direction: column; padding-block: 5px; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand"><span class="brand-mark"></span><strong>VLA Nav Panel</strong><span>InternNav / Step3-VL</span></div>
+      <span class="tag">Operator panel</span>
+      <div class="topbar-spacer"></div>
+      <div class="top-meta">
+        <span id="snapshot-id" class="snapshot mono">waiting for snapshot</span>
+        <span class="connection" role="status" aria-live="polite"><span id="status-dot" class="dot"></span><span id="status-text">Connecting</span></span>
+        <span id="updated" class="mono">state v0</span>
+      </div>
+    </header>
+
+    <main>
+      <section class="gauge-strip" aria-label="System gauges">
+        <div id="gauge-ros" class="gauge">
+          <span class="gauge-label">ROS 2</span><strong id="gauge-ros-value" class="gauge-value">WAITING</strong><span id="gauge-ros-detail" class="gauge-detail">topics unavailable</span><span class="gauge-track"><i id="gauge-ros-meter"></i></span>
+        </div>
+        <div id="gauge-battery" class="gauge">
+          <span class="gauge-label">Battery</span><strong id="gauge-battery-value" class="gauge-value">—</strong><span id="gauge-battery-detail" class="gauge-detail">power unavailable</span><span class="gauge-track"><i id="gauge-battery-meter"></i></span>
+        </div>
+        <div id="gauge-latency" class="gauge">
+          <span class="gauge-label">Step3 latency</span><strong id="gauge-latency-value" class="gauge-value">—</strong><span id="gauge-latency-detail" class="gauge-detail">12 s wall deadline</span><span class="gauge-track"><i id="gauge-latency-meter"></i></span>
+        </div>
+        <div id="gauge-gpu" class="gauge">
+          <span class="gauge-label">GPU load</span><strong id="gauge-gpu-value" class="gauge-value">—</strong><span id="gauge-gpu-detail" class="gauge-detail">DGX-B</span><span class="gauge-track"><i id="gauge-gpu-meter"></i></span>
+        </div>
+        <div id="gauge-memory" class="gauge">
+          <span class="gauge-label">Unified memory free</span><strong id="gauge-memory-value" class="gauge-value">—</strong><span id="gauge-memory-detail" class="gauge-detail">total unavailable</span><span class="gauge-track"><i id="gauge-memory-meter"></i></span>
+        </div>
+        <div id="gauge-cameras" class="gauge">
+          <span class="gauge-label">Sensor freshness</span><strong id="gauge-cameras-value" class="gauge-value">—</strong><span id="gauge-cameras-detail" class="gauge-detail">max camera age</span><span class="gauge-track"><i id="gauge-cameras-meter"></i></span>
+        </div>
+      </section>
+
+      <section class="workspace">
+        <aside class="rail parameter-column" aria-label="Parameters and telemetry">
+          <article class="panel decision-panel">
+            <div class="panel-head"><h2>Structured decision</h2><span id="mode" class="tag">waiting</span></div>
+            <div class="content">
+              <div class="decision">
+                <div class="muted">Intent</div>
+                <div id="intent" class="intent">No decision yet</div>
+                <div id="confidence" class="confidence mono">confidence —</div>
+              </div>
+              <dl>
+                <dt>Episode / reset</dt><dd id="identity" class="mono">—</dd>
+                <dt>Scene summary</dt><dd id="scene-summary">—</dd>
+                <dt>Target evidence</dt><dd id="target-evidence">—</dd>
+                <dt>Blocked views</dt><dd id="blocked-directions" class="mono">—</dd>
+                <dt>Source</dt><dd id="source" class="mono">—</dd>
+                <dt>Frontier</dt><dd id="frontier" class="mono">—</dd>
+                <dt>Target / abstain</dt><dd id="semantic-flags" class="mono">—</dd>
+                <dt>Fallback</dt><dd id="fallback" class="mono">—</dd>
+              </dl>
+            </div>
+          </article>
+        </aside>
+
+        <div class="llm-column" aria-label="LLM workspace">
+          <article class="panel mission-panel">
+            <div class="panel-head">
+              <div class="llm-heading">
+                <span class="llm-kicker">Primary control surface</span>
+                <h2>LLM Control Workspace</h2>
+                <span class="llm-subtitle">Long-context mission orchestration · structured rationale summaries</span>
+              </div>
+              <div class="llm-head-status"><span class="tag llm-ready-tag">multi-stage ready</span><span id="mission-status" class="tag">draft only</span></div>
+            </div>
+            <div class="content">
+              <div class="mission-state mono">
+                <span>Control link</span><span>DISCONNECTED</span>
+                <span>Instruction source</span><span id="mission-source">frozen episode</span>
+                <span>Current identity</span><span id="mission-identity">—</span>
+              </div>
+              <div class="context-strip" aria-label="Long context status">
+                <div class="context-stat"><span>Context usage</span><strong id="context-usage">0 / 128K</strong></div>
+                <div class="context-stat"><span>Segments</span><strong id="context-segments">0 retained</strong></div>
+                <div class="context-stat"><span>Memory policy</span><strong>Session scoped</strong></div>
+              </div>
+              <section class="reasoning-block" aria-label="Structured multi-stage rationale summaries">
+                <div class="reasoning-head"><span class="section-label">Multi-stage rationale</span><span class="reasoning-policy">Structured summaries only · hidden reasoning remains private</span></div>
+                <div class="reasoning-chain">
+                  <div class="reasoning-stage" data-reasoning-stage="mission_parse" data-state="ready"><span class="reasoning-index">01</span><strong class="reasoning-name">Mission parse</strong><span class="reasoning-status">Ready for input</span></div>
+                  <div class="reasoning-stage" data-reasoning-stage="visual_grounding"><span class="reasoning-index">02</span><strong class="reasoning-name">Visual grounding</strong><span class="reasoning-status">Awaiting summary</span></div>
+                  <div class="reasoning-stage" data-reasoning-stage="nav_reasoning"><span class="reasoning-index">03</span><strong class="reasoning-name">Nav reasoning</strong><span class="reasoning-status">Awaiting summary</span></div>
+                  <div class="reasoning-stage" data-reasoning-stage="action_plan"><span class="reasoning-index">04</span><strong class="reasoning-name">Action plan</strong><span class="reasoning-status">Awaiting summary</span></div>
+                  <div class="reasoning-stage" data-reasoning-stage="safety_check"><span class="reasoning-index">05</span><strong class="reasoning-name">Safety check</strong><span class="reasoning-status">Awaiting summary</span></div>
+                </div>
+              </section>
+              <div id="mission-conversation" class="conversation" aria-live="polite">
+                <div class="message system"><span class="message-meta">System · local staging</span>Enter a navigation instruction to review it in this workspace. Drafts are not sent to ROS, Nav2, or the robot.</div>
+              </div>
+              <div class="mission-form">
+                <label for="mission-input" class="section-label">Instruction draft</label>
+                <textarea id="mission-input" maxlength="480" placeholder="e.g. Go through the doorway and stop beside the table."></textarea>
+                <div class="mission-actions">
+                  <span id="mission-limit" class="mission-limit">0 / 480</span>
+                  <button id="stage-mission" class="stage-button" type="button">Stage locally</button>
+                </div>
+              </div>
+              <p class="mission-note">LOCAL DRAFT · CONTROL DISCONNECTED · no goal, cmd_vel, STOP, or ROS publication</p>
+            </div>
+          </article>
+
+          <section class="panel live-panel">
+            <div class="panel-head"><h2>Live robot sensors</h2><span class="meta mono">Go2 + D435 · preview ≤ 1 Hz</span></div>
+            <div class="live-camera-grid">
+              <div class="sensor-tile" data-live-camera="go2_front">
+                <div class="tile-head"><span class="tile-name">Go2 front</span><span data-role="stamp" class="tile-stamp">ROS —</span></div>
+                <div class="camera-frame"><img alt="Go2 front camera frame" /><span class="empty">FRAME UNAVAILABLE</span></div>
+              </div>
+              <div class="sensor-tile" data-live-camera="d435_color">
+                <div class="tile-head"><span class="tile-name">D435 RGB</span><span data-role="stamp" class="tile-stamp">ROS —</span></div>
+                <div class="camera-frame"><img alt="D435 color camera frame" /><span class="empty">FRAME UNAVAILABLE</span></div>
+              </div>
+              <div class="sensor-tile" data-live-camera="d435_depth">
+                <div class="tile-head"><span class="tile-name">D435 depth</span><span data-role="stamp" class="tile-stamp">ROS —</span></div>
+                <div class="camera-frame"><img alt="D435 depth camera frame" /><span class="empty">FRAME UNAVAILABLE</span></div>
+              </div>
+            </div>
+          </section>
+
+          <section class="camera-row" aria-label="Forward semantic cameras">
+            <article class="panel camera-panel" data-camera="front_left">
+              <div class="panel-head"><h2>Front left</h2><span data-role="stamp" class="meta mono">sim —</span></div>
+              <div class="camera-frame"><img alt="Front left semantic camera frame" /><span class="empty">FRAME UNAVAILABLE</span></div>
+            </article>
+            <article class="panel camera-panel" data-camera="front">
+              <div class="panel-head"><h2>Front</h2><span data-role="stamp" class="meta mono">sim —</span></div>
+              <div class="camera-frame"><img alt="Front semantic camera frame" /><span class="empty">FRAME UNAVAILABLE</span></div>
+            </article>
+            <article class="panel camera-panel" data-camera="front_right">
+              <div class="panel-head"><h2>Front right</h2><span data-role="stamp" class="meta mono">sim —</span></div>
+              <div class="camera-frame"><img alt="Front right semantic camera frame" /><span class="empty">FRAME UNAVAILABLE</span></div>
+            </article>
+          </section>
+
+          <section class="camera-row rear-row" aria-label="Rear semantic camera">
+            <article class="panel camera-panel rear-panel" data-camera="rear">
+              <div class="panel-head"><h2>Rear</h2><span data-role="stamp" class="meta mono">sim —</span></div>
+              <div class="camera-frame"><img alt="Rear semantic camera frame" /><span class="empty">FRAME UNAVAILABLE</span></div>
+            </article>
+          </section>
+        </div>
+
+        <aside class="rail camera-column" aria-label="Camera workspace">
+          <article class="panel trace-panel">
+            <div class="panel-head"><h2>Execution chain</h2><span class="tag">telemetry</span></div>
+            <div class="content">
+              <div class="pipeline-list">
+                <div id="stage-instruction" class="pipeline-stage"><span class="stage-dot"></span><span class="stage-name">Instruction</span><span class="stage-copy"><strong class="stage-status">WAITING</strong><small class="stage-detail">no mission identity</small></span></div>
+                <div id="stage-snapshot" class="pipeline-stage"><span class="stage-dot"></span><span class="stage-name">Observation</span><span class="stage-copy"><strong class="stage-status">WAITING</strong><small class="stage-detail">camera snapshot unavailable</small></span></div>
+                <div id="stage-model" class="pipeline-stage"><span class="stage-dot"></span><span class="stage-name">Model</span><span class="stage-copy"><strong class="stage-status">WAITING</strong><small class="stage-detail">runtime unavailable</small></span></div>
+                <div id="stage-decision" class="pipeline-stage"><span class="stage-dot"></span><span class="stage-name">Decision</span><span class="stage-copy"><strong class="stage-status">WAITING</strong><small class="stage-detail">no structured result</small></span></div>
+                <div id="stage-nav2" class="pipeline-stage" data-tone="warn"><span class="stage-dot"></span><span class="stage-name">Nav2 action</span><span class="stage-copy"><strong class="stage-status">NOT INSTRUMENTED</strong><small class="stage-detail">goal/result telemetry absent</small></span></div>
+                <div id="stage-motion" class="pipeline-stage"><span class="stage-dot"></span><span class="stage-name">Motion / recovery</span><span class="stage-copy"><strong class="stage-status">WAITING</strong><small class="stage-detail">robot state unavailable</small></span></div>
+              </div>
+              <div class="section-label">Structured event stream</div>
+              <div id="execution-log" class="event-console" role="log" aria-live="polite">
+                <div class="trace-line"><span class="trace-time">--:--:--</span><span class="trace-stage">system</span><span class="trace-message">Waiting for execution telemetry.</span></div>
+              </div>
+            </div>
+          </article>
+
+          <article class="panel robot-panel">
+            <div class="panel-head"><h2>Go2 / ROS status</h2><span id="ros-ready" class="tag">waiting</span></div>
+            <div class="content">
+              <dl>
+                <dt>Low state</dt><dd id="low-state" class="mono">—</dd>
+                <dt>Sport state</dt><dd id="sport-state" class="mono">—</dd>
+                <dt>Battery</dt><dd id="battery" class="mono">—</dd>
+                <dt>Power</dt><dd id="power" class="mono">—</dd>
+                <dt>Pose xyz</dt><dd id="robot-position" class="mono">—</dd>
+                <dt>Velocity xyz</dt><dd id="robot-velocity" class="mono">—</dd>
+                <dt>Yaw rate</dt><dd id="yaw-rate" class="mono">—</dd>
+                <dt>IMU rpy</dt><dd id="imu-rpy" class="mono">—</dd>
+                <dt>LiDAR</dt><dd id="lidar" class="mono">—</dd>
+                <dt>LiDAR cloud / IMU</dt><dd id="lidar-streams" class="mono">—</dd>
+                <dt>D435 RGB / depth</dt><dd id="d435" class="mono">—</dd>
+              </dl>
+            </div>
+          </article>
+
+          <article class="panel runtime-panel">
+            <div class="panel-head"><h2>Runtime</h2><span id="ready" class="tag">not ready</span></div>
+            <div class="content">
+              <dl>
+                <dt>Model</dt><dd id="model" class="mono">—</dd>
+                <dt>Revision</dt><dd id="revision" class="mono">—</dd>
+                <dt>Precision</dt><dd id="precision" class="mono">—</dd>
+                <dt>E2E latency</dt><dd id="latency" class="mono">—</dd>
+                <dt>Unified memory</dt><dd id="gpu-memory" class="mono">—</dd>
+                <dt>Model peak</dt><dd id="model-peak" class="mono">—</dd>
+                <dt>Swap</dt><dd id="swap" class="mono">—</dd>
+                <dt>GPU utilization</dt><dd id="gpu-util" class="mono">—</dd>
+              </dl>
+              <ul id="warnings" class="warning-list" aria-live="polite"></ul>
+            </div>
+          </article>
+        </aside>
+      </section>
+
+      <footer><span>No raw model generation or hidden chain of thought is exposed.</span><span>VLA navigation operator panel</span></footer>
+    </main>
+
+    <script>
+      const parameterColumn = document.querySelector(".parameter-column");
+      const llmColumn = document.querySelector(".llm-column");
+      const cameraColumn = document.querySelector(".camera-column");
+      const gaugeStrip = document.querySelector(".gauge-strip");
+      const telemetryPanels = [...cameraColumn.children];
+      const cameraPanels = [...llmColumn.children].filter((node) => !node.classList.contains("mission-panel"));
+      parameterColumn.prepend(gaugeStrip);
+      telemetryPanels.forEach((node) => parameterColumn.append(node));
+      cameraPanels.forEach((node) => cameraColumn.append(node));
+
+      const viewOrder = ["front_left", "front", "front_right", "rear"];
+      const liveViewOrder = ["go2_front", "d435_color", "d435_depth"];
+      function bindCameraNodes(order, attribute) {
+        return Object.fromEntries(order.map((view) => {
+          const root = document.querySelector(`[${attribute}="${view}"]`);
+          return [view, {
+            image: root.querySelector("img"),
+            empty: root.querySelector(".empty"),
+            stamp: root.querySelector('[data-role="stamp"]'),
+          }];
+        }));
+      }
+      const nodes = bindCameraNodes(viewOrder, "data-camera");
+      const liveNodes = bindCameraNodes(liveViewOrder, "data-live-camera");
+      const missionInput = document.getElementById("mission-input");
+      const missionConversation = document.getElementById("mission-conversation");
+      const executionLog = document.getElementById("execution-log");
+      const reasoningStages = Object.fromEntries([...document.querySelectorAll("[data-reasoning-stage]")].map((node) => [node.dataset.reasoningStage, node]));
+      const stageSignatures = {};
+      let stagedInstruction = "";
+      let stagedSegments = 0;
+      let estimatedContextTokens = 0;
+      const text = (id, value) => { document.getElementById(id).textContent = value ?? "—"; };
+      const choose = (...values) => values.find((value) => value !== undefined && value !== null && value !== "");
+      const fixed = (value, digits = 2) => value === undefined || value === null ? "—" : Number(value).toFixed(digits);
+      const vector = (value) => Array.isArray(value) ? value.map((part) => fixed(part, 2)).join(", ") : "—";
+      const clamp = (value, min = 0, max = 100) => Math.min(max, Math.max(min, Number(value) || 0));
+      function setReasoningStage(id, status, ready = false) {
+        const node = reasoningStages[id];
+        if (!node) return;
+        node.dataset.state = ready ? "ready" : "waiting";
+        node.querySelector(".reasoning-status").textContent = status;
+      }
+      const topicAge = (topics, key) => {
+        const row = topics[key] || {};
+        return row.received ? `${fixed(row.age_s, 2)}s · ${row.count ?? 0} msgs` : "offline";
+      };
+      function setGauge(id, value, detail, percent, tone = "neutral") {
+        text(`gauge-${id}-value`, value);
+        text(`gauge-${id}-detail`, detail);
+        document.getElementById(`gauge-${id}`).dataset.tone = tone;
+        document.getElementById(`gauge-${id}-meter`).style.width = `${clamp(percent)}%`;
+      }
+      function appendTrace(stage, message) {
+        const row = document.createElement("div");
+        row.className = "trace-line";
+        const at = document.createElement("span");
+        at.className = "trace-time";
+        at.textContent = new Date().toLocaleTimeString([], {hour12: false});
+        const source = document.createElement("span");
+        source.className = "trace-stage";
+        source.textContent = stage;
+        const copy = document.createElement("span");
+        copy.className = "trace-message";
+        copy.textContent = message;
+        row.append(at, source, copy);
+        executionLog.append(row);
+        while (executionLog.children.length > 28) executionLog.firstElementChild.remove();
+        executionLog.scrollTop = executionLog.scrollHeight;
+      }
+      function setStage(id, status, detail, tone = "neutral") {
+        const root = document.getElementById(`stage-${id}`);
+        root.dataset.tone = tone;
+        root.querySelector(".stage-status").textContent = status;
+        root.querySelector(".stage-detail").textContent = detail;
+        const signature = `${status}|${detail}`;
+        if (stageSignatures[id] !== signature) {
+          stageSignatures[id] = signature;
+          appendTrace(id, `${status} · ${detail}`);
+        }
+      }
+      function appendConversation(role, body, meta) {
+        const row = document.createElement("div");
+        row.className = `message ${role}`;
+        const label = document.createElement("span");
+        label.className = "message-meta";
+        label.textContent = meta;
+        row.append(label, document.createTextNode(body));
+        missionConversation.append(row);
+        while (missionConversation.children.length > 8) missionConversation.firstElementChild.remove();
+        missionConversation.scrollTop = missionConversation.scrollHeight;
+      }
+      missionInput.addEventListener("input", () => {
+        text("mission-limit", `${missionInput.value.length} / 480`);
+      });
+      document.getElementById("stage-mission").addEventListener("click", () => {
+        const value = missionInput.value.trim();
+        if (!value) {
+          missionInput.focus();
+          return;
+        }
+        stagedInstruction = value;
+        stagedSegments += 1;
+        estimatedContextTokens += Math.max(1, Math.ceil(value.length / 4));
+        appendConversation("user", value, "Operator · local draft");
+        appendConversation("system", "Draft staged in this browser only. It was not tokenized or dispatched to the navigation stack.", "System · control disconnected");
+        text("mission-status", "staged");
+        text("mission-source", "local draft · not dispatched");
+        text("context-usage", `≈${estimatedContextTokens.toLocaleString()} / 128K`);
+        text("context-segments", `${stagedSegments} retained`);
+        setReasoningStage("mission_parse", `Segment ${stagedSegments} staged`, true);
+        setStage("instruction", "LOCAL DRAFT", "not tokenized or dispatched", "warn");
+        missionInput.value = "";
+        text("mission-limit", "0 / 480");
+      });
+      function decisionRow(state) {
+        const root = state.decision || {};
+        return root.decision && typeof root.decision === "object" ? root.decision : root;
+      }
+      function renderCamera(node, row, version, clockName) {
+        if (row.available) {
+          node.image.src = `${row.url}?v=${version}`;
+          node.image.classList.add("ready");
+          node.empty.hidden = true;
+        } else {
+          node.image.classList.remove("ready");
+          node.image.removeAttribute("src");
+          node.empty.hidden = false;
+        }
+        const hasSimStamp = row.sim_stamp_s !== undefined;
+        const activeClock = hasSimStamp ? "sim" : clockName === "sim" ? "ros" : clockName;
+        const stamp = hasSimStamp ? row.sim_stamp_s : row.stamp_s;
+        const ageDigits = activeClock === "sim" ? 3 : 2;
+        node.stamp.textContent = stamp === undefined
+          ? `${activeClock.toUpperCase()} —`
+          : `${activeClock.toUpperCase()} ${Number(stamp).toFixed(3)} · ${Number(row.age_s || 0).toFixed(ageDigits)}s`;
+      }
+      function render(state) {
+        const decision = decisionRow(state);
+        const health = state.health || {};
+        const gpu = state.gpu || {};
+        const latency = state.latency || {};
+        const ros = state.ros || {};
+        const topics = ros.topics || {};
+        const robot = state.robot || {};
+        const battery = robot.battery || {};
+        const imu = robot.imu || {};
+        const motion = robot.motion || {};
+        const lidar = robot.lidar || {};
+        const version = state.version ?? 0;
+        const snapshotId = choose(state.snapshot?.snapshot_id, decision.snapshot_id);
+        const episodeId = choose(state.snapshot?.episode_id, decision.episode_id);
+        const resetId = choose(state.snapshot?.reset_id, "—");
+
+        text("snapshot-id", choose(snapshotId, "waiting for snapshot"));
+        text("mode", choose(decision.mode, "waiting"));
+        text("intent", choose(decision.intent, "No decision yet"));
+        const confidence = decision.confidence;
+        text("confidence", confidence === undefined ? "confidence —" : `confidence ${Number(confidence).toFixed(3)}`);
+        text("source", choose(decision.source_decision, decision.decision));
+        text("identity", `${choose(episodeId, "—")} / ${resetId}`);
+        text("mission-identity", snapshotId || (episodeId ? `${episodeId} / ${resetId}` : "—"));
+        if (!stagedInstruction) text("mission-source", episodeId ? "frozen episode · text hidden" : "waiting for episode");
+        text("scene-summary", choose(decision.scene_summary, "—"));
+        text("target-evidence", Array.isArray(decision.target_evidence) && decision.target_evidence.length ? decision.target_evidence.join(" · ") : "—");
+        text("blocked-directions", Array.isArray(decision.blocked_directions) && decision.blocked_directions.length ? decision.blocked_directions.join(", ") : "none");
+        text("frontier", decision.recommended_frontier ?? decision.frontier_id ?? "—");
+        text("semantic-flags", `target_found=${Boolean(decision.target_found)} · abstain=${Boolean(decision.abstain)}`);
+        text("fallback", decision.fallback_used ? `${choose(decision.fallback_candidate, "frozen candidate")} · ${choose(decision.fallback_reason, "used")}` : "no");
+        const ready = Boolean(health.ready);
+        text("ready", ready ? "ready" : choose(health.status, "not ready"));
+        text("model", choose(health.model_variant, health.model, "—"));
+        text("revision", choose(health.revision, "—"));
+        text("precision", choose(health.precision_mode, "—"));
+        const latencyMs = choose(latency.end_to_end_ms, latency.server_total_ms);
+        text("latency", latencyMs === undefined ? "—" : `${Number(latencyMs).toFixed(1)} ms`);
+        const memoryAvailable = gpu.unified_memory_available_mib;
+        const memoryTotal = gpu.unified_memory_total_mib;
+        const legacyMemory = choose(gpu.memory_used_mib, gpu.used_memory_mib);
+        text("gpu-memory", memoryAvailable === undefined ? (legacyMemory === undefined ? "—" : `${legacyMemory} MiB used`) : `${Number(memoryAvailable).toFixed(0)} / ${Number(memoryTotal).toFixed(0)} MiB available`);
+        const modelPeak = latency.peak_memory_mib;
+        text("model-peak", modelPeak === undefined ? "—" : `${Number(modelPeak).toFixed(1)} MiB`);
+        const swap = choose(gpu.system_swap_used_mib, gpu.step3_process_swap_mib);
+        text("swap", swap === undefined ? "—" : `${Number(swap).toFixed(1)} MiB`);
+        const util = choose(gpu.utilization_percent, gpu.gpu_util_percent);
+        text("gpu-util", util === undefined ? "—" : `${util}%`);
+
+        text("ros-ready", ros.ready ? "live" : choose(ros.status, "waiting"));
+        text("low-state", topicAge(topics, "low_state"));
+        text("sport-state", topicAge(topics, "sport_mode_state"));
+        text("battery", battery.soc === undefined ? "—" : `${battery.soc}% · cycle ${battery.cycle ?? "—"}`);
+        text("power", battery.power_v === undefined ? "—" : `${fixed(battery.power_v, 1)} V · ${fixed(battery.power_a, 1)} A`);
+        text("robot-position", vector(motion.position));
+        text("robot-velocity", vector(motion.velocity));
+        text("yaw-rate", motion.yaw_speed === undefined ? "—" : `${fixed(motion.yaw_speed, 3)} rad/s`);
+        text("imu-rpy", vector(imu.rpy));
+        text("lidar", lidar.error_state === undefined ? topicAge(topics, "lidar_state") : `error ${lidar.error_state} · ${fixed(lidar.cloud_frequency, 1)} Hz · loss ${fixed(lidar.cloud_packet_loss_rate, 3)}`);
+        text("lidar-streams", `${topicAge(topics, "lidar_cloud")} / ${topicAge(topics, "lidar_imu")}${lidar.point_count === undefined ? "" : ` · ${lidar.point_count} pts`}`);
+        text("d435", `${topicAge(topics, "d435_color")} / ${topicAge(topics, "d435_depth")}`);
+        text("updated", `state v${version}`);
+
+        const rosCount = Object.values(topics).filter((row) => row && row.received).length;
+        setGauge("ros", ros.ready ? "LIVE" : "WAITING", `${rosCount} active topics`, ros.ready ? 100 : 10, ros.ready ? "ok" : "warn");
+        const soc = battery.soc;
+        setGauge("battery", soc === undefined ? "—" : `${soc}%`, battery.power_v === undefined ? "power unavailable" : `${fixed(battery.power_v, 1)} V · ${fixed(battery.power_a, 1)} A`, soc ?? 0, soc === undefined ? "neutral" : soc < 20 ? "danger" : soc < 35 ? "warn" : "ok");
+        const latencyHeadroom = latencyMs === undefined ? 0 : clamp((1 - Number(latencyMs) / 12000) * 100);
+        setGauge("latency", latencyMs === undefined ? "—" : `${Number(latencyMs).toFixed(0)} ms`, latencyMs === undefined ? "12 s wall deadline" : `${latencyHeadroom.toFixed(0)}% deadline headroom`, latencyHeadroom, latencyMs === undefined ? "neutral" : latencyMs > 12000 ? "danger" : latencyMs > 8000 ? "warn" : "ok");
+        setGauge("gpu", util === undefined ? "—" : `${Number(util).toFixed(0)}%`, "DGX-B accelerator", util ?? 0, util === undefined ? "neutral" : util > 95 ? "warn" : "ok");
+        const memoryFreePercent = memoryAvailable === undefined || !memoryTotal ? 0 : clamp(Number(memoryAvailable) / Number(memoryTotal) * 100);
+        const memoryGiB = memoryAvailable === undefined ? "—" : `${(Number(memoryAvailable) / 1024).toFixed(1)} GiB`;
+        setGauge("memory", memoryGiB, memoryTotal === undefined ? "total unavailable" : `${memoryFreePercent.toFixed(0)}% of ${(Number(memoryTotal) / 1024).toFixed(0)} GiB free`, memoryFreePercent, memoryAvailable === undefined ? "neutral" : memoryFreePercent < 10 ? "danger" : memoryFreePercent < 20 ? "warn" : "ok");
+
+        const byView = Object.fromEntries((state.cameras || []).map((row) => [row.view_id, row]));
+        viewOrder.forEach((view) => renderCamera(nodes[view], byView[view] || {}, version, "sim"));
+        const liveByView = Object.fromEntries((state.live_cameras || []).map((row) => [row.view_id, row]));
+        liveViewOrder.forEach((view) => renderCamera(liveNodes[view], liveByView[view] || {}, version, "ros"));
+        const availableCameras = [...Object.values(byView), ...Object.values(liveByView)].filter((row) => row && row.available);
+        const maxCameraAge = availableCameras.length ? Math.max(...availableCameras.map((row) => Number(row.age_s || 0))) : undefined;
+        const cameraFreshWindowS = 7;
+        const cameraHealth = maxCameraAge === undefined ? 0 : clamp((1 - maxCameraAge / cameraFreshWindowS) * 100);
+        setGauge("cameras", maxCameraAge === undefined ? "OFFLINE" : `${maxCameraAge.toFixed(2)} s`, `${availableCameras.length} / ${viewOrder.length + liveViewOrder.length} feeds online`, cameraHealth, maxCameraAge === undefined ? "danger" : maxCameraAge > cameraFreshWindowS ? "danger" : maxCameraAge > 4 ? "warn" : "ok");
+
+        if (stagedInstruction) {
+          setStage("instruction", "LOCAL DRAFT", "not tokenized or dispatched", "warn");
+        } else if (episodeId) {
+          setStage("instruction", "EPISODE SOURCE", `${episodeId} / reset ${resetId}; text not exposed`, "warn");
+        } else {
+          setStage("instruction", "WAITING", "no public instruction telemetry", "neutral");
+        }
+        const feedCount = availableCameras.length;
+        const expectedFeedCount = viewOrder.length + liveViewOrder.length;
+        setStage(
+          "snapshot",
+          feedCount === expectedFeedCount ? "FRESH" : feedCount ? "PARTIAL" : "WAITING",
+          `${feedCount}/${expectedFeedCount} feeds${maxCameraAge === undefined ? "" : ` · max age ${maxCameraAge.toFixed(2)}s`}`,
+          feedCount === expectedFeedCount && maxCameraAge !== undefined && maxCameraAge <= 1 ? "ok" : feedCount ? "warn" : "neutral",
+        );
+        const modelName = choose(health.model_variant, health.model, "runtime");
+        setStage("model", ready ? "READY" : "WAITING", ready ? `${modelName}; health only` : choose(health.status, "runtime unavailable"), ready ? "ok" : "neutral");
+        const decisionIntent = choose(decision.intent, decision.source_decision);
+        const hasGrounding = Boolean(decision.scene_summary || (decision.target_evidence || []).length);
+        setReasoningStage("visual_grounding", hasGrounding ? "Summary observed" : "Awaiting summary", hasGrounding);
+        setReasoningStage("nav_reasoning", decisionIntent ? "Rationale observed" : "Awaiting summary", Boolean(decisionIntent));
+        setReasoningStage("action_plan", decision.recommended_frontier === undefined ? "Awaiting summary" : `Frontier ${decision.recommended_frontier}`, decision.recommended_frontier !== undefined);
+        const hasSafety = decision.abstain !== undefined || decision.fallback_used !== undefined;
+        setReasoningStage("safety_check", hasSafety ? `Abstain ${Boolean(decision.abstain)} · fallback ${Boolean(decision.fallback_used)}` : "Awaiting summary", hasSafety);
+        setStage(
+          "decision",
+          decisionIntent ? "OBSERVED" : "WAITING",
+          decisionIntent ? `${decisionIntent}${decision.recommended_frontier === undefined ? "" : ` · frontier ${decision.recommended_frontier}`}` : "no structured result",
+          decision.fallback_used || decision.abstain ? "warn" : decisionIntent ? "ok" : "neutral",
+        );
+        setStage("nav2", "NOT INSTRUMENTED", "goal acceptance/result telemetry absent", "warn");
+        const velocity = Array.isArray(motion.velocity) ? motion.velocity.map(Number) : [];
+        const motionMagnitude = velocity.length ? Math.hypot(...velocity.slice(0, 2), Number(motion.yaw_speed || 0)) : undefined;
+        setStage(
+          "motion",
+          !ros.ready ? "WAITING" : motionMagnitude !== undefined && motionMagnitude > 0.01 ? "MEASURED MOTION" : "SAFE HOLD",
+          !ros.ready ? "robot state unavailable" : `odom/yaw observed · recovery telemetry absent`,
+          ros.ready ? "ok" : "neutral",
+        );
+
+        const warnings = document.getElementById("warnings");
+        warnings.replaceChildren(...(state.ingest_warnings || []).map((value) => {
+          const item = document.createElement("li");
+          item.textContent = value;
+          return item;
+        }));
+      }
+
+      let retry;
+      let pollTimer;
+      function pollState() {
+        fetch("/api/v1/state", {cache: "no-store"})
+          .then((response) => response.ok ? response.json() : Promise.reject(new Error(`HTTP ${response.status}`)))
+          .then((state) => {
+            render(state);
+            document.getElementById("status-dot").className = "dot live";
+            text("status-text", "Live polling");
+          })
+          .catch(() => {
+            document.getElementById("status-dot").className = "dot down";
+            text("status-text", "Reconnecting");
+          })
+          .finally(() => { pollTimer = setTimeout(pollState, 1000); });
+      }
+      function startPolling() {
+        if (!pollTimer) pollState();
+      }
+      function connect() {
+        const protocol = location.protocol === "https:" ? "wss" : "ws";
+        const socket = new WebSocket(`${protocol}://${location.host}/api/v1/stream`);
+        socket.addEventListener("open", () => {
+          clearTimeout(pollTimer);
+          pollTimer = undefined;
+          document.getElementById("status-dot").className = "dot live";
+          text("status-text", "Live stream");
+        });
+        socket.addEventListener("message", (event) => render(JSON.parse(event.data)));
+        socket.addEventListener("close", () => {
+          document.getElementById("status-dot").className = "dot down";
+          text("status-text", "Reconnecting");
+          clearTimeout(retry);
+          retry = setTimeout(connect, 1500);
+          startPolling();
+        });
+        socket.addEventListener("error", () => socket.close());
+      }
+      connect();
+    </script>
+  </body>
+</html>

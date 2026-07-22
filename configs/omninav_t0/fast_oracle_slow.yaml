@@ -1,0 +1,30 @@
+schema_version: 1
+gate: T0.2
+requires_gate: T0.1
+task_family: OVON
+slow_source: oracle_shortest_path_or_correct_frontier
+fast_policy:
+  endpoint: tcp://10.100.100.128:8100
+  checkpoint_config: configs/omninav_t0/checkpoint.yaml
+  input_contract: slowfast_original_7view
+  minimum_hz: 2.0
+  max_steps_per_episode: 80
+adapter_config: configs/omninav_t0/nav2_oracle.yaml
+termination:
+  oracle_success_region: true
+  record_fast_arrive_separately: true
+  depth_guard_may_terminate_episode: false
+canary:
+  episodes: 5
+  minimum_successes: 3
+  early_stop_after_first_failures: 3
+  timeout_minutes: 30
+pilot:
+  episodes: 20
+  minimum_successes: 1
+  target_success_rate: 0.30
+  timeout_minutes: 180
+gate_thresholds:
+  rejected_or_invalid_waypoint_rate_lt: 0.05
+  forbid_dominant_coordinate_or_collision_engineering_failure: true
+output: results/omninav_t0/t0_2_fast_oracle_slow

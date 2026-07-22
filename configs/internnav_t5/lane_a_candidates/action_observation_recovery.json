@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "family_id": "action_observation_recovery",
+  "scope": "T5 completion_sim only",
+  "purpose": "Close each InternVLA/Nav2 action on measured motion before admitting a new observation, then compare the frozen no-recovery baseline with Recovery A.",
+  "immutable_motion_contract": {
+    "clock": "ROS simulation time",
+    "wall_time_use": "process liveness watchdog only",
+    "turn_command_deg": 15.0,
+    "turn_required_deg": 12.0,
+    "turn_timeout_sim_sec": 2.0,
+    "forward_command_m": 0.25,
+    "forward_required_m": 0.2,
+    "forward_timeout_sim_sec": 3.0,
+    "safe_stop_before_next_observation": true,
+    "nav2_cancel_ack_required": true,
+    "post_stop_new_sim_stamp_required": true,
+    "post_stop_new_odometry_required": true,
+    "post_stop_new_camera_observation_required": true,
+    "motion_start_baseline": "latest accepted odometry after model and Nav2 command resolution",
+    "stale_or_reset_blocks_old_command": true
+  },
+  "variants": [
+    {
+      "candidate_id": "a0_action_gate_only",
+      "extends": "t5_golden_bundle",
+      "runtime_overrides": {
+        "INTERNNAV_T5_CANDIDATE_PROFILE": "baseline"
+      }
+    },
+    {
+      "candidate_id": "a1_action_gate_recovery_a",
+      "extends": "t5_golden_bundle",
+      "runtime_overrides": {
+        "INTERNNAV_T5_CANDIDATE_PROFILE": "recovery_a"
+      },
+      "config_reference": "configs/internnav_t5/candidates/recovery_a.json"
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+# Scene-aware static map for the fixed 01R completion bootstrap geometry.
+# It is not an MP3D episode map and must never be reused for Oracle or Go2.
+schema_version: 1
+name: isaac_completion_diagnostic_static_map
+target: isaac_completion_diagnostic_scene_only
+topic: /map
+frame_id: map
+odom_frame_id: odom
+map_to_odom: identity
+qos:
+  reliability: reliable
+  durability: transient_local
+  depth: 1
+resolution_m: 0.05
+width: 80
+height: 80
+origin_xy: [-1.0, -2.0]
+free_value: 0
+occupied_value: 100
+geometry_contract: sensor_runtime.contract.DIAGNOSTIC_GEOMETRY
+obstacles:
+  - name: near_depth_lidar_box
+    center_xy_m: [1.0, 0.0]
+    size_xy_m: [0.30, 0.40]
+  - name: far_diagnostic_wall
+    center_xy_m: [2.0, 0.0]
+    size_xy_m: [0.10, 2.00]

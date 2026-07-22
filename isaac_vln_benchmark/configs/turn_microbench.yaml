@@ -1,0 +1,16 @@
+{
+  "benchmark": {
+    "name": "turn_microbench",
+    "timeout_sec_default": 45,
+    "seeds": [0, 1, 2, 3, 4],
+    "modes": [
+      "omninav_only",
+      "internnav_only",
+      "step_omninav_route_choice_only",
+      "step_internnav_route_choice_only"
+    ]
+  },
+  "tasks": {
+    "turn_microbench": {"count": 2, "timeout_sec": 45}
+  }
+}

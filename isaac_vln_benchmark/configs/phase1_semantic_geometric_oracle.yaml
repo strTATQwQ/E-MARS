@@ -1,0 +1,40 @@
+benchmark:
+  name: phase1_semantic_geometric_oracle
+  timeout_sec_default: 100
+  seeds: [0]
+  modes:
+    - phase1_semantic_pure_forward
+    - phase1_semantic_pure_rotate
+    - phase1_semantic_rotate_then_forward
+    - phase1_semantic_proportional
+    - phase1_semantic_waypoint
+
+tasks:
+  semantic_target:
+    ids:
+      - semantic_micro_clear
+      - semantic_micro_obstacle
+      - semantic_micro_intersection
+    count: 3
+    timeout_sec: 100
+
+targets:
+  coverage_distance_m: 2.5
+  success_distance_m: 2.0
+  max_linear_x_mps: 0.20
+  distance_decrease_ratio_required: 0.80
+  reached_stop_threshold_min: 3
+  stop_oracle_triggered_min: 3
+  bridge_received_stop_min: 3
+  safe_cmd_vel_zero_after_stop_min: 3
+  semantic_success_min: 2
+  visible_to_stop_latency_max_sec: 2.0
+  collision_count: 0
+  stale_action_executed: 0
+  runtime_stale_discards: 0
+  timebase_error_count: 0
+
+gate_policy:
+  step: FROZEN
+  v11_requires_phase1_pass: true
+  real_robot: DISABLED

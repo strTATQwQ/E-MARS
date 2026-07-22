@@ -1,0 +1,37 @@
+benchmark:
+  name: live_success_v19_compositional_single
+  timeout_sec_default: 45
+  seeds: [0]
+  preserve_task_ids: true
+  preserve_task_seeds: true
+  modes: [forced_semantic_oracle]
+  tasks_source: configs/generated/v19_compositional_single_tasks.yaml
+
+tasks:
+  semantic_navigation:
+    count: 18
+    timeout_sec: 45
+
+runtime:
+  scenes_source: configs/generated/v19_compositional_single_scenes.yaml
+  runtime_profile: v19_local_marker_v2
+  instrumented_semantic_markers: true
+  geometry_judge_is_oracle_only: true
+
+gates:
+  success_rate_min: 0.90
+  parent_success_min: 2
+  parent_episodes: 3
+  collision: 0
+  runtime_stale: 0
+  timebase_error: 0
+  stale_action_executed: 0
+
+scope:
+  step_model_enabled: false
+  local_navigation_owner: OmniNav
+  train_or_modify_locomotion: false
+  reinforcement_learning: false
+  real_go2_connected: false
+  qualification_evidence: false
+  internnav_identity: CmaAgent/system1/fallback_static_cma_tokens

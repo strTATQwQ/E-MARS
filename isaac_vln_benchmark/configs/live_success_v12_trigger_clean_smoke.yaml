@@ -1,0 +1,22 @@
+benchmark:
+  name: live_success_v12_trigger_clean_smoke
+  timeout_sec_default: 135
+  seeds: [0]
+  modes:
+    - omninav_step_stop_only_v12_screen
+
+tasks:
+  simple_navigation:
+    count: 2
+    timeout_sec: 135
+  semantic_target:
+    count: 1
+    timeout_sec: 120
+
+targets:
+  episodes: 3
+  simple_step_http_calls: 0
+  semantic_step_http_calls: 1
+  duplicate_step_request_count: 0
+  collision_count: 0
+  runtime_stale_discards: 0

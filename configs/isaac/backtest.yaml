@@ -1,0 +1,58 @@
+schema_version: 1
+name: omninav_cosmos_real_isaac_headless
+formal_only: true
+transport: zeromq
+model_endpoint: tcp://10.100.100.128:8100
+ros_domain_id: 42
+camera:
+  source: real_isaac_render_product_udp_15012
+  topic: /camera/front/isaac_image
+  width: 640
+  height: 360
+  publish_hz: 5.0
+  synthetic_fallback: false
+controller:
+  type: ideal_kinematic_base
+  max_linear_mps: 0.20
+  max_angular_radps: 0.35
+  command_timeout_sec: 0.45
+  low_level_hz_min: 20.0
+safety:
+  minimum_distance_m: 0.50
+  collision_distance_m: 0.25
+  network_timeout_stop: true
+  stale_frame_stop: true
+  old_result_rejected: true
+schedule:
+  smoke_episodes: 5
+  obstacle_categories:
+    - static_clutter
+    - narrow_door
+    - narrow_corridor
+    - corner_dead_end
+    - dynamic_crossing
+  episodes_per_obstacle_category: 20
+  natural_language_episodes: 10
+  complex_semantic_episodes: 20
+  formal_total_episodes: 130
+artifacts:
+  episode_jsonl: episodes.jsonl
+  seed_manifest: seeds.json
+  require_representative_video: true
+  require_trajectory: true
+  require_logs: true
+  require_versions: true
+  require_commands: true
+formal_gates:
+  require_headless_process: true
+  require_real_isaac_camera: true
+  require_trained_action_head: true
+  forbid_untrained_model_name: true
+  forbid_mock_models: true
+  forbid_synthetic_camera: true
+  forbid_fallback_actions: true
+  same_manifest_for_all_models: true
+targets:
+  decision_frequency_hz_min: 2.0
+  decision_latency_p50_ms_max: 400.0
+  decision_latency_p95_ms_max: 800.0

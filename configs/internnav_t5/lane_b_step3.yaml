@@ -1,0 +1,139 @@
+schema_version: 1
+lane_id: b
+status: offline_candidate
+
+slow_planner:
+  protocol_version: 1
+  endpoint: tcp://127.0.0.1:8200
+  client_wall_deadline_s: 12.0
+  model_config: configs/slow_models/step3_vl_10b_bf16.yaml
+  model_variant: step3_vl_10b_bf16
+  model_revision: 5026053b0c2f5dfaa08fc2d149384162c3c8bca1
+  transformers_version: 4.57.6
+  precision_mode: bf16
+  require_clean_checkpoint_load: true
+  require_all_parameters_bf16: true
+  default_mode: bounded_advisor
+  allowed_modes:
+    - bounded_advisor
+    - direct_high_level
+
+snapshot:
+  id_format: "b::<episode>::<reset>::<sequence>"
+  clock_for_sensor_freshness: sim_time
+  wall_time_usage: transport_liveness_only
+  ordered_views:
+    - front_left
+    - front
+    - front_right
+    - rear
+  width: 640
+  height: 480
+  horizontal_fov_deg_provisional: 73.0
+  max_frame_age_s: 0.5
+  max_inter_camera_skew_s: 0.2
+  expected_config_sha256: ${T5_LANE_B_REV_C_CONFIG_SHA256}
+  require_exact_config_sha256: true
+  require_extrinsic_sha256: true
+  extrinsic_manifest_path: ${T5_LANE_B_REV_C_EXTRINSIC_MANIFEST}
+
+live_frontier:
+  transport: coordinator_atomic_json_file
+  current_snapshot_path: ${T5_LANE_B_LIVE_FRONTIER_PATH}
+  kind: t5_live_nav2_frontier_snapshot
+  geometry_frame: base_link
+  agent_pose_encoding: map_xy_yaw_rad
+  ros_episode_binding: "ros_episode_id == b::<slow_planner_episode_id>"
+  max_age_sim_s: 5.0
+  request_binding: episode_reset_sequence_snapshot_and_content_sha256
+  consume_behavior: reread_then_return_listed_id_or_abstain
+  missing_source_behavior: MISSING_LIVE_NAV2_FRONTIER_SOURCE
+  frozen_replay_allowed: false
+  nav2_plan_as_frontier_allowed: false
+
+authority:
+  motion_authority: none
+  terminal_action_authority: none
+  fallback_owner: coordinator_frozen_internvla_candidate
+  frozen_fallback_candidate: a1+b1+c1
+  bounded_advisor_outputs:
+    - current_frontier
+    - INTERNVLA_FALLBACK_REQUIRED
+  direct_high_level_outputs:
+    - current_frontier_candidate
+    - relative_target_safe_hold_candidate
+    - DIRECT_SAFE_STOP_REQUIRED
+  target_found_behavior: relative_target_safe_hold_candidate
+  timeout_behavior:
+    bounded_advisor: INTERNVLA_FALLBACK_REQUIRED
+    direct_high_level: DIRECT_SAFE_STOP_REQUIRED
+  stale_response_behavior:
+    bounded_advisor: INTERNVLA_FALLBACK_REQUIRED
+    direct_high_level: DIRECT_SAFE_STOP_REQUIRED
+  invalid_output_behavior:
+    bounded_advisor: INTERNVLA_FALLBACK_REQUIRED
+    direct_high_level: DIRECT_SAFE_STOP_REQUIRED
+  abstain_behavior:
+    bounded_advisor: INTERNVLA_FALLBACK_REQUIRED
+    direct_high_level: DIRECT_SAFE_STOP_REQUIRED
+  step3_internal_fallback_behavior:
+    bounded_advisor: INTERNVLA_FALLBACK_REQUIRED
+    direct_high_level: DIRECT_SAFE_STOP_REQUIRED
+  fallback_payload_has_frontier_or_target: false
+  direct_relative_target:
+    require_nonzero: true
+    max_distance_source: max_current_legal_frontier_distance
+    empty_frontier_behavior: DIRECT_SAFE_STOP_REQUIRED
+  direct_runtime:
+    internvla_model_loaded: false
+    internvla_fallback_allowed: false
+    safe_stop_owner: coordinator
+  coordinator_wiring_required: true
+
+frontend:
+  host: 0.0.0.0
+  port: 8300
+  poll_interval_s: 0.25
+  read_only: true
+  paths:
+    snapshot_sidecar_path: ${T5_LANE_B_RESULTS}/step3/snapshots.jsonl
+    decision_log_path: ${T5_LANE_B_RESULTS}/step3/frontend_decisions.jsonl
+    health_path: ${T5_LANE_B_RESULTS}/step3/health.json
+    gpu_telemetry_path: ${T5_LANE_B_RESULTS}/step3/gpu.json
+    camera_dir: ${T5_LANE_B_RESULTS}/step3/cameras
+  ros_adapter:
+    enabled: true
+    node_name: t5_readonly_ros_frontend_adapter
+    preview_hz: 1.0
+    state_publish_hz: 2.0
+    stale_after_s: 3.0
+    jpeg_quality: 80
+    go2_h264_decoder: ffmpeg
+    paths:
+      state_path: ${T5_LANE_B_RESULTS}/ros/ros_state.json
+      camera_manifest_path: ${T5_LANE_B_RESULTS}/ros/ros_cameras.json
+      camera_dir: ${T5_LANE_B_RESULTS}/ros/cameras
+    topics:
+      go2_front: /frontvideostream
+      low_state: /lowstate
+      sport_mode_state: /sportmodestate
+      lidar_state: /utlidar/lidar_state
+      odometry: /utlidar/robot_odom
+      d435_color: /check/d435/color/image_raw
+      d435_depth: /check/d435/depth/image_rect_raw
+  api:
+    - GET /api/v1/health
+    - GET /api/v1/state
+    - GET /api/v1/cameras/{view_id}.jpg
+    - WS /api/v1/stream
+  forbidden_http_methods:
+    - POST
+    - PUT
+    - PATCH
+    - DELETE
+
+comparison:
+  requires_frozen_internvla_plateau_artifact: true
+  allow_held_out_tuning: false
+  five_episode_screening_only: true
+  promotion_requires_paired_pilot: true

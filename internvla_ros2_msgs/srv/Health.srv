@@ -1,0 +1,12 @@
+uint32 protocol_version
+---
+uint8 status_code
+string status_message
+uint32 protocol_version
+bool initialized
+uint8 lifecycle_state
+string episode_id
+uint64 reset_generation
+uint64 last_sequence_id
+string model_revision
+string checkpoint_revision

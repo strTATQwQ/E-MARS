@@ -1,0 +1,125 @@
+{
+  "schema_version": 1,
+  "tasks": [
+    {
+      "benchmark_group": "obstacle_avoidance",
+      "episode_key": "formal_static_clutter_00",
+      "expected_step_triggers": [],
+      "instruction": "Avoid the cluttered boxes and stop at the red exit sign.",
+      "obstacle_category": "static_clutter",
+      "random_seed": 2026071300,
+      "scene_id": "formal_static_clutter_00",
+      "scene_type": "formal_static_clutter_00",
+      "subgoals": [
+        "avoid obstacles",
+        "reach target",
+        "stop"
+      ],
+      "success": {
+        "distance_to_target_m": 1.8,
+        "stop_required": true,
+        "target_visible": true
+      },
+      "target_object": "target_static_clutter_00",
+      "task_id": "formal_static_clutter_00",
+      "task_type": "obstacle_avoidance",
+      "timeout_sec": 120
+    },
+    {
+      "benchmark_group": "obstacle_avoidance",
+      "episode_key": "formal_narrow_door_00",
+      "expected_step_triggers": [],
+      "instruction": "Pass carefully through the narrow doorway and stop at the red exit sign.",
+      "obstacle_category": "narrow_door",
+      "random_seed": 2026071400,
+      "scene_id": "formal_narrow_door_00",
+      "scene_type": "formal_narrow_door_00",
+      "subgoals": [
+        "avoid obstacles",
+        "reach target",
+        "stop"
+      ],
+      "success": {
+        "distance_to_target_m": 1.8,
+        "stop_required": true,
+        "target_visible": true
+      },
+      "target_object": "target_narrow_door_00",
+      "task_id": "formal_narrow_door_00",
+      "task_type": "obstacle_avoidance",
+      "timeout_sec": 120
+    },
+    {
+      "benchmark_group": "obstacle_avoidance",
+      "episode_key": "formal_narrow_corridor_00",
+      "expected_step_triggers": [],
+      "instruction": "Navigate the narrow corridor, avoid the box, and stop at the red exit sign.",
+      "obstacle_category": "narrow_corridor",
+      "random_seed": 2026071500,
+      "scene_id": "formal_narrow_corridor_00",
+      "scene_type": "formal_narrow_corridor_00",
+      "subgoals": [
+        "avoid obstacles",
+        "reach target",
+        "stop"
+      ],
+      "success": {
+        "distance_to_target_m": 1.8,
+        "stop_required": true,
+        "target_visible": true
+      },
+      "target_object": "target_narrow_corridor_00",
+      "task_id": "formal_narrow_corridor_00",
+      "task_type": "obstacle_avoidance",
+      "timeout_sec": 120
+    },
+    {
+      "benchmark_group": "obstacle_avoidance",
+      "episode_key": "formal_corner_dead_end_00",
+      "expected_step_triggers": [],
+      "instruction": "The route ahead is a dead end; back up or turn around the corner and stop at the red exit sign.",
+      "obstacle_category": "corner_dead_end",
+      "random_seed": 2026071600,
+      "scene_id": "formal_corner_dead_end_00",
+      "scene_type": "formal_corner_dead_end_00",
+      "subgoals": [
+        "avoid obstacles",
+        "reach target",
+        "stop"
+      ],
+      "success": {
+        "distance_to_target_m": 1.8,
+        "stop_required": true,
+        "target_visible": true
+      },
+      "target_object": "target_corner_dead_end_00",
+      "task_id": "formal_corner_dead_end_00",
+      "task_type": "obstacle_avoidance",
+      "timeout_sec": 120
+    },
+    {
+      "benchmark_group": "obstacle_avoidance",
+      "episode_key": "formal_dynamic_crossing_00",
+      "expected_step_triggers": [],
+      "instruction": "Avoid the moving person crossing the path and stop at the red exit sign.",
+      "obstacle_category": "dynamic_crossing",
+      "random_seed": 2026071700,
+      "scene_id": "formal_dynamic_crossing_00",
+      "scene_type": "formal_dynamic_crossing_00",
+      "subgoals": [
+        "avoid obstacles",
+        "reach target",
+        "stop"
+      ],
+      "success": {
+        "distance_to_target_m": 1.8,
+        "stop_required": true,
+        "target_visible": true
+      },
+      "target_object": "target_dynamic_crossing_00",
+      "task_id": "formal_dynamic_crossing_00",
+      "task_type": "obstacle_avoidance",
+      "timeout_sec": 120
+    }
+  ]
+}

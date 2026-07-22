@@ -1,0 +1,15 @@
+std_msgs/Header header
+uint32 protocol_version
+string episode_id
+uint64 reset_generation
+uint64 sequence_id
+string request_id
+string observation_digest
+uint64 client_wall_monotonic_ns
+builtin_interfaces/Time sim_stamp
+builtin_interfaces/Time deadline
+builtin_interfaces/Time valid_until
+string instruction
+int64[] instruction_tokens
+float64[3] global_gps
+float64[4] global_rotation

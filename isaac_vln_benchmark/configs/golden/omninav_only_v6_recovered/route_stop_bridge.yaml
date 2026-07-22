@@ -1,0 +1,7 @@
+route_choice_bridge:
+  turn_yaw_deg: 35.0
+  forward_distance_m: 0.35
+  ttl_sec: 0.75
+
+semantic_stop_bridge:
+  ttl_sec: 0.5

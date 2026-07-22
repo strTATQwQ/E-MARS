@@ -1,0 +1,671 @@
+{
+  "$id": "configs/completion_sim/ablation/aggregate_schema_v1.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$comment": "Wire-shape schema. Variant summaries, activation eligibility, paired effects, confidence intervals, control drift, and manifest hashes are authoritatively recomputed by scripts/t4_ablation_validate.py.",
+  "additionalProperties": false,
+  "properties": {
+    "analysis_status": {
+      "enum": [
+        "COMPLETE",
+        "SYNTHETIC_COMPLETE"
+      ]
+    },
+    "artifact_type": {
+      "const": "t4_ablation_aggregate"
+    },
+    "comparisons": {
+      "items": {
+        "$ref": "#/$defs/comparison"
+      },
+      "maxItems": 8,
+      "minItems": 8,
+      "type": "array"
+    },
+    "control_drift": {
+      "$ref": "#/$defs/control_drift"
+    },
+    "dataset_sha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "episode_count_per_variant": {
+      "minimum": 20,
+      "type": "integer"
+    },
+    "episode_manifest_sha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "evidence_kind": {
+      "enum": [
+        "completion_sim",
+        "synthetic"
+      ]
+    },
+    "execution_target": {
+      "enum": [
+        "isaac_simulation",
+        "offline_synthetic"
+      ]
+    },
+    "matrix_id": {
+      "const": "internnav_t4_6_completion_sim_ablation_v1"
+    },
+    "matrix_sha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "metric_definitions": {
+      "items": {
+        "$ref": "#/$defs/metric_definition"
+      },
+      "maxItems": 11,
+      "minItems": 11,
+      "type": "array"
+    },
+    "runtime_policy": {
+      "const": "completion_sim"
+    },
+    "runner_commit_sha": {
+      "pattern": "^[0-9a-f]{40}$",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "statistics": {
+      "additionalProperties": false,
+      "properties": {
+        "bootstrap_method": {
+          "const": "paired_percentile"
+        },
+        "bootstrap_replicates": {
+          "const": 2000
+        },
+        "confidence_level": {
+          "const": 0.95
+        },
+        "seed_namespace": {
+          "const": "internnav-t4.6-ablation-v1"
+        }
+      },
+      "required": [
+        "bootstrap_replicates",
+        "confidence_level",
+        "seed_namespace",
+        "bootstrap_method"
+      ],
+      "type": "object"
+    },
+    "variant_order": {
+      "$ref": "#/$defs/variant_order"
+    },
+    "variants": {
+      "additionalProperties": {
+        "$ref": "#/$defs/variant_summary"
+      },
+      "maxProperties": 14,
+      "minProperties": 14,
+      "propertyNames": {
+        "$ref": "#/$defs/variant_id"
+      },
+      "type": "object"
+    }
+  },
+  "required": [
+    "schema_version",
+    "matrix_id",
+    "matrix_sha256",
+    "analysis_status",
+    "evidence_kind",
+    "runtime_policy",
+    "execution_target",
+    "runner_commit_sha",
+    "dataset_sha256",
+    "episode_manifest_sha256",
+    "episode_count_per_variant",
+    "variant_order",
+    "artifact_type",
+    "metric_definitions",
+    "statistics",
+    "variants",
+    "comparisons",
+    "control_drift"
+  ],
+  "title": "InternNav T4.6 aggregate contribution analysis v1",
+  "type": "object",
+  "$defs": {
+    "comparison": {
+      "additionalProperties": false,
+      "properties": {
+        "axis": {
+          "type": "string"
+        },
+        "candidate_activation_count": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "candidate_variant": {
+          "$ref": "#/$defs/variant_id"
+        },
+        "comparison_block": {
+          "type": "string"
+        },
+        "comparison_id": {
+          "$ref": "#/$defs/comparison_id"
+        },
+        "component": {
+          "type": "string"
+        },
+        "effect_kind": {
+          "enum": [
+            "paired_contribution",
+            "replacement_gap",
+            "gap_to_oracle"
+          ]
+        },
+        "estimation_status": {
+          "enum": [
+            "ESTIMATED",
+            "NOT_ESTIMABLE_NO_ORACLE_TERMINATION",
+            "NOT_ESTIMABLE_NO_RECOVERY_TRIGGER"
+          ]
+        },
+        "interpretation": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "metrics": {
+          "$ref": "#/$defs/paired_metrics"
+        },
+        "oracle_assisted": {
+          "type": "boolean"
+        },
+        "oracle_assisted_episode_count": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "paired_episode_count": {
+          "minimum": 20,
+          "type": "integer"
+        },
+        "recovery_triggered_pair_count": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "reference_activation_count": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "reference_variant": {
+          "$ref": "#/$defs/variant_id"
+        }
+      },
+      "required": [
+        "comparison_id",
+        "comparison_block",
+        "component",
+        "candidate_variant",
+        "reference_variant",
+        "axis",
+        "effect_kind",
+        "interpretation",
+        "paired_episode_count",
+        "estimation_status",
+        "oracle_assisted",
+        "oracle_assisted_episode_count",
+        "recovery_triggered_pair_count",
+        "candidate_activation_count",
+        "reference_activation_count",
+        "metrics"
+      ],
+      "type": "object"
+    },
+    "comparison_id": {
+      "enum": [
+        "system2_gap_to_oracle_high_level",
+        "system1_gap_to_oracle_local_path",
+        "full_trajectory_vs_endpoint",
+        "full_trajectory_vs_straight_line",
+        "model_stop_gap_to_oracle_termination",
+        "history_on_vs_off",
+        "recovery_on_vs_off",
+        "go2_view_vs_h1_view"
+      ]
+    },
+    "control_drift": {
+      "additionalProperties": false,
+      "properties": {
+        "control_variants": {
+          "const": [
+            "full_system1_system2",
+            "full_trajectory",
+            "model_stop",
+            "history_on",
+            "recovery_off",
+            "go2_view"
+          ]
+        },
+        "factor_signature_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "metrics": {
+          "$ref": "#/$defs/drift_metrics"
+        }
+      },
+      "required": [
+        "control_variants",
+        "factor_signature_sha256",
+        "metrics"
+      ],
+      "type": "object"
+    },
+    "count_map": {
+      "additionalProperties": {
+        "minimum": 0,
+        "type": "integer"
+      },
+      "type": "object"
+    },
+    "drift_metric": {
+      "additionalProperties": false,
+      "properties": {
+        "control_count": {
+          "const": 6
+        },
+        "maximum_mean": {
+          "$ref": "#/$defs/nullable_number"
+        },
+        "minimum_mean": {
+          "$ref": "#/$defs/nullable_number"
+        },
+        "observed_count": {
+          "maximum": 6,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "span": {
+          "$ref": "#/$defs/nullable_number"
+        }
+      },
+      "required": [
+        "control_count",
+        "observed_count",
+        "minimum_mean",
+        "maximum_mean",
+        "span"
+      ],
+      "type": "object"
+    },
+    "drift_metrics": {
+      "additionalProperties": {
+        "$ref": "#/$defs/drift_metric"
+      },
+      "maxProperties": 11,
+      "minProperties": 11,
+      "type": "object"
+    },
+    "factors": {
+      "additionalProperties": false,
+      "properties": {
+        "history_mode": {
+          "enum": [
+            "on",
+            "off"
+          ]
+        },
+        "recovery_mode": {
+          "enum": [
+            "on",
+            "off"
+          ]
+        },
+        "system_mode": {
+          "enum": [
+            "full_system1_system2",
+            "oracle_high_level_system1",
+            "system2_oracle_local_path"
+          ]
+        },
+        "termination_mode": {
+          "enum": [
+            "model_stop",
+            "oracle_termination"
+          ]
+        },
+        "trajectory_mode": {
+          "enum": [
+            "full_trajectory",
+            "endpoint",
+            "straight_line"
+          ]
+        },
+        "view_mode": {
+          "enum": [
+            "go2_view",
+            "h1_view"
+          ]
+        }
+      },
+      "required": [
+        "system_mode",
+        "trajectory_mode",
+        "termination_mode",
+        "history_mode",
+        "recovery_mode",
+        "view_mode"
+      ],
+      "type": "object"
+    },
+    "metric_definition": {
+      "additionalProperties": false,
+      "properties": {
+        "benefit_direction": {
+          "enum": [
+            "higher",
+            "lower"
+          ]
+        },
+        "metric_id": {
+          "$ref": "#/$defs/metric_id"
+        },
+        "path": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "unit": {
+          "enum": [
+            "fraction",
+            "m",
+            "ms"
+          ]
+        }
+      },
+      "required": [
+        "metric_id",
+        "path",
+        "unit",
+        "benefit_direction"
+      ],
+      "type": "object"
+    },
+    "metric_id": {
+      "enum": [
+        "sr",
+        "os",
+        "spl",
+        "ne_m",
+        "stuck",
+        "latency_system1_mean_ms",
+        "latency_system1_p95_ms",
+        "latency_system2_mean_ms",
+        "latency_system2_p95_ms",
+        "latency_end_to_end_mean_ms",
+        "latency_end_to_end_p95_ms"
+      ]
+    },
+    "metric_summary": {
+      "additionalProperties": false,
+      "properties": {
+        "count": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "max": {
+          "$ref": "#/$defs/nullable_number"
+        },
+        "mean": {
+          "$ref": "#/$defs/nullable_number"
+        },
+        "median": {
+          "$ref": "#/$defs/nullable_number"
+        },
+        "min": {
+          "$ref": "#/$defs/nullable_number"
+        }
+      },
+      "required": [
+        "count",
+        "mean",
+        "median",
+        "min",
+        "max"
+      ],
+      "type": "object"
+    },
+    "nullable_ci": {
+      "oneOf": [
+        {
+          "items": {
+            "type": "number"
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "nullable_number": {
+      "oneOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "paired_metric": {
+      "additionalProperties": false,
+      "properties": {
+        "benefit_ci95": {
+          "$ref": "#/$defs/nullable_ci"
+        },
+        "benefit_direction": {
+          "enum": [
+            "higher",
+            "lower"
+          ]
+        },
+        "benefit_mean_delta": {
+          "$ref": "#/$defs/nullable_number"
+        },
+        "benefit_median_delta": {
+          "$ref": "#/$defs/nullable_number"
+        },
+        "candidate_wins": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "estimation_status": {
+          "enum": [
+            "ESTIMATED",
+            "PARTIAL_MISSING_VALUES",
+            "NOT_ESTIMABLE_MISSING_VALUES",
+            "NOT_ESTIMABLE_NO_ORACLE_TERMINATION",
+            "NOT_ESTIMABLE_NO_RECOVERY_TRIGGER"
+          ]
+        },
+        "paired_value_count": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "raw_mean_delta": {
+          "$ref": "#/$defs/nullable_number"
+        },
+        "reference_wins": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "ties": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "total_pair_count": {
+          "minimum": 20,
+          "type": "integer"
+        },
+        "unit": {
+          "enum": [
+            "fraction",
+            "m",
+            "ms"
+          ]
+        }
+      },
+      "required": [
+        "unit",
+        "benefit_direction",
+        "total_pair_count",
+        "paired_value_count",
+        "estimation_status",
+        "raw_mean_delta",
+        "benefit_mean_delta",
+        "benefit_median_delta",
+        "benefit_ci95",
+        "candidate_wins",
+        "ties",
+        "reference_wins"
+      ],
+      "type": "object"
+    },
+    "paired_metrics": {
+      "additionalProperties": {
+        "$ref": "#/$defs/paired_metric"
+      },
+      "maxProperties": 11,
+      "minProperties": 11,
+      "type": "object"
+    },
+    "sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "termination_summary": {
+      "additionalProperties": false,
+      "properties": {
+        "effective_source_counts": {
+          "$ref": "#/$defs/count_map"
+        },
+        "model_stop_observed_episode_count": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "model_stop_suppressed_count": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "oracle_mode_episode_count": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "oracle_terminated_episode_count": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "reason_counts": {
+          "$ref": "#/$defs/count_map"
+        }
+      },
+      "required": [
+        "reason_counts",
+        "effective_source_counts",
+        "oracle_mode_episode_count",
+        "oracle_terminated_episode_count",
+        "model_stop_observed_episode_count",
+        "model_stop_suppressed_count"
+      ],
+      "type": "object"
+    },
+    "variant_id": {
+      "enum": [
+        "full_system1_system2",
+        "oracle_high_level_system1",
+        "system2_oracle_local_path",
+        "full_trajectory",
+        "endpoint",
+        "straight_line",
+        "model_stop",
+        "oracle_termination",
+        "history_on",
+        "history_off",
+        "recovery_on",
+        "recovery_off",
+        "h1_view",
+        "go2_view"
+      ]
+    },
+    "variant_order": {
+      "const": [
+        "full_system1_system2",
+        "oracle_high_level_system1",
+        "system2_oracle_local_path",
+        "full_trajectory",
+        "endpoint",
+        "straight_line",
+        "model_stop",
+        "oracle_termination",
+        "history_on",
+        "history_off",
+        "recovery_on",
+        "recovery_off",
+        "h1_view",
+        "go2_view"
+      ]
+    },
+    "variant_summary": {
+      "additionalProperties": false,
+      "properties": {
+        "activation_counts": {
+          "$ref": "#/$defs/count_map"
+        },
+        "episode_count": {
+          "minimum": 20,
+          "type": "integer"
+        },
+        "factor_signature_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "factors": {
+          "$ref": "#/$defs/factors"
+        },
+        "metrics": {
+          "additionalProperties": {
+            "$ref": "#/$defs/metric_summary"
+          },
+          "maxProperties": 11,
+          "minProperties": 11,
+          "type": "object"
+        },
+        "safety_counts": {
+          "$ref": "#/$defs/count_map"
+        },
+        "termination": {
+          "$ref": "#/$defs/termination_summary"
+        },
+        "variant_config_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "variant_id": {
+          "$ref": "#/$defs/variant_id"
+        },
+        "warning_counts": {
+          "$ref": "#/$defs/count_map"
+        }
+      },
+      "required": [
+        "variant_id",
+        "factors",
+        "factor_signature_sha256",
+        "variant_config_sha256",
+        "episode_count",
+        "metrics",
+        "termination",
+        "activation_counts",
+        "safety_counts",
+        "warning_counts"
+      ],
+      "type": "object"
+    }
+  }
+}

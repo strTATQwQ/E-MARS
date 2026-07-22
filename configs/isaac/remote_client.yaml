@@ -1,0 +1,29 @@
+omninav_remote:
+  endpoint: tcp://10.100.100.128:8100
+  timeout_ms: 3000
+  ttl_sec: 0.75
+  front_image_topic: /camera/front/isaac_image
+  left_image_topic: ""
+  right_image_topic: ""
+  max_image_age_sec: 0.75
+  jpeg_quality: 90
+  horizontal_flip: true
+  vertical_flip: true
+
+model_clients:
+  omninav:
+    min_waypoint_norm_m: 0.03
+    stop_arrive_threshold: 0.5
+    stop_distance_m: 0.04
+    turn_threshold_deg: 12.0
+    hard_turn_threshold_deg: 28.0
+    waypoint_forward_axis: x
+    forward_yaw_threshold_deg: 20.0
+    forward_min_x_m: 0.05
+    forward_min_m: 0.05
+
+primitive:
+  normal_speed_mps: 0.20
+  max_linear_x: 0.20
+  max_yaw_rate: 0.35
+  max_forward_horizon_m: 0.50

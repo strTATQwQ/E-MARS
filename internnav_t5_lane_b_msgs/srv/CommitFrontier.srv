@@ -1,0 +1,26 @@
+uint32 protocol_version
+string episode_id
+uint64 reset_generation
+uint64 sequence_id
+string request_id
+string snapshot_id
+string token
+bool select_frontier
+uint32 frontier_id
+string expected_path_sha256
+---
+int32 status_code
+string status_message
+string episode_id
+uint64 reset_generation
+uint64 sequence_id
+string request_id
+string snapshot_id
+bool accepted
+bool executed
+bool fallback_required
+int8 discrete_action
+bool nav2_goal_sent
+bool nav2_plan_valid
+float32 resolution_latency_sec
+string path_sha256

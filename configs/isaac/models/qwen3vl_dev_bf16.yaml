@@ -1,0 +1,12 @@
+# Interface/cache smoke only. This configuration is forbidden for formal backtests.
+model_variant: qwen3vl_dev
+model_path: ${QWEN3_VL_MODEL_PATH}
+attn_implementation: sdpa
+history_frames: 4
+cache_enabled: true
+allow_untrained_action_head: true
+seed: 20260713
+bind: tcp://0.0.0.0:8100
+max_request_age_s: 1.0
+log_path: ${OMNINAV_RESULTS_DIR}/qwen3vl_dev_bf16_model_service.jsonl
+

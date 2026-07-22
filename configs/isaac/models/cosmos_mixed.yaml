@@ -1,0 +1,13 @@
+model_variant: cosmos_qwen3vl
+model_path: ${COSMOS_REASON2_MIXED_MODEL_PATH}
+action_head_path: ${COSMOS_ACTION_HEAD_PATH}
+precision_mode: nvfp4_language_bf16_vision_action
+attn_implementation: sdpa
+history_frames: 4
+cache_enabled: true
+allow_untrained_action_head: false
+seed: 20260713
+bind: tcp://0.0.0.0:8100
+max_request_age_s: 1.0
+log_path: ${OMNINAV_RESULTS_DIR}/cosmos_mixed_model_service.jsonl
+

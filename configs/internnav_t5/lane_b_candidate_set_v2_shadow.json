@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "kind": "t5_lane_b_candidate_set_v2_shadow_config",
+  "enabled": true,
+  "online_runtime_wired": false,
+  "lane_id": "b",
+  "private_protocol_version": 2,
+  "input_kind": "t5_reachable_viewpoint_candidate_set",
+  "input_candidate_type": "reachable_free_space_viewpoint",
+  "decision_kind": "t5_lane_b_candidate_set_v2_decision",
+  "allowed_decisions": [
+    "select_viewpoint",
+    "abstain"
+  ],
+  "binding": {
+    "exact_episode_reset_sequence": true,
+    "exact_snapshot_id": true,
+    "repository_relative_source_artifact_required": true,
+    "source_candidate_set_sha256_required": true,
+    "exact_grid_frame_required": true,
+    "sim_time_validity_required": true
+  },
+  "proposal": {
+    "kind": "bounded_nav2_goal_proposal",
+    "frame_id": "base_link",
+    "coordinate_source": "candidate.relative_xz converted from right/forward to ROS forward/left",
+    "grid_xy_has_goal_authority": false,
+    "maximum_distance_m": 5.0,
+    "finite_grid_xy_required": true,
+    "current_grid_frame_binding_required": true,
+    "proposal_only": true
+  },
+  "fallback": {
+    "mode": "shadow_only",
+    "candidate": "a1+b1+c1",
+    "on": [
+      "timeout",
+      "invalid_decision",
+      "abstain",
+      "stale_or_cross_reset",
+      "unknown_candidate",
+      "artifact_digest_or_frame_mismatch",
+      "nonfinite_or_out_of_bounds_coordinate"
+    ]
+  },
+  "authority": {
+    "mode": "proposal_only",
+    "publish_navigation_goal": false,
+    "publish_cmd_vel": false,
+    "publish_terminal_stop": false
+  },
+  "frozen_contracts": {
+    "slow_planner_v1_changed": false,
+    "shared_ros_schema_changed": false,
+    "tf_semantics_changed": false,
+    "success_definition_changed": false,
+    "golden_bundle_changed": false,
+    "reachable_viewpoint_relabelled_as_frontier": false
+  }
+}
