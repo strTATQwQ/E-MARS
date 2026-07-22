@@ -1,155 +1,108 @@
 # E-MARS
 
-**E-MARS** — **Edge-deployed Multimodal Agent for Robotic Search-and-rescue**
+**E-MARS — Edge-deployed Multimodal Agent for Robotic Search-and-rescue**
+**E-MARS——基于端侧多模态 AI Agent 的自主消防救援机器人**
 
-E-MARS is a ROS 2 navigation stack that combines multimodal language-guided
-planning, InternVLA fast navigation, one selected slow advisor (Step3-VL-10B
-or Step-3.7-Flash), Nav2, recovery behaviors, watchdogs, and bounded robot
-control. The project targets edge deployment on NVIDIA DGX-class hardware
-with Isaac Sim providing RGB-D, LiDAR, IMU, and Go2 simulation during
-development.
+E-MARS is a ROS 2 navigation research stack that combines InternVLA fast
+navigation, an optional Step model instruction-normalization layer, one bounded
+semantic slow advisor, Nav2, recovery, watchdogs, and bounded robot control.
+The `sim` branch uses NVIDIA Isaac Sim/Isaac Lab as the world, sensor, clock,
+reset, and evaluation authority.
 
-中文全称：**基于端侧多模态 AI Agent 的自主消防救援机器人**。
+E-MARS 是一个 ROS 2 导航研究工程，组合 InternVLA 快速导航、可选的 Step
+模型指令规范化层、受限的语义慢规划器、Nav2、恢复逻辑、watchdog 与有界控制。
+`sim` 分支由 NVIDIA Isaac Sim/Isaac Lab 提供世界、传感器、仿真时钟、重置和
+评测生命周期。
 
-## Documentation
+> [!IMPORTANT]
+> This public repository contains source, configuration, and offline tests—not
+> model weights, datasets, private scene assets, credentials, recorded sensor
+> streams, benchmark results, or evidence bundles. The simulation branch does
+> not certify physical Go2 safety or real-world motion performance.
+>
+> 本公共仓库仅包含源码、配置和离线测试；不包含模型权重、数据集、私有场景、
+> 凭证、传感器录制、评测结果或证据包。仿真分支不能证明真实 Go2 的安全性或
+> 实际运动性能。
 
-- [Deployment guide](docs/deployment.md): local hardware topology, software
-  baseline, model bring-up, health gates, and model optimization.
-- [Technology stack](docs/technology-stack.md): NVIDIA SDKs, models, robotics
-  middleware, communications, and fixed upstream revisions.
-- [Development journal](https://strtatqwq.github.io/dgx-hackathon-Journal/):
-  project motivation, control chain, engineering history, and public release
-  boundary.
+## Documentation / 文档
 
-## Branches
+- [Project overview / 项目说明](docs/project-overview.md)
+- [Deployment guide / 部署说明](docs/deployment.md)
+- [Technology stack / 技术栈说明](docs/technology-stack.md)
+- [Development journal / 开发日志](https://strtatqwq.github.io/dgx-hackathon-Journal/)
+- [Hardware repository / 硬件仓库](https://github.com/railgunqaq/unitree-go2-edge-ai-hardware)
+- [Operator panel / 导航前端](https://github.com/strTATQwQ/vla-nav-panel)
 
-- `sim`: Isaac Sim development and evaluation stack. This is the initial
-  public branch.
-- `real-go2`: strict physical Go2 integration. It is kept separate from
-  simulation safety relaxations and will be published after stationary
-  hardware integration is ready.
+## Branch contract / 分支合同
 
-Simulation-only settings must never be copied into the physical-robot branch.
-In particular, simulated pose sources, simplified motion, and relaxed
-freshness or collision policies are not valid real-robot defaults.
+| Branch / 分支 | Purpose / 用途 | Safety boundary / 安全边界 |
+| --- | --- | --- |
+| `sim` | Isaac simulation, functional integration, replay, and evaluation / Isaac 仿真、功能集成、回放和评测 | May use explicitly marked `completion_sim` deviations; never authorizes real motion / 可使用显式记录的仿真放宽；绝不授权真机运动 |
+| `real-go2` | Strict physical Go2 integration / 严格真机接入 | No GT pose, simplified dynamics, raw-wire bypass, or WARN-only safety inheritance / 禁止继承 GT pose、简化动力学、raw-wire 旁路和 WARN-only 安全策略 |
 
-## Architecture
+Simulation-only settings must never be copied into `real-go2`.
+所有仿真专用配置都不得复制到 `real-go2`。
+
+## System at a glance / 系统一览
 
 ```mermaid
 flowchart LR
-    subgraph Sim["NVIDIA Isaac Sim / Isaac Lab"]
-        World["USD 场景 + Go2 物理"]
-        Sensors["RGB-D / LiDAR / IMU / Odom / Clock"]
-        Episode["Episode / Reset / Evaluator"]
-    end
-
-    subgraph Agent["本地智能体控制链"]
-        Bridge["ROS 2 Sensor Bridge"]
-        Gate["身份与运动观测门"]
-        Normalize["可选指令规范化：Step3-VL / Step-3.7-Flash"]
-        InternVLA["InternVLA 快速导航"]
-        Slow["选定慢规划器：Step3-VL / Step 3.7 Flash"]
-        Resolver["Typed Command Resolver"]
-        Mapping["定位 / Nvblox / Costmap"]
-        Nav2["Nav2 规划、控制与恢复"]
-        Controller["Watchdog + Go2 Command Bridge"]
-    end
-
-    World --> Sensors --> Bridge
-    Episode --> Bridge
-    Bridge --> Gate
-    Bridge --> Mapping
-    Gate --> Normalize --> InternVLA
-    Gate --> Slow
-    InternVLA -->|"局部轨迹 / 动作"| Resolver
-    Slow -->|"语义候选决策"| Resolver
-    Mapping --> Resolver
-    Resolver --> Nav2 --> Controller --> World
-    World -->|"运动与传感器反馈"| Gate
+    UI["Operator task / 操作员任务"] --> N["Optional Step normalization / 可选 Step 规范化"]
+    N --> VLA["InternVLA fast policy / 快速策略"]
+    UI --> SLOW["Bounded semantic advisor / 受限语义慢规划"]
+    ISAAC["Isaac Sim: Go2 + sensors + clock"] --> ROS["ROS 2 sensor and identity bridge"]
+    ROS --> VLA
+    ROS --> MAP["Localization + map + costmaps"]
+    VLA --> RES["Typed resolver"]
+    SLOW --> RES
+    MAP --> NAV2["Nav2 + recovery"]
+    RES --> NAV2
+    NAV2 --> SAFE["Watchdog + bounded command adapter"]
+    SAFE --> ISAAC
 ```
 
-选用 Step3-VL 时，它是系统的多视角语义慢规划层。它结合自然语言目标、场景图像、
-导航历史和可达候选，为 frontier、viewpoint 或运动 primitive 提供语义比较和
-高层决策，并与 InternVLA 快速路径在统一命令解析层汇合。模型不直接发布
-底层速度；Typed Command Resolver 校验身份、时效和候选边界后，才把命令
-交给 Nav2、恢复逻辑和 watchdog 执行。
+The optional normalization layer is disabled by default so frozen episodes are
+not changed. When enabled, select exactly one provider: local Step3-VL-10B or
+hosted `step-3.7-flash`. The result is a schema-validated English canonical
+mission and must be re-tokenized before InternVLA consumes it.
 
-在 `sim` 分支，任务入口还可选择先用 **Step3-VL-10B**（本地模型）或
-**Step-3.7-Flash**（OpenAI-compatible API）把中文或其他语言规范化为受限英文
-导航指令，再交给 InternVLA。该层默认关闭，因此不会改变冻结 episode；启用时
-两种 provider 只能二选一。超时、abstain 或非法 JSON 的处理由 completion-sim
-配置显式选择 `passthrough` 或 `reject`。API 凭证只从 `STEPFUN_API_KEY` 环境变量
-读取，不写入配置、日志或结果。
+可选规范化层默认关闭，从而不改变冻结 episode。启用时必须在本地
+Step3-VL-10B 与托管 `step-3.7-flash` 中二选一；输出为经过 schema 校验的英文
+canonical mission，并必须重新生成与该文本匹配的 InternVLA token。
 
-The major source packages are:
+## Repository layout / 仓库结构
 
-- `internvla_ros2` and `internvla_ros2_msgs`: typed model and client protocol;
-- `internvla_nav2_adapter`: Nav2 command resolution;
-- `internvla_t4_recovery`: bounded recovery behavior;
-- `internvla_t4_sensors`: sensor and odometry integration;
-- `internvla_go2_controller`: bounded simulated Go2 control;
-- `slow_planner` and `step3_graph_nav`: slow-planner components for the
-  selected advisor;
-- `isaac_vln_benchmark`: Isaac/ROS 2 simulation runtime;
-- `slow_planner_frontend`: operator panel;
-- `configs` and `scripts`: launch configuration and orchestration.
+| Path / 路径 | Responsibility / 职责 |
+| --- | --- |
+| `internvla_ros2`, `internvla_ros2_msgs` | Typed InternVLA model/client protocol / InternVLA 模型与客户端类型化协议 |
+| `internvla_t4_sensors` | Sensor, pose-source, reset, and observation gates / 传感器、位姿源、重置与观测门 |
+| `internvla_nav2_adapter` | Typed navigation-command resolution / 类型化导航命令解析 |
+| `internvla_t4_recovery` | Bounded no-progress and recovery behavior / 有界无进展检测与恢复 |
+| `internvla_go2_controller` | Simulation command adapter / 仿真控制适配器 |
+| `slow_planner`, `step3_graph_nav` | Step/Cosmos semantic planning and normalization / Step/Cosmos 语义规划与规范化 |
+| `isaac_vln_benchmark` | Isaac runtime, sensors, episodes, reset, and evaluator / Isaac 运行时、传感器、episode、reset 与 evaluator |
+| `slow_planner_frontend` | Operator-panel compatibility package / 操作员前端兼容包 |
+| `configs`, `scripts`, `coordination` | Configuration, launchers, leases, and orchestration / 配置、启动器、资源租约与编排 |
 
-### Slow-advisor selection
-
-The slow-advisor stage is required. Select exactly one model for a deployment:
-either **Step3-VL-10B** or **Step-3.7-Flash**. The two choices are mutually
-exclusive and must not be enabled together.
-
-The optional mission-normalization stage uses the same mutually exclusive
-provider choice. See `configs/completion_sim/mission_normalization_*.yaml`.
-
-## Hardware
-
-The physical Go2 hardware design, including power, cameras, installation
-photos, and CAD models, is maintained in
-[`railgunqaq/unitree-go2-edge-ai-hardware`](https://github.com/railgunqaq/unitree-go2-edge-ai-hardware).
-The relative [`hardware`](hardware) symbolic link points to a sibling checkout
-of that repository, so the hardware content can be updated independently.
-
-Clone the software and hardware repositories side by side:
+## Quick start / 快速开始
 
 ```bash
-git clone https://github.com/strTATQwQ/E-MARS.git
-git clone https://github.com/railgunqaq/unitree-go2-edge-ai-hardware.git
-```
-
-## Repository policy
-
-Model weights, datasets, scene assets, credentials, machine-local settings,
-recorded sensor streams, recorded test data, test results, run logs, reports,
-videos, and evaluation artifacts are intentionally excluded from this public
-source repository.
-
-Copy `.env.example` to `.env.local` and provide local host names, usernames,
-paths, and tokens. Never commit `.env.local`.
-
-## Development
-
-The repository contains Python packages, ROS 2 packages, shell launchers, and
-offline unit tests. Exact runtime dependencies are recorded in
-`dependencies.lock.yaml`. Hardware-specific assets and model checkpoints must
-be provisioned separately.
-
-```bash
+git clone --branch sim https://github.com/strTATQwQ/E-MARS.git
+cd E-MARS
+cp .env.example .env.local
 python -m pytest -q \
-  tests/slow_planner_frontend \
-  tests/test_t5_motion_observation_gate.py \
-  tests/test_t5_observation_identity_guard.py \
-  tests/test_t5_nav2_namespace.py \
-  tests/test_t5_trajectory_rerank.py \
+  tests/test_sim_mission_normalization.py \
   tests/test_t5_step3_deadline_contract.py \
-  tests/test_t5_step3_direct.py \
-  tests/test_t5_revc_x86_contract.py \
-  tests/test_t5_planar_motion.py
+  tests/test_t5_observation_identity_guard.py
 ```
 
-Real Go2 motion is outside the scope of the `sim` branch.
+Provision model weights, Isaac assets, ROS 2, and host-specific settings
+outside Git, then follow the [deployment guide](docs/deployment.md).
 
-## License
+模型权重、Isaac 资产、ROS 2 和主机专用配置应在 Git 外部准备，随后按照
+[部署说明](docs/deployment.md)启动。
 
-E-MARS is released under the MIT License.
+## License / 许可证
+
+E-MARS is released under the [MIT License](LICENSE).
+E-MARS 使用 [MIT License](LICENSE) 发布。

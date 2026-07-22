@@ -1,126 +1,126 @@
-# E-MARS Local Deployment Guide
+# E-MARS Simulation Deployment Guide
 
-This guide documents the public deployment contract for E-MARS. It uses
-placeholders such as `<DGX_HOST>`, `<ISAAC_HOST>`, and `<MODEL_PATH>` on purpose.
-Do not replace them in committed files with internal IP addresses, usernames,
-credentials, or machine-local absolute paths.
+## English
 
-## 1. Local hardware topology
+### 1. Deployment target
 
-```mermaid
-flowchart LR
-    Operator["Operator / local browser"]
-    DGX["DGX Spark / GB10\nModels + ROS 2 + Nav2"]
-    Isaac["x86 NVIDIA GPU workstation\nIsaac Sim + Isaac Lab"]
-    Robot["Unitree Go2 or simulated Go2"]
+This guide deploys the `sim` branch as a distributed navigation stack. The
+recommended topology is:
 
-    Operator -->|"task and telemetry"| DGX
-    DGX <-->|"ROS 2 DDS + bounded TCP/ZeroMQ"| Isaac
-    Isaac <-->|"physics and sensors"| Robot
-    DGX -->|"bounded navigation command"| Robot
-    Robot -->|"state and observations"| DGX
-```
+| Role | Runs | Must not run |
+| --- | --- | --- |
+| DGX Lane | InternVLA, ROS 2 client/model nodes, localization/mapping, Nav2, recovery, watchdog, optional Step service | Isaac Sim |
+| Isaac x86 | Isaac Sim/Isaac Lab, Go2 simulation, RGB-D/LiDAR/IMU, `/clock`, episode/reset/evaluator | InternVLA or Nav2 |
+| Operator workstation | Source control, orchestration, log collection, optional web browser | Motion bridge without a lease |
 
-| Node | Responsibilities |
-| --- | --- |
-| DGX Spark / NVIDIA GB10 | InternVLA, Step3-VL, ROS 2, Nav2, localization, mapping, typed command resolution, watchdog, and operator telemetry. |
-| x86 NVIDIA GPU workstation | Isaac Sim, Isaac Lab, USD scene loading, Go2 physics, sensor rendering, episode/reset lifecycle, evaluator, and simulation clock. |
-| Unitree Go2 or simulator | Bounded command execution and motion/sensor feedback. The `sim` branch does not authorize physical Go2 autonomy. |
+For dual-Lane development, duplicate the complete DGX stack and give each Lane
+an isolated Isaac GPU, CPU set, ROS domain, namespace, ports, cache, run root,
+and locks. Do not split one final Lane into a permanent “model server” and
+“edge server”; the deployment target is one complete edge stack per DGX.
 
-The preferred topology separates model/navigation compute from simulation.
-Users with one machine can first run offline/mock components or a single Lane,
-then move to the distributed topology. Model and simulation processes exchange
-data through ROS 2 DDS, TCP/ZeroMQ, and the repository's bounded runtime
-protocols. Only one component may own each command or clock authority.
+### 2. Prerequisites
 
-## 2. Software environment
+Install and verify, using versions compatible with your host image:
 
-The documented local baseline is:
+- NVIDIA driver, CUDA, and one supported GPU per active Lane;
+- Isaac Sim/Isaac Lab on the x86 simulator host;
+- Ubuntu/Linux on DGX, ROS 2 Jazzy, Nav2, and the required message packages;
+- Python environments for InternVLA and the selected slow model;
+- Docker only where an existing launcher explicitly requires it;
+- Git, Git LFS where applicable, `flock`, `rsync`, `ssh`, and `jq`;
+- routed network connectivity and working ROS 2 DDS discovery between hosts.
 
-| Component | Baseline |
-| --- | --- |
-| Operating system | Ubuntu with a local NVIDIA GPU runtime |
-| Robot middleware | ROS 2 Jazzy and Nav2 |
-| Simulation | NVIDIA Isaac Sim 6.0.0.1 |
-| Robot learning/simulation layer | NVIDIA Isaac Lab 6.1.14 |
-| Accelerated ROS stack | NVIDIA Isaac ROS release 4.5 |
-| GPU runtime | CUDA 13 |
-| Model runtime | PyTorch 2.12.1+cu130 |
-| Transformers | 4.57.6 |
-| Isolation | Docker/ROS 2 GPU containers plus separate Python environments |
+Read `dependencies.lock.yaml` before installation. It records upstream commits
+and runtime facts; it does not redistribute external repositories or weights.
 
-This table records the integration baseline. Component-scoped environments may
-retain narrower package pins; their checked-in requirements and health contract
-remain authoritative for that component. Do not upgrade a runtime solely to
-match this overview without revalidating its checkpoint loader and control
-contract.
-
-Keep the model, ROS 2, and Isaac environments isolated. Before launch, verify
-the NVIDIA driver and CUDA visibility, ROS 2 domain, required ports, model
-revision, checkpoint completeness, and that no previous process still owns a
-command, model, or simulation endpoint.
-
-Use placeholders in local templates:
+### 3. Clone and local configuration
 
 ```bash
-export DGX_HOST="<DGX_HOST>"
-export ISAAC_HOST="<ISAAC_HOST>"
-export STEP3_VL_10B_MODEL_PATH="<MODEL_PATH>/Step3-VL-10B"
-export COSMOS_REASON2_32B_MODEL_PATH="<MODEL_PATH>/Cosmos-Reason2-32B"
-export CUDA_VISIBLE_DEVICES="<GPU_ID>"
-export ROS_DOMAIN_ID="<ROS_DOMAIN_ID>"
+git clone --branch sim https://github.com/strTATQwQ/E-MARS.git
+cd E-MARS
+cp .env.example .env.local
+chmod 600 .env.local
 ```
 
-Store real values in an ignored local environment file. Never commit them.
+Keep host names, usernames, model paths, tokens, ROS domain IDs, and result
+roots in `.env.local` or a host-local systemd environment file. Never commit
+them. Large Hugging Face downloads may use `HF_ENDPOINT=https://hf-mirror.com`.
 
-## 3. Model and navigation bring-up
-
-Bring the system up in this order so every layer is healthy before it can
-receive motion authority:
-
-1. Download model weights into `<MODEL_PATH>` and verify the expected revision,
-   file inventory, and checksums.
-2. Set `STEP3_VL_10B_MODEL_PATH`, `COSMOS_REASON2_32B_MODEL_PATH`, and the
-   relevant InternVLA/InternNav path in a machine-local environment.
-3. Create isolated Python/model and ROS 2 environments. Keep Isaac in its own
-   workstation/container environment.
-4. Load Step3-VL or Cosmos Reason2 in BF16 and require a clean checkpoint load,
-   the expected dtype, and the pinned Transformers version.
-5. Start the resident slow-planner service and query its health endpoint. The
-   response must match the configured revision, dtype, token budget, batch size,
-   and wall-clock contract.
-6. Start the InternVLA fast path and confirm that it produces typed local
-   trajectories or bounded action candidates rather than raw velocity ownership.
-7. Start the ROS 2 sensor bridge, localization/mapping, Nav2, typed command
-   resolver, recovery behavior, and watchdog. Confirm frame, clock, namespace,
-   and observation freshness before enabling commands.
-8. Start the Isaac worker and episode runner on `<ISAAC_HOST>`. Isaac owns the
-   simulated world, sensor rendering, episode/reset lifecycle, evaluator, and
-   simulation clock—not model, Nav2, or command authority.
-9. Run the preflight/health gates in offline or single-Lane mode before a
-   distributed model episode. A failed identity, sensor, model, transport, or
-   command gate must fail closed.
-
-Relevant repository entry points include:
-
-- `configs/slow_models/step3_vl_10b_bf16.yaml`
-- `configs/slow_models/cosmos_reason2_32b_bf16.yaml`
-- `scripts/setup_t5_step3_runtime.sh`
-- `scripts/run_t5_step3_live_services.sh`
-- `scripts/run_t5_dgx_lane.sh`
-- `scripts/run_t5_distributed_isaac.sh`
-
-For optional simulation-only language normalization, keep the disabled profile
-as the baseline or select one enabled profile:
+Typical machine-local variables include:
 
 ```bash
-# Local Step3-VL: reuse the resident service on TCP 8200.
+DGX_HOST="<DGX_HOST>"
+ISAAC_HOST="<ISAAC_HOST>"
+ROS_DOMAIN_ID="<DOMAIN_ID>"
+ROS_NAMESPACE="/<LANE_NAMESPACE>"
+CUDA_VISIBLE_DEVICES="<GPU_ID>"
+INTERNVLA_MODEL_PATH="<MODEL_ROOT>/InternVLA"
+STEP3_VL_10B_MODEL_PATH="<MODEL_ROOT>/Step3-VL-10B"
+SLOW_BENCHMARK_RESULTS="<NON_GIT_RUN_ROOT>"
+```
+
+Do not place generated output under a Git-tracked results/report directory in
+the public checkout. Use a machine-local run root outside the repository.
+
+### 4. Python and ROS environments
+
+Use separate environments for large models, ROS 2, and Isaac. A generic source
+workspace build is:
+
+```bash
+source /opt/ros/jazzy/setup.bash
+mkdir -p "<ROS_WS>/src"
+# Link or copy only the required ROS packages into <ROS_WS>/src.
+cd "<ROS_WS>"
+rosdep install --from-paths src --ignore-src -r -y
+colcon build --symlink-install
+source install/setup.bash
+```
+
+Do not upgrade Transformers, PyTorch, CUDA, or ROS packages merely to match a
+global environment. Step3-VL clean loading is pinned to its checked-in runtime
+contract; model-specific environments may intentionally differ.
+
+### 5. Model provisioning
+
+Model weights are not in this repository. Provision them to a host-local model
+root, record the resolved revision and file hashes, then point `.env.local` to
+that root. For Step3-VL-10B, the checked-in configuration requires a clean BF16
+load and the pinned Transformers/checkpoint mapping contract.
+
+Before an online run, verify:
+
+```bash
+nvidia-smi
+python -c "import torch; print(torch.cuda.is_available(), torch.cuda.device_count())"
+test -d "$INTERNVLA_MODEL_PATH"
+test -d "$STEP3_VL_10B_MODEL_PATH"   # only when selected
+```
+
+### 6. Optional mission normalization
+
+The frozen simulation baseline leaves mission normalization disabled:
+
+```text
+configs/completion_sim/mission_normalization_disabled.yaml
+```
+
+To normalize multilingual input, select exactly one provider.
+
+**Local Step3-VL-10B** — reuse the resident Step3 service on TCP 8200:
+
+```bash
+python -m slow_planner.serve \
+  --config configs/slow_models/step3_vl_10b_bf16.yaml
 python scripts/normalize_sim_instruction.py \
   --config configs/completion_sim/mission_normalization_step3_vl.yaml \
   --instruction "<TASK>" --mission-id "<MISSION_ID>" \
   --episode-id "<EPISODE_ID>"
+```
 
-# Hosted Step-3.7-Flash: start the text-only adapter on TCP 8210.
+**Hosted Step-3.7-Flash** — start the text-only API adapter on TCP 8210:
+
+```bash
 export STEPFUN_API_KEY="<LOCAL_SECRET>"
 python -m slow_planner.serve \
   --config configs/slow_models/step_3_7_flash_normalizer.yaml
@@ -130,41 +130,288 @@ python scripts/normalize_sim_instruction.py \
   --episode-id "<EPISODE_ID>"
 ```
 
-The command prints only the resolved instruction contract; it does not publish
-motion. A runtime launcher should call it once at mission ingress, then bind the
-canonical instruction and its matching tokenizer output to the episode/reset
-identity before InternVLA starts. Reusing token IDs from a different source
-instruction is invalid. Do not enable both providers for one mission.
+Call normalization once at mission ingress. Bind the canonical output to the
+episode/reset/sequence identity and regenerate matching InternVLA tokens.
+Never reuse token IDs from the source instruction. `passthrough` is a
+simulation-only failure policy; use `reject` when canonical English is required.
 
-These production-oriented launchers intentionally enforce resource leases,
-identity, namespaces, and process ownership. Do not copy machine-specific
-defaults from a launcher into public configuration; provide them through local
-environment variables instead.
+### 7. Bring-up sequence
 
-## 4. Large-model optimization
+Acquire the Lane's DGX and Isaac leases before starting heavy services. Bring
+up one Lane in this order:
 
-| Optimization | Public deployment contract |
+1. Source ROS 2 and the built workspace; set domain and namespace.
+2. Start the selected model service and verify its health/config identity.
+3. Start InternVLA model and ROS client nodes.
+4. Start localization, map/costmaps, Nav2, recovery, and watchdog.
+5. Start the bounded command adapter in safe-stop state.
+6. Start the Isaac worker with the Lane-specific GPU, CPU set, Kit profile,
+   cache, temporary directory, namespace, and ROS domain.
+7. Verify `/clock` is published only by Isaac and `use_sim_time=true` on DGX.
+8. Verify sensor, TF, episode/reset, model, Nav2, and command topics are fresh.
+9. Run a short canary before an episode batch or soak.
+
+Repository launchers include:
+
+- `scripts/run_t5_dgx_lane.sh`
+- `scripts/run_t5_distributed_isaac.sh`
+- `scripts/run_t5_step3_live_services.sh`
+- coordination scripts under `coordination/`
+
+These launchers enforce more parameters than the abbreviated commands in this
+guide. Treat their current help text and checked-in configuration as the
+machine-executable contract.
+
+### 8. Required health checks
+
+Before READY, confirm:
+
+- one `/clock` authority and advancing simulation time;
+- episode/reset/sequence IDs agree across bridge, model, and evaluator;
+- RGB-D, LiDAR, IMU, odometry, CameraInfo, and required TF are non-empty;
+- command age is bounded and stale-command safe-stop is active;
+- Nav2 planner/controller/action endpoints are healthy;
+- velocity and acceleration limits match the selected profile;
+- no cross-Lane topics, ports, reset events, caches, or process groups exist;
+- run root, config SHA, code SHA, model identity, and deviations are recorded
+  outside the public repository.
+
+For performance diagnosis, record wall duration, simulation duration, RTF,
+commanded/measured yaw rate, command age, GPU utilization/VRAM, CPU utilization,
+RAM, and swap. Low RTF indicates simulator/host throughput before it indicates
+a navigation-policy failure.
+
+### 9. Dual-Lane operation
+
+Each Lane must have unique values for:
+
+- `ROS_DOMAIN_ID`, namespace, model/health ports, and request prefix;
+- `CUDA_VISIBLE_DEVICES`, CPU affinity, Isaac profile, shader/cache, TMP;
+- run root, PID ledger, socket, and lock paths.
+
+Serialize shared asset conversion, shader warm-up, model copying, video
+encoding, and large archives. If shared x86 CPU/RAM/SSD/network contention
+reduces either Lane by more than the accepted budget, interleave Isaac workers
+while keeping both DGX development streams active.
+
+### 10. Stop and cleanup
+
+Stop through the owning coordinator or lease wrapper. Use TERM, a bounded wait,
+then precise KILL only for the known run root if required. Verify that the
+Lane's PID/PGID, sockets, ports, locks, and simulator processes are zero before
+releasing resources. SIGTERM exit 143 is acceptable only when cleanup proves
+zero residual state.
+
+### 11. Troubleshooting
+
+| Symptom | Check first |
 | --- | --- |
-| BF16 parameters and inference | Step3-VL and Cosmos Reason2 use BF16, with full-parameter dtype validation where required. |
-| Resident model services | Keep models loaded across scenes/episodes to avoid repeated checkpoint loading. |
-| Online batch size | Use `batch_size=1` for bounded online navigation latency. |
-| Explicit GPU binding | Pin each Lane with `CUDA_VISIBLE_DEVICES` and isolate CPU, ports, result roots, ROS domain, and namespace. |
-| KV cache | Reuse attention state when supported by the selected backend and request contract. |
-| Deterministic decoding | Use a compact JSON schema, bounded candidates, and deterministic generation settings. |
-| Step3-VL budget | Maximum 96 output tokens and a 10.5-second generation wall-clock budget. |
-| Cosmos Reason2 budget | Maximum 48 output tokens. |
-| Multi-view input | Use ordered four-camera multi-crop input with one snapshot identity and fixed image contracts. |
-| Restricted search space | The slow planner compares frozen frontier, viewpoint, or motion-primitive candidates; it does not invent unrestricted velocity commands. |
-| Checkpoint integrity | Require clean-load checks, the pinned model revision, and complete BF16 parameter validation. |
-| Distributed runtime | Separate simulation and model/navigation compute, and isolate dual Lanes by GPU and ROS domain. |
+| DDS topics missing | Domain ID, namespace, peer configuration, firewall, NIC selection |
+| Sensors visible but frozen | `/clock`, reset generation, source timestamp, QoS |
+| Model health fails | checkpoint revision, environment, GPU visibility, port owner |
+| Normalizer falls back | provider health, identity, API credential, timeout, JSON schema |
+| Nav2 never READY | TF chain, odometry age, map/costmap source, lifecycle state |
+| Motion slower than expected | RTF, CPU single-core saturation, GPU/VRAM, command age |
+| Residual process blocks next run | owning run root, process group, socket/port, lease ledger |
 
-The optimization goal is not only throughput. It is predictable, inspectable
-latency inside a control chain that can reject stale or malformed decisions and
-stop safely.
+---
 
-## Public boundary
+## 中文
 
-The public repository does not include model weights, datasets, scene assets,
-experimental results, run logs, raw camera streams, credentials, internal
-addresses, usernames, or private filesystem paths. Provision these locally and
-keep all generated evidence outside Git-tracked source directories.
+### 1. 部署目标
+
+本说明将 `sim` 分支部署为分布式导航栈。推荐拓扑如下：
+
+| 角色 | 运行内容 | 禁止内容 |
+| --- | --- | --- |
+| DGX Lane | InternVLA、ROS 2 client/model、定位/地图、Nav2、recovery、watchdog、可选 Step 服务 | Isaac Sim |
+| Isaac x86 | Isaac Sim/Isaac Lab、Go2 仿真、RGB-D/LiDAR/IMU、`/clock`、episode/reset/evaluator | InternVLA 或 Nav2 |
+| 操作员工作站 | 源码管理、编排、日志收集、可选浏览器 | 未持有租约的运动 bridge |
+
+双 Lane 研发时，每个 Lane 都应拥有完整 DGX 栈以及独立 Isaac GPU、CPU 集、
+ROS domain、namespace、端口、cache、run root 和锁。最终目标不是长期把一台
+DGX 固定为模型服务器、另一台固定为边缘节点，而是每台 DGX 都能独立运行完整
+机载栈。
+
+### 2. 前置条件
+
+按照主机镜像兼容性安装并验证：
+
+- NVIDIA driver、CUDA，以及每个活动 Lane 对应的一张 GPU；
+- x86 仿真主机上的 Isaac Sim/Isaac Lab；
+- DGX Linux、ROS 2 Jazzy、Nav2 和所需消息包；
+- InternVLA 与所选慢模型的隔离 Python 环境；
+- 仅在既有启动器明确要求时使用 Docker；
+- Git、必要时的 Git LFS、`flock`、`rsync`、`ssh`、`jq`；
+- 三机路由网络和正常的 ROS 2 DDS discovery。
+
+安装前先读 `dependencies.lock.yaml`。它记录上游 commit 和运行事实，但不会替你
+下载外部仓库、模型或资产。
+
+### 3. 克隆与本地配置
+
+```bash
+git clone --branch sim https://github.com/strTATQwQ/E-MARS.git
+cd E-MARS
+cp .env.example .env.local
+chmod 600 .env.local
+```
+
+主机名、用户名、模型路径、token、ROS domain ID 和结果根目录只能放在
+`.env.local` 或主机本地 systemd environment file 中，绝不能提交。Hugging Face
+大文件下载可以设置 `HF_ENDPOINT=https://hf-mirror.com`。
+
+典型本地变量：
+
+```bash
+DGX_HOST="<DGX_HOST>"
+ISAAC_HOST="<ISAAC_HOST>"
+ROS_DOMAIN_ID="<DOMAIN_ID>"
+ROS_NAMESPACE="/<LANE_NAMESPACE>"
+CUDA_VISIBLE_DEVICES="<GPU_ID>"
+INTERNVLA_MODEL_PATH="<MODEL_ROOT>/InternVLA"
+STEP3_VL_10B_MODEL_PATH="<MODEL_ROOT>/Step3-VL-10B"
+SLOW_BENCHMARK_RESULTS="<NON_GIT_RUN_ROOT>"
+```
+
+生成数据不得写入公共 checkout 内被 Git 跟踪的 results/reports 目录，应使用仓库
+外的机器本地 run root。
+
+### 4. Python 与 ROS 环境
+
+大模型、ROS 2 和 Isaac 应使用隔离环境。通用 ROS workspace 构建方式：
+
+```bash
+source /opt/ros/jazzy/setup.bash
+mkdir -p "<ROS_WS>/src"
+# 只将所需 ROS package 链接或复制到 <ROS_WS>/src。
+cd "<ROS_WS>"
+rosdep install --from-paths src --ignore-src -r -y
+colcon build --symlink-install
+source install/setup.bash
+```
+
+不要为了匹配全局环境而随意升级 Transformers、PyTorch、CUDA 或 ROS 包。
+Step3-VL clean-load 受仓库内合同约束，不同模型环境有意保持不同版本是正常的。
+
+### 5. 模型准备
+
+仓库不包含模型权重。请把权重部署到主机本地模型目录，记录 revision 与文件 hash，
+再由 `.env.local` 指向该目录。Step3-VL-10B 配置要求 clean BF16 load，以及固定
+Transformers 和 checkpoint mapping 合同。
+
+在线运行前至少检查：
+
+```bash
+nvidia-smi
+python -c "import torch; print(torch.cuda.is_available(), torch.cuda.device_count())"
+test -d "$INTERNVLA_MODEL_PATH"
+test -d "$STEP3_VL_10B_MODEL_PATH"   # 仅在选择该模型时
+```
+
+### 6. 可选任务规范化
+
+冻结仿真基线默认关闭规范化：
+
+```text
+configs/completion_sim/mission_normalization_disabled.yaml
+```
+
+需要处理中文等多语言输入时，只能选择一个 provider。
+
+**本地 Step3-VL-10B**：复用 TCP 8200 常驻服务。
+
+```bash
+python -m slow_planner.serve \
+  --config configs/slow_models/step3_vl_10b_bf16.yaml
+python scripts/normalize_sim_instruction.py \
+  --config configs/completion_sim/mission_normalization_step3_vl.yaml \
+  --instruction "<TASK>" --mission-id "<MISSION_ID>" \
+  --episode-id "<EPISODE_ID>"
+```
+
+**托管 Step-3.7-Flash**：启动 TCP 8210 文本专用 API adapter。
+
+```bash
+export STEPFUN_API_KEY="<LOCAL_SECRET>"
+python -m slow_planner.serve \
+  --config configs/slow_models/step_3_7_flash_normalizer.yaml
+python scripts/normalize_sim_instruction.py \
+  --config configs/completion_sim/mission_normalization_step37_flash.yaml \
+  --instruction "<TASK>" --mission-id "<MISSION_ID>" \
+  --episode-id "<EPISODE_ID>"
+```
+
+规范化只在任务入口调用一次。canonical 输出必须绑定 episode/reset/sequence，
+并为 InternVLA 重新生成匹配 token；禁止复用源文本 token ID。`passthrough` 只是
+仿真失败策略；必须得到英文 canonical mission 时请使用 `reject`。
+
+### 7. 启动顺序
+
+重任务启动前必须持有 Lane 的 DGX 与 Isaac 租约。单 Lane 按以下顺序启动：
+
+1. source ROS 2 与构建 workspace，设置 domain 和 namespace；
+2. 启动所选模型服务，核对 health/config identity；
+3. 启动 InternVLA model 与 ROS client；
+4. 启动定位、地图/costmap、Nav2、recovery 和 watchdog；
+5. 以 safe-stop 状态启动有界命令适配器；
+6. 使用 Lane 专用 GPU、CPU、Kit profile、cache、TMP、namespace 和 domain 启动
+   Isaac worker；
+7. 确认只有 Isaac 发布 `/clock`，DGX 所有仿真节点 `use_sim_time=true`；
+8. 确认传感器、TF、episode/reset、模型、Nav2 和命令话题新鲜；
+9. 先跑短 canary，再开始 episode batch 或 soak。
+
+仓库入口包括：
+
+- `scripts/run_t5_dgx_lane.sh`
+- `scripts/run_t5_distributed_isaac.sh`
+- `scripts/run_t5_step3_live_services.sh`
+- `coordination/` 下的协调脚本
+
+这些启动器比本文缩略命令检查更多参数。真正执行时，以启动器当前 `--help` 和
+仓库内配置为机器可执行合同。
+
+### 8. READY 前检查
+
+- `/clock` 唯一且 sim time 持续前进；
+- bridge、模型、evaluator 的 episode/reset/sequence 一致；
+- RGB-D、LiDAR、IMU、odometry、CameraInfo 与所需 TF 非空；
+- command age 有界，stale-command safe-stop 已启用；
+- Nav2 planner/controller/action endpoint 健康；
+- 速度和加速度限制与配置一致；
+- 无跨 Lane topic、端口、reset、cache 或 process group；
+- run root、config SHA、code SHA、model identity 与 deviation 记录在公共仓库外。
+
+性能诊断应同时记录 wall duration、sim duration、RTF、commanded/measured yaw、
+command age、GPU/显存、CPU、RAM 和 swap。RTF 低时应先排查仿真主机吞吐，而不是
+直接归因导航策略。
+
+### 9. 双 Lane 运行
+
+每个 Lane 必须独立设置：
+
+- `ROS_DOMAIN_ID`、namespace、模型/health 端口、request prefix；
+- `CUDA_VISIBLE_DEVICES`、CPU affinity、Isaac profile、shader/cache、TMP；
+- run root、PID ledger、socket 与 lock。
+
+共享资产转换、shader 预热、模型复制、视频编码和大型归档必须串行。如果 x86
+共享 CPU/RAM/SSD/网络让任一 Lane 超过允许退化，则交错运行 Isaac，但两台 DGX
+的开发仍可并行。
+
+### 10. 停止与清理
+
+必须通过拥有资源的 coordinator/lease wrapper 停止。先 TERM，有限等待，必要时
+只对已知 run root 精确 KILL。释放资源前证明 PID/PGID、socket、port、lock 和
+simulator process 为零。SIGTERM 143 只有在零残留成立时才算正常退出。
+
+### 11. 常见故障
+
+| 现象 | 优先检查 |
+| --- | --- |
+| DDS 看不到话题 | Domain ID、namespace、peer、firewall、NIC |
+| 传感器可见但不更新 | `/clock`、reset generation、source stamp、QoS |
+| 模型 health 失败 | checkpoint revision、环境、GPU、端口 owner |
+| 规范化 fallback | provider health、identity、API key、timeout、JSON schema |
+| Nav2 不 READY | TF、odometry age、map/costmap source、lifecycle |
+| 运动明显变慢 | RTF、单核 CPU、GPU/显存、command age |
+| 下轮被残留阻塞 | run root、process group、socket/port、lease ledger |
