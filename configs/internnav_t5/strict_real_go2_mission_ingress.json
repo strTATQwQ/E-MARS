@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "target": "strict_real_go2",
+  "status": "DRIVER_BLOCKED",
+  "use_sim_time": false,
+  "completion_sim_inheritance_allowed": false,
+  "natural_language_route": {
+    "operator_input": "/user_instruction",
+    "required_normalizer": "Step3-VL-10B",
+    "normalization_route": "step3_instruction_normalization_v1",
+    "canonical_output": "/internvla/mission/canonical",
+    "canonical_language": "English ASCII",
+    "internvla_raw_instruction_allowed": false,
+    "timeout_abstain_or_invalid_policy": "SAFE_HOLD"
+  },
+  "identity": {
+    "format": "real::<mission_id>::<reset_generation>::<sequence_id>",
+    "config_sha256_required": true,
+    "cross_reset_reuse_allowed": false,
+    "stale_deadline_clock": "wall_monotonic"
+  },
+  "control_boundary": {
+    "human_arm": "DISABLED",
+    "estop": "LATCHED",
+    "navigation_dispatch": "DISABLED",
+    "motion_bridge": "DISABLED",
+    "nonzero_motion_test_allowed": false,
+    "frontend_publishers": [
+      "/user_instruction",
+      "/mission/cancel_json",
+      "/operator/estop"
+    ],
+    "frontend_forbidden_publishers": [
+      "/cmd_vel",
+      "/cmd_vel_safe",
+      "/internvla/navigation_command",
+      "/navigate_to_pose",
+      "/internvla/stop"
+    ]
+  },
+  "internvla_client": {
+    "strict_real_mission_required": true,
+    "publish_observation_pose": false,
+    "observation_transport": "compressed",
+    "ground_truth_pose_allowed": false,
+    "direct_ipc_instruction_allowed": false
+  },
+  "current_blockers": [
+    "Go2 wired ROS transport is not present on DGX-B",
+    "Go2, D435, LiDAR, odometry and state topics are stale or absent",
+    "measured real-hardware TF/extrinsics remain CALIBRATION_PENDING",
+    "strict localization, Nav2, recovery, watchdog and control mux are not live"
+  ]
+}

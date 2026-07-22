@@ -1,0 +1,18 @@
+[Unit]
+Description=InternNav Step3-first strict real-Go2 mission gateway
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/dgx-unitree
+EnvironmentFile=%h/.config/internnav/strict-real-go2.env
+ExecStart=%h/dgx-unitree/scripts/run_t5_strict_real_mission_gateway.sh
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=15
+KillMode=control-group
+NoNewPrivileges=true
+
+[Install]
+WantedBy=default.target

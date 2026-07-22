@@ -121,7 +121,7 @@ def test_sim2real_gate_v6_requires_omninav_baseline_restored():
 def test_mock_omninav_live_run_stops_remote_real_client(monkeypatch):
     module = _load_live_success_benchmark_script()
     calls = []
-    args = SimpleNamespace(real_omninav=False, dgx_user="railgun", dgx_password="spark")
+    args = SimpleNamespace(real_omninav=False, dgx_user="railgun", dgx_password="test-only-password")
 
     monkeypatch.setattr(module.shutil, "which", lambda name: "plink.exe" if name == "plink" else None)
     monkeypatch.setattr(module.subprocess, "call", lambda cmd: calls.append(cmd) or 0)
@@ -137,7 +137,7 @@ def test_mock_omninav_live_run_stops_remote_real_client(monkeypatch):
 def test_real_omninav_live_run_keeps_remote_real_client(monkeypatch):
     module = _load_live_success_benchmark_script()
     calls = []
-    args = SimpleNamespace(real_omninav=True, dgx_user="railgun", dgx_password="spark")
+    args = SimpleNamespace(real_omninav=True, dgx_user="railgun", dgx_password="test-only-password")
 
     monkeypatch.setattr(module.shutil, "which", lambda name: "plink.exe")
     monkeypatch.setattr(module.subprocess, "call", lambda cmd: calls.append(cmd) or 0)
@@ -150,7 +150,7 @@ def test_real_omninav_live_run_keeps_remote_real_client(monkeypatch):
 def test_non_omninav_mock_live_run_keeps_remote_client(monkeypatch):
     module = _load_live_success_benchmark_script()
     calls = []
-    args = SimpleNamespace(real_omninav=False, dgx_user="railgun", dgx_password="spark")
+    args = SimpleNamespace(real_omninav=False, dgx_user="railgun", dgx_password="test-only-password")
 
     monkeypatch.setattr(module.shutil, "which", lambda name: "plink.exe")
     monkeypatch.setattr(module.subprocess, "call", lambda cmd: calls.append(cmd) or 0)

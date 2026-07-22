@@ -40,7 +40,7 @@ def main() -> int:
     parser.add_argument("--isaac-hostkey", default="")
     parser.add_argument("--dgx-host", default="10.100.100.128")
     parser.add_argument("--dgx-user", default="railgun")
-    parser.add_argument("--dgx-password", default="spark")
+    parser.add_argument("--dgx-password", default="")
     parser.add_argument("--plink", default=r"C:\Program Files\PuTTY\plink.exe")
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()

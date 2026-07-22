@@ -13,8 +13,8 @@ simulation during development.
 - `sim`: Isaac Sim development and evaluation stack. This is the initial
   public branch.
 - `real-go2`: strict physical Go2 integration. It is kept separate from
-  simulation safety relaxations and will be published after stationary
-  hardware integration is ready.
+  simulation safety relaxations and remains fail-closed until stationary
+  hardware, TF, localization, watchdog, and control-mux prerequisites pass.
 
 Simulation-only settings must never be copied into the physical-robot branch.
 In particular, simulated pose sources, simplified motion, and relaxed
@@ -23,14 +23,16 @@ freshness or collision policies are not valid real-robot defaults.
 ## Architecture
 
 ```text
-Natural-language task
+Multilingual natural-language task
+  -> mandatory Step3-VL instruction normalization
+  -> bounded English canonical mission
   -> InternVLA policy
-  -> optional bounded Step3-VL advisor
+  -> optional timeout-only Step3-VL navigation advisor
   -> ROS 2 / Nav2 / recovery / watchdog
   -> bounded velocity control
-  -> Isaac Go2 simulation
+  -> real Go2 control bridge (disabled until explicitly armed)
 
-Isaac RGB-D + LiDAR + IMU
+Real Go2 + D435 + semantic-camera RGB-D/LiDAR/IMU
   -> ROS 2 sensor bridge
   -> localization / mapping / local costmap
   -> InternVLA and Nav2
@@ -45,8 +47,24 @@ The major source packages are:
 - `internvla_go2_controller`: bounded simulated Go2 control;
 - `slow_planner` and `step3_graph_nav`: optional slow-planner components;
 - `isaac_vln_benchmark`: Isaac/ROS 2 simulation runtime;
-- `slow_planner_frontend`: operator panel;
+- `frontend`: pinned `vla-nav-panel` submodule and canonical operator panel;
+- `slow_planner_frontend`: synchronized compatibility copy for existing launchers;
+- `hardware`: pinned Unitree Go2 edge-AI hardware-description submodule;
 - `configs` and `scripts`: launch configuration and orchestration.
+
+Clone with both pinned dependencies:
+
+```bash
+git clone --branch real-go2 --recurse-submodules \
+  https://github.com/strTATQwQ/E-MARS.git
+cd E-MARS
+git submodule update --init --recursive
+```
+
+The strict real-Go2 language path never sends raw Chinese or other operator
+text directly to InternVLA. Step3 must first return a schema-validated,
+identity-bound canonical English mission. Timeout, abstention, stale identity,
+or invalid output leaves the robot in safe hold.
 
 ## Repository policy
 
@@ -79,6 +97,14 @@ python -m pytest -q \
 ```
 
 Real Go2 motion is outside the scope of the `sim` branch.
+The `real-go2` branch also starts disarmed with E-stop latched; source presence
+alone is not authorization to move physical hardware.
+
+## Contributors
+
+See [CONTRIBUTORS.md](CONTRIBUTORS.md). Hardware work is maintained in the
+`railgunqaq/unitree-go2-edge-ai-hardware` submodule and remains attributed to
+its original authors.
 
 ## License
 

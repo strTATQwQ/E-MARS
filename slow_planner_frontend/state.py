@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping
 
+from .control import ControlPlaneConfig
 from .contracts import (
     LANE_ID,
     PLANNER_METRIC_FIELDS,
@@ -223,6 +224,7 @@ class FrontendConfig:
     ros_state_path: Path | None
     ros_camera_manifest_path: Path | None
     ros_camera_dir: Path | None
+    control_plane: ControlPlaneConfig | None = None
 
     @classmethod
     def from_mapping(cls, value: Mapping[str, Any]) -> "FrontendConfig":
@@ -287,6 +289,11 @@ class FrontendConfig:
             ),
             ros_camera_dir=(
                 _expand_path(ros_paths["camera_dir"]) if ros_enabled else None
+            ),
+            control_plane=(
+                ControlPlaneConfig.from_mapping(value)
+                if isinstance(frontend.get("control_plane"), Mapping)
+                else None
             ),
         )
 

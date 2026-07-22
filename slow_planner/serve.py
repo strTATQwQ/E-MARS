@@ -11,6 +11,11 @@ from typing import Any
 
 from .base import PlannerDecision, PlannerMetrics, PlannerRunner, SlowPlannerRequest
 from .hf_base import GenerationThreadTimeout
+from .mission import (
+    MISSION_NORMALIZATION_TYPE,
+    MissionNormalizationRequest,
+    normalization_response,
+)
 
 
 def _load_config(path: Path) -> dict[str, Any]:
@@ -149,6 +154,53 @@ class SlowPlannerServer:
                 envelope = json.loads(parts[0].decode("utf-8"))
                 if envelope.get("type") == "health":
                     self.socket.send_json({"ok": True, **self.planner.health(), **self.runtime_health})
+                    continue
+                if envelope.get("type") == MISSION_NORMALIZATION_TYPE:
+                    if len(parts) != 1:
+                        raise ValueError("mission normalization is text-only")
+                    request = MissionNormalizationRequest.from_wire(
+                        envelope.get("request") or {}
+                    )
+                    age_s = time.time() - request.timestamp
+                    if abs(age_s) > self.max_request_age_s:
+                        raise ValueError(
+                            "stale mission request"
+                            if age_s > 0
+                            else "mission request clock skew"
+                        )
+                    normalizer = getattr(self.planner, "normalize_instruction", None)
+                    if normalizer is None:
+                        raise ValueError(
+                            "loaded planner does not support Step3 mission normalization"
+                        )
+                    mission, metrics = normalizer(request)
+                    server_ms = (time.perf_counter() - started) * 1000.0
+                    metrics = replace(
+                        metrics,
+                        end_to_end_ms=max(metrics.end_to_end_ms, server_ms),
+                    )
+                    response = normalization_response(
+                        mission, metrics, server_total_ms=server_ms
+                    )
+                    request_audit = request.metadata()
+                    request_audit.pop("instruction", None)
+                    self._log(
+                        {
+                            "timestamp": time.time(),
+                            "request_type": MISSION_NORMALIZATION_TYPE,
+                            "request": request_audit,
+                            "normalization": mission.to_mapping(),
+                            "metrics": metrics.to_mapping(),
+                            "server_total_ms": server_ms,
+                        }
+                    )
+                    self.socket.send(
+                        json.dumps(
+                            response,
+                            ensure_ascii=False,
+                            separators=(",", ":"),
+                        ).encode("utf-8")
+                    )
                     continue
                 if envelope.get("type") != "decide":
                     raise ValueError("unknown request type")

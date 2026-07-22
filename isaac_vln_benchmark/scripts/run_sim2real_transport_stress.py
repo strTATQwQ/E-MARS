@@ -85,7 +85,7 @@ def main() -> int:
     parser.add_argument("--isaac-password", default="a")
     parser.add_argument("--isaac-hostkey", default="ssh-ed25519 255 2e:c0:7c:18:c0:ad:e6:e6:9b:04:f8:2f:e1:2a:0e:60")
     parser.add_argument("--dgx-user", default="railgun")
-    parser.add_argument("--dgx-password", default="spark")
+    parser.add_argument("--dgx-password", default="")
     parser.add_argument("--plink", default=r"C:\Program Files\PuTTY\plink.exe")
     args = parser.parse_args()
     output = Path(args.output)

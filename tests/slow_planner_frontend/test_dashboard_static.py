@@ -45,15 +45,20 @@ def test_llm_workspace_prepares_structured_long_context_rationale() -> None:
     assert "Structured summaries only · hidden reasoning remains private" in body
 
 
-def test_mission_editor_is_browser_local_and_non_authoritative() -> None:
+def test_mission_editor_uses_bounded_step3_first_high_level_ingress() -> None:
     body = _page()
     assert 'id="mission-input"' in body
-    assert 'type="button">Stage locally</button>' in body
-    assert "LOCAL DRAFT · CONTROL DISCONNECTED" in body
-    assert "not tokenized or dispatched" in body
+    assert 'type="button">Stage mission</button>' in body
+    assert 'id="dispatch-mission"' in body
+    assert "STEP3 FIRST" in body
+    assert "raw text not released to InternVLA" in body
     assert "<form" not in body.lower()
     assert 'fetch("/api/v1/state"' in body
-    assert 'fetch("/api/v1/instruction' not in body
+    assert 'fetch("/api/v1/missions"' in body
+    assert "missionGateway.canonical_ready" in body
+    assert "Step3 normalized" in body
+    assert 'setReasoningStage("mission_parse"' in body
+    assert 'fetch("/api/v1/cmd_vel' not in body
 
 
 def test_execution_chain_marks_unobserved_control_telemetry() -> None:

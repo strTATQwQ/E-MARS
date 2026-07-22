@@ -267,6 +267,7 @@
       }
       .stage-button:hover { background: rgba(139, 124, 246, .28); }
       .stage-button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+      .stage-button:disabled { cursor: not-allowed; opacity: .42; }
       .mission-note { margin: 8px 0 0; color: var(--warn); font: 9px/1.4 ui-monospace, SFMono-Regular, Consolas, monospace; }
       .section-label { margin: 12px 0 6px; color: var(--muted); font: 700 9px/1 ui-monospace, SFMono-Regular, Consolas, monospace; letter-spacing: .09em; text-transform: uppercase; }
       .section-label:first-child { margin-top: 0; }
@@ -424,8 +425,8 @@
             </div>
             <div class="content">
               <div class="mission-state mono">
-                <span>Control link</span><span>DISCONNECTED</span>
-                <span>Instruction source</span><span id="mission-source">frozen episode</span>
+                <span>Control link</span><span id="mission-control">INACTIVE · E-STOP</span>
+                <span>Instruction source</span><span id="mission-source">Step3-first ingress</span>
                 <span>Current identity</span><span id="mission-identity">—</span>
               </div>
               <div class="context-strip" aria-label="Long context status">
@@ -444,17 +445,18 @@
                 </div>
               </section>
               <div id="mission-conversation" class="conversation" aria-live="polite">
-                <div class="message system"><span class="message-meta">System · local staging</span>Enter a navigation instruction to review it in this workspace. Drafts are not sent to ROS, Nav2, or the robot.</div>
+                <div class="message system"><span class="message-meta">System · Step3-first ingress</span>Enter a Chinese or English navigation instruction. Raw text is normalized by Step3 before InternVLA can observe a canonical mission.</div>
               </div>
               <div class="mission-form">
                 <label for="mission-input" class="section-label">Instruction draft</label>
-                <textarea id="mission-input" maxlength="480" placeholder="e.g. Go through the doorway and stop beside the table."></textarea>
+                <textarea id="mission-input" maxlength="480" placeholder="例如：穿过门口，在红色椅子旁边停下。"></textarea>
                 <div class="mission-actions">
                   <span id="mission-limit" class="mission-limit">0 / 480</span>
-                  <button id="stage-mission" class="stage-button" type="button">Stage locally</button>
+                  <button id="stage-mission" class="stage-button" type="button">Stage mission</button>
+                  <button id="dispatch-mission" class="stage-button" type="button" disabled>Send through Step3</button>
                 </div>
               </div>
-              <p class="mission-note">LOCAL DRAFT · CONTROL DISCONNECTED · no goal, cmd_vel, STOP, or ROS publication</p>
+              <p class="mission-note">STEP3 FIRST · human ARM + fresh ROS/TF/watchdog required · no direct cmd_vel or terminal STOP</p>
             </div>
           </article>
 
@@ -585,11 +587,13 @@
       const nodes = bindCameraNodes(viewOrder, "data-camera");
       const liveNodes = bindCameraNodes(liveViewOrder, "data-live-camera");
       const missionInput = document.getElementById("mission-input");
+      const dispatchMission = document.getElementById("dispatch-mission");
       const missionConversation = document.getElementById("mission-conversation");
       const executionLog = document.getElementById("execution-log");
       const reasoningStages = Object.fromEntries([...document.querySelectorAll("[data-reasoning-stage]")].map((node) => [node.dataset.reasoningStage, node]));
       const stageSignatures = {};
       let stagedInstruction = "";
+      let stagedMissionStatus = "";
       let stagedSegments = 0;
       let estimatedContextTokens = 0;
       const text = (id, value) => { document.getElementById(id).textContent = value ?? "—"; };
@@ -655,26 +659,61 @@
       missionInput.addEventListener("input", () => {
         text("mission-limit", `${missionInput.value.length} / 480`);
       });
-      document.getElementById("stage-mission").addEventListener("click", () => {
+      async function submitMission(dispatch) {
         const value = missionInput.value.trim();
         if (!value) {
           missionInput.focus();
           return;
         }
-        stagedInstruction = value;
-        stagedSegments += 1;
-        estimatedContextTokens += Math.max(1, Math.ceil(value.length / 4));
-        appendConversation("user", value, "Operator · local draft");
-        appendConversation("system", "Draft staged in this browser only. It was not tokenized or dispatched to the navigation stack.", "System · control disconnected");
-        text("mission-status", "staged");
-        text("mission-source", "local draft · not dispatched");
-        text("context-usage", `≈${estimatedContextTokens.toLocaleString()} / 128K`);
-        text("context-segments", `${stagedSegments} retained`);
-        setReasoningStage("mission_parse", `Segment ${stagedSegments} staged`, true);
-        setStage("instruction", "LOCAL DRAFT", "not tokenized or dispatched", "warn");
-        missionInput.value = "";
-        text("mission-limit", "0 / 480");
-      });
+        const button = dispatch ? dispatchMission : document.getElementById("stage-mission");
+        button.disabled = true;
+        try {
+          const response = await fetch("/api/v1/missions", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({instruction: value, dispatch}),
+          });
+          const payload = await response.json();
+          if (!response.ok) throw new Error(payload.detail?.message || payload.detail || `HTTP ${response.status}`);
+          const mission = payload.mission || {};
+          stagedInstruction = value;
+          stagedMissionStatus = mission.status || "STAGED";
+          stagedSegments += 1;
+          estimatedContextTokens += Math.max(1, Math.ceil(value.length / 4));
+          appendConversation("user", value, `Operator · ${mission.identity || "mission staged"}`);
+          const blockers = Array.isArray(mission.dispatch_blockers) ? mission.dispatch_blockers.join(", ") : "";
+          appendConversation(
+            "system",
+            mission.status === "QUEUED_FOR_STEP3"
+              ? "Mission accepted by the controlled ingress. Step3 normalization is required before InternVLA."
+              : `Mission staged without motion.${blockers ? ` Dispatch blocked: ${blockers}.` : ""}`,
+            "System · Step3-first route",
+          );
+          text("mission-status", String(stagedMissionStatus).toLowerCase());
+          text("mission-source", "Step3-first · raw text blocked from InternVLA");
+          text("mission-identity", mission.identity || "—");
+          text("context-usage", `≈${estimatedContextTokens.toLocaleString()} / 128K`);
+          text("context-segments", `${stagedSegments} retained`);
+          setReasoningStage("mission_parse", `${mission.status || "STAGED"} · awaiting canonical mission`, true);
+          setStage(
+            "instruction",
+            mission.status === "QUEUED_FOR_STEP3" ? "STEP3 QUEUED" : "STAGED",
+            blockers || "raw text not released to InternVLA",
+            mission.status === "QUEUED_FOR_STEP3" ? "ok" : "warn",
+          );
+          if (mission.status === "QUEUED_FOR_STEP3") {
+            missionInput.value = "";
+            text("mission-limit", "0 / 480");
+          }
+        } catch (error) {
+          appendConversation("system", String(error), "System · mission rejected");
+          setStage("instruction", "REJECTED", String(error), "danger");
+        } finally {
+          button.disabled = false;
+        }
+      }
+      document.getElementById("stage-mission").addEventListener("click", () => submitMission(false));
+      dispatchMission.addEventListener("click", () => submitMission(true));
       function decisionRow(state) {
         const root = state.decision || {};
         return root.decision && typeof root.decision === "object" ? root.decision : root;
@@ -703,6 +742,10 @@
         const gpu = state.gpu || {};
         const latency = state.latency || {};
         const ros = state.ros || {};
+        const control = state.control || {};
+        const controlMission = control.latest_mission || {};
+        const missionGateway = control.gateway || {};
+        const canonicalMission = missionGateway.mission || {};
         const topics = ros.topics || {};
         const robot = state.robot || {};
         const battery = robot.battery || {};
@@ -721,8 +764,11 @@
         text("confidence", confidence === undefined ? "confidence —" : `confidence ${Number(confidence).toFixed(3)}`);
         text("source", choose(decision.source_decision, decision.decision));
         text("identity", `${choose(episodeId, "—")} / ${resetId}`);
-        text("mission-identity", snapshotId || (episodeId ? `${episodeId} / ${resetId}` : "—"));
-        if (!stagedInstruction) text("mission-source", episodeId ? "frozen episode · text hidden" : "waiting for episode");
+        text("mission-identity", choose(controlMission.identity, snapshotId, episodeId ? `${episodeId} / ${resetId}` : "—"));
+        if (!stagedInstruction) text("mission-source", missionGateway.canonical_ready ? `Step3 normalized (${choose(canonicalMission.source_language, "unknown")}) · ${choose(canonicalMission.canonical_instruction, "canonical mission ready")}` : controlMission.route ? `Step3-first · ${choose(missionGateway.status, "canonical mission pending")}` : episodeId ? "frozen episode · text hidden" : "waiting for mission");
+        const dispatchReady = Boolean(control.armed) && control.estop_latched === false && Boolean(control.navigation_dispatch_enabled);
+        dispatchMission.disabled = !dispatchReady;
+        text("mission-control", `${control.armed ? "ARMED" : "DISARMED"} · ${control.estop_latched === false ? "E-STOP CLEAR" : "E-STOP"}`);
         text("scene-summary", choose(decision.scene_summary, "—"));
         text("target-evidence", Array.isArray(decision.target_evidence) && decision.target_evidence.length ? decision.target_evidence.join(" · ") : "—");
         text("blocked-directions", Array.isArray(decision.blocked_directions) && decision.blocked_directions.length ? decision.blocked_directions.join(", ") : "none");
@@ -782,8 +828,10 @@
         const cameraHealth = maxCameraAge === undefined ? 0 : clamp((1 - maxCameraAge / cameraFreshWindowS) * 100);
         setGauge("cameras", maxCameraAge === undefined ? "OFFLINE" : `${maxCameraAge.toFixed(2)} s`, `${availableCameras.length} / ${viewOrder.length + liveViewOrder.length} feeds online`, cameraHealth, maxCameraAge === undefined ? "danger" : maxCameraAge > cameraFreshWindowS ? "danger" : maxCameraAge > 4 ? "warn" : "ok");
 
-        if (stagedInstruction) {
-          setStage("instruction", "LOCAL DRAFT", "not tokenized or dispatched", "warn");
+        if (missionGateway.canonical_ready) {
+          setStage("instruction", "CANONICAL READY", choose(canonicalMission.canonical_instruction, "Step3 canonical mission"), "ok");
+        } else if (stagedInstruction) {
+          setStage("instruction", stagedMissionStatus === "QUEUED_FOR_STEP3" ? "STEP3 QUEUED" : "STAGED", "raw text not released to InternVLA", stagedMissionStatus === "QUEUED_FOR_STEP3" ? "ok" : "warn");
         } else if (episodeId) {
           setStage("instruction", "EPISODE SOURCE", `${episodeId} / reset ${resetId}; text not exposed`, "warn");
         } else {
@@ -800,6 +848,7 @@
         const modelName = choose(health.model_variant, health.model, "runtime");
         setStage("model", ready ? "READY" : "WAITING", ready ? `${modelName}; health only` : choose(health.status, "runtime unavailable"), ready ? "ok" : "neutral");
         const decisionIntent = choose(decision.intent, decision.source_decision);
+        setReasoningStage("mission_parse", missionGateway.canonical_ready ? `Step3 ${choose(canonicalMission.source_language, "source")} → English` : "Awaiting Step3 normalization", Boolean(missionGateway.canonical_ready));
         const hasGrounding = Boolean(decision.scene_summary || (decision.target_evidence || []).length);
         setReasoningStage("visual_grounding", hasGrounding ? "Summary observed" : "Awaiting summary", hasGrounding);
         setReasoningStage("nav_reasoning", decisionIntent ? "Rationale observed" : "Awaiting summary", Boolean(decisionIntent));

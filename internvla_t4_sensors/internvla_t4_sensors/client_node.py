@@ -63,6 +63,7 @@ from .motion_observation_gate import (
     is_system1_queue_plan_motion,
     resolved_motion_bounds,
 )
+from .real_go2_mission_gateway import CanonicalMissionLatch, MissionGatewayError
 
 
 def _t5_semantic_now_ns(node: Any) -> int | None:
@@ -137,6 +138,41 @@ class T4OdometryClientNode(InternVLAClientNode):
     def __init__(self) -> None:
         super().__init__()
         self._t5_sim_time_semantics = t5_completion_sim_enabled()
+        self._strict_real_mission_required = (
+            os.environ.get("INTERNVLA_STRICT_REAL_MISSION_REQUIRED", "0")
+            .strip()
+            .lower()
+            in {"1", "true", "yes", "on"}
+        )
+        self._canonical_mission_latch: CanonicalMissionLatch | None = None
+        if self._strict_real_mission_required:
+            if self._t5_sim_time_semantics:
+                raise RuntimeError("strict real mission mode cannot use completion_sim")
+            if bool(self.get_parameter("use_sim_time").value):
+                raise RuntimeError("strict real mission mode requires use_sim_time=false")
+            if self.publish_observation_pose:
+                raise RuntimeError(
+                    "strict real mission mode forbids evaluator/GT pose publication"
+                )
+            if self.observation_transport != "compressed":
+                raise RuntimeError(
+                    "strict real mission mode requires compressed observation transport"
+                )
+            expected_sha = os.environ.get(
+                "INTERNVLA_REAL_MISSION_CONFIG_SHA256", ""
+            )
+            self._canonical_mission_latch = CanonicalMissionLatch(
+                expected_config_sha256=expected_sha
+            )
+            self.create_subscription(
+                String,
+                os.environ.get(
+                    "INTERNVLA_REAL_MISSION_CANONICAL_TOPIC",
+                    "/internvla/mission/canonical",
+                ),
+                self._on_canonical_mission,
+                10,
+            )
         if self._t5_sim_time_semantics and (
             not self.has_parameter("use_sim_time")
             or not bool(self.get_parameter("use_sim_time").value)
@@ -284,6 +320,39 @@ class T4OdometryClientNode(InternVLAClientNode):
         )
         if self.replan_audit_path is not None and self.replan_audit_path.exists():
             raise FileExistsError(self.replan_audit_path)
+
+    def _on_canonical_mission(self, message: String) -> None:
+        latch = self._canonical_mission_latch
+        if latch is None:
+            return
+        try:
+            value = json.loads(str(message.data))
+            if not isinstance(value, dict):
+                raise MissionGatewayError("canonical message must be an object")
+            latch.update(value)
+        except Exception as exc:
+            self._safe_stop(
+                STATUS_STALE,
+                f"canonical mission rejected: {type(exc).__name__}:{exc}"[:512],
+            )
+
+    def _bind_strict_real_instruction(self, kwargs: dict[str, Any]) -> None:
+        if not self._strict_real_mission_required:
+            return
+        latch = self._canonical_mission_latch
+        if latch is None:
+            raise ClientFailure(STATUS_STALE, "canonical mission latch is unavailable")
+        try:
+            canonical = latch.instruction_for(
+                self.episode_id, self.reset_generation
+            )
+        except MissionGatewayError as exc:
+            self._safe_stop(STATUS_STALE, str(exc))
+            raise ClientFailure(STATUS_STALE, str(exc)) from exc
+        # Never trust or forward the IPC/evaluator instruction in strict real mode.
+        # The model receives only Step3's bounded English canonical instruction.
+        kwargs["instruction"] = canonical
+        kwargs["instruction_tokens"] = []
 
     def _on_replan_request(self, message: Bool) -> None:
         if not bool(message.data):
@@ -1500,6 +1569,7 @@ class T4OdometryClientNode(InternVLAClientNode):
         # These two arrays came from the evaluator and are deliberately ignored.
         kwargs.pop("global_gps", None)
         kwargs.pop("global_rotation", None)
+        self._bind_strict_real_instruction(kwargs)
         camera_sequence = kwargs.pop("camera_sensor_sequence", None)
         camera_stamp_ns = kwargs.pop("camera_sensor_stamp_ns", None)
         camera_schema_version = kwargs.pop("camera_sensor_schema_version", None)

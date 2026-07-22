@@ -1,0 +1,8 @@
+[submodule "hardware"]
+	path = hardware
+	url = https://github.com/railgunqaq/unitree-go2-edge-ai-hardware.git
+	branch = main
+[submodule "frontend"]
+	path = frontend
+	url = https://github.com/strTATQwQ/vla-nav-panel.git
+	branch = main

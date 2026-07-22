@@ -14,7 +14,7 @@ from slow_planner_frontend.app import create_app
 from slow_planner_frontend.state import FrontendStateStore
 
 
-def test_app_exposes_only_frozen_read_apis_plus_root() -> None:
+def test_app_exposes_bounded_high_level_control_without_velocity_routes() -> None:
     app = create_app(store=FrontendStateStore())
     http_routes = {
         route.path: set(route.methods or ())
@@ -29,12 +29,20 @@ def test_app_exposes_only_frozen_read_apis_plus_root() -> None:
         "/api/v1/health": {"GET"},
         "/api/v1/state": {"GET"},
         "/api/v1/cameras/{view_id}.jpg": {"GET"},
+        "/api/v1/missions": {"POST"},
+        "/api/v1/missions/{mission_id}/cancel": {"POST"},
+        "/api/v1/arm": {"POST"},
+        "/api/v1/estop": {"POST"},
     }
     assert websocket_routes == {"/api/v1/stream"}
     assert not any(
-        method in {"POST", "PUT", "PATCH", "DELETE"}
+        method in {"PUT", "PATCH", "DELETE"}
         for methods in http_routes.values()
         for method in methods
+    )
+    assert not any(
+        "cmd_vel" in path or path.endswith("/goal") or "terminal-stop" in path
+        for path in http_routes
     )
     assert app.openapi_url is None
     assert app.docs_url is None
@@ -69,7 +77,7 @@ def test_camera_route_rejects_unknown_view() -> None:
     assert getattr(caught.value, "status_code", None) == 404
 
 
-def test_root_page_keeps_mission_editor_local_without_control_routes() -> None:
+def test_root_page_routes_multilingual_missions_through_step3() -> None:
     app = create_app(store=FrontendStateStore())
     endpoint = next(
         route.endpoint
@@ -81,8 +89,11 @@ def test_root_page_keeps_mission_editor_local_without_control_routes() -> None:
     assert "Operator panel" in body
     assert "<form" not in body.lower()
     assert 'id="mission-input"' in body
-    assert 'type="button">Stage locally</button>' in body
-    assert "LOCAL DRAFT · CONTROL DISCONNECTED" in body
+    assert 'type="button">Stage mission</button>' in body
+    assert 'id="dispatch-mission"' in body
+    assert "STEP3 FIRST" in body
+    assert 'fetch("/api/v1/missions"' in body
+    assert "raw text blocked from InternVLA" in body
     assert "raw model generation" in body.lower()
 
 

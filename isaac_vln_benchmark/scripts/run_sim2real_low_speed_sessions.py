@@ -126,7 +126,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--isaac-hostkey", default="ssh-ed25519 255 2e:c0:7c:18:c0:ad:e6:e6:9b:04:f8:2f:e1:2a:0e:60")
     parser.add_argument("--isaac-checkpoint", default="", help="Optional remote TorchScript policy path for controlled Isaac A/B probes.")
     parser.add_argument("--dgx-user", default="railgun")
-    parser.add_argument("--dgx-password", default="spark")
+    parser.add_argument("--dgx-password", default="")
     parser.add_argument("--plink", default=r"C:\Program Files\PuTTY\plink.exe")
     args = parser.parse_args(argv)
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")

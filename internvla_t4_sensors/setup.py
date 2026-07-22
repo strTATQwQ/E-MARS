@@ -28,6 +28,7 @@ setup(
             "internvla_t5_nvblox_supervisor = internvla_t4_sensors.t5_nvblox_supervisor_node:main",
             "internvla_t4_odometry_supervisor = internvla_t4_sensors.odometry_supervisor_node:main",
             "internvla_t4_costmap_stage_tracer = internvla_t4_sensors.costmap_stage_tracer_node:main",
+            "internvla_real_go2_mission_gateway = internvla_t4_sensors.real_go2_mission_gateway:main",
         ],
     },
 )

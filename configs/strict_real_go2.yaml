@@ -1,0 +1,152 @@
+frontend:
+  host: 0.0.0.0
+  port: 8300
+  poll_interval_s: 0.25
+  deployment:
+    mode: strict_real_go2
+    source: real_hardware
+    use_sim_time: false
+    status: CALIBRATION_PENDING
+    forbidden_inheritance:
+      - completion_sim
+      - gt_pose
+      - raw_wire
+      - warn_only_freshness
+      - warn_only_collision_monitor
+      - simplified_dynamics
+  paths:
+    snapshot_sidecar_path: ${T5_LANE_B_RESULTS}/step3/snapshots.jsonl
+    decision_log_path: ${T5_LANE_B_RESULTS}/step3/frontend_decisions.jsonl
+    health_path: ${T5_LANE_B_RESULTS}/step3/health.json
+    gpu_telemetry_path: ${T5_LANE_B_RESULTS}/step3/gpu.json
+    camera_dir: ${T5_LANE_B_RESULTS}/step3/cameras
+  control_plane:
+    enabled: true
+    navigation_dispatch_enabled: false
+    human_arm_allowed: false
+    motion_bridge_enabled: false
+    command_dir: ${T5_LANE_B_RESULTS}/strict_real_go2/commands
+    state_path: ${T5_LANE_B_RESULTS}/strict_real_go2/control_state.json
+    navigation_state_path: ${T5_LANE_B_RESULTS}/strict_real_go2/navigation_state.json
+    mission_gateway_state_path: ${T5_LANE_B_RESULTS}/strict_real_go2/mission_gateway_state.json
+    audit_path: ${T5_LANE_B_RESULTS}/strict_real_go2/control_audit.jsonl
+    instruction_topic: /user_instruction
+    canonical_instruction_topic: /internvla/mission/canonical
+    cancel_topic: /mission/cancel_json
+    estop_topic: /operator/estop
+    candidate_cmd_topic: /cmd_vel_safe
+    go2_request_topic: /api/sport/request
+    mission_deadline_s: 30.0
+    command_ttl_s: 0.30
+    max_linear_x_mps: 0.20
+    max_angular_z_radps: 0.30
+    max_linear_accel_mps2: 0.20
+    max_angular_accel_radps2: 0.40
+    operator_arm_phrase: ARM STRICT REAL GO2
+    required_components:
+      - internvla_client_node
+      - internvla_model_node
+      - bt_navigator
+      - controller_server
+      - planner_server
+      - t4_recovery
+      - strict_real_go2_gateway
+    advisor:
+      role:
+        - required_instruction_normalizer
+        - timeout_only_navigation_advisor
+      protocol: slow_planner_v1
+      host: 127.0.0.1
+      port: 8200
+      wall_deadline_s: 12.0
+      forbidden_authority:
+        - cmd_vel
+        - terminal_stop
+      raw_instruction_destination: step3_only
+      internvla_instruction_source: canonical_instruction_topic_only
+  ros_adapter:
+    enabled: true
+    node_name: vla_nav_panel_ros_adapter
+    preview_hz: 1.0
+    state_publish_hz: 2.0
+    stale_after_s: 2.5
+    jpeg_quality: 80
+    go2_h264_decoder: ffmpeg
+    go2_camera_source: videohub_rpc
+    source_kind: real_hardware
+    calibration_status: CALIBRATION_PENDING
+    required_topics:
+      - go2_front
+      - sport_mode_state
+      - lidar_state
+      - lidar_imu
+      - lidar_cloud
+      - odometry
+      - d435_color
+      - d435_color_info
+      - d435_depth
+      - d435_depth_info
+      - tf_static
+      - usb_front_left
+      - usb_front
+      - usb_front_right
+      - usb_rear
+    usb_cameras:
+      enabled: true
+      capture_hz: 5.0
+      width: 640
+      height: 480
+      input_format: mjpeg
+      horizontal_flip: true
+      extrinsics_status: CALIBRATION_PENDING
+      views:
+        front_left: /dev/v4l/by-path/platform-NVDA8000:01-usb-0:1.2:1.0-video-index0
+        front: /dev/v4l/by-path/platform-NVDA8000:01-usb-0:1.3:1.0-video-index0
+        front_right: /dev/v4l/by-path/platform-NVDA8000:01-usb-0:1.4:1.0-video-index0
+        rear: /dev/v4l/by-path/platform-NVDA8000:01-usb-0:1.1:1.0-video-index0
+    hardware:
+      go2_transport: wired_enP7s7
+      d435_model: Intel RealSense D435
+      d435_serial: "207122079555"
+      d435_imu: unsupported_by_hardware
+      rev_c_usb_count: 4
+    paths:
+      state_path: ${T5_LANE_B_RESULTS}/ros/ros_state.json
+      camera_manifest_path: ${T5_LANE_B_RESULTS}/ros/ros_cameras.json
+      camera_dir: ${T5_LANE_B_RESULTS}/ros/cameras
+    topics:
+      go2_front: /frontvideostream
+      low_state: /lf/lowstate
+      sport_mode_state: /lf/sportmodestate
+      lidar_state: /utlidar/lidar_state
+      lidar_imu: /utlidar/imu
+      lidar_cloud: /utlidar/cloud
+      odometry: /utlidar/robot_odom
+      d435_color: /check/d435/color/image_raw
+      d435_color_info: /check/d435/color/camera_info
+      d435_depth: /check/d435/depth/image_rect_raw
+      d435_depth_info: /check/d435/depth/camera_info
+      tf_static: /tf_static
+  api:
+    - GET /api/v1/health
+    - GET /api/v1/state
+    - GET /api/v1/cameras/{view_id}.jpg
+    - POST /api/v1/missions
+    - POST /api/v1/missions/{mission_id}/cancel
+    - POST /api/v1/arm
+    - POST /api/v1/estop
+    - WS /api/v1/stream
+
+contract:
+  schema_version: 1
+  lane_id: b
+  rev_c_view_order:
+    - front_left
+    - front
+    - front_right
+    - rear
+  mission_identity: real::<mission_id>::<reset_generation>::<sequence_id>
+  motion_authority: strict_real_go2_control_mux_only
+  natural_language_ingress: step3_normalization_then_controlled_high_level
+  internvla_raw_instruction_allowed: false
+  current_motion_state: inactive_arm

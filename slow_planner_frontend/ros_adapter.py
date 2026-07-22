@@ -1,8 +1,9 @@
-"""ROS 2 telemetry sidecar for vla-nav-panel.
+"""ROS 2 telemetry and bounded high-level mission sidecar for vla-nav-panel.
 
 The process deliberately runs outside Uvicorn/Step3.  It creates subscriptions
-only, projects a small allowlisted state, and atomically publishes JSON/JPEG
-files for :mod:`slow_planner_frontend.state` to consume.
+for telemetry and, when strict control-plane configuration is present, only
+three high-level publishers: Step3-bound missions, cancel, and E-stop.  It
+never creates a velocity, Nav2 goal, or terminal STOP publisher.
 """
 
 from __future__ import annotations
@@ -20,6 +21,8 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Mapping
+
+from .control import ControlPlaneConfig, MissionCommandOutbox
 
 
 ROS_CAMERA_VIEWS = ("go2_front", "d435_color", "d435_depth")
@@ -65,6 +68,7 @@ class RosAdapterConfig:
     camera_manifest_path: Path
     camera_dir: Path
     topics: dict[str, str]
+    control_plane: ControlPlaneConfig | None
 
     @classmethod
     def from_mapping(cls, value: Mapping[str, Any]) -> "RosAdapterConfig":
@@ -150,6 +154,11 @@ class RosAdapterConfig:
             camera_manifest_path=_expand_path(paths.get("camera_manifest_path")),
             camera_dir=_expand_path(paths.get("camera_dir")),
             topics=resolved_topics,
+            control_plane=(
+                ControlPlaneConfig.from_mapping(value)
+                if isinstance(frontend.get("control_plane"), Mapping)
+                else None
+            ),
         )
 
 
@@ -1062,6 +1071,7 @@ class RosTelemetrySidecar:
         from rclpy.node import Node
         from rclpy.qos import qos_profile_sensor_data
         from sensor_msgs.msg import Image, Imu, PointCloud2
+        from std_msgs.msg import Bool, String
         from unitree_api.msg import Request, Response
         from unitree_go.msg import Go2FrontVideoData, LidarState, LowState, SportModeState
 
@@ -1117,9 +1127,46 @@ class RosTelemetrySidecar:
             )
         else:
             self._decoder.start()
+
+        outbox = None
+        if self.config.control_plane is not None:
+            control = self.config.control_plane
+            instruction_publisher = node.create_publisher(
+                String, control.instruction_topic, 10
+            )
+            cancel_publisher = node.create_publisher(String, control.cancel_topic, 10)
+            estop_publisher = node.create_publisher(Bool, control.estop_topic, 10)
+            handles.extend(
+                (instruction_publisher, cancel_publisher, estop_publisher)
+            )
+
+            def publish_json(publisher: Any, value: Mapping[str, Any]) -> None:
+                message = String()
+                message.data = json.dumps(
+                    value,
+                    ensure_ascii=False,
+                    sort_keys=True,
+                    separators=(",", ":"),
+                )
+                publisher.publish(message)
+
+            def publish_estop(latched: bool) -> None:
+                message = Bool()
+                message.data = bool(latched)
+                estop_publisher.publish(message)
+
+            outbox = MissionCommandOutbox(
+                control,
+                publish_mission=lambda value: publish_json(
+                    instruction_publisher, value
+                ),
+                publish_cancel=lambda value: publish_json(cancel_publisher, value),
+                publish_estop=publish_estop,
+            )
         if self._usb_poller is not None:
             self._usb_poller.start()
         next_publish = 0.0
+        next_command_drain = 0.0
         try:
             while context.ok():
                 executor.spin_once(timeout_sec=0.1)
@@ -1129,6 +1176,9 @@ class RosTelemetrySidecar:
                 if now >= next_publish:
                     self.publish_state()
                     next_publish = now + 1.0 / self.config.state_publish_hz
+                if outbox is not None and now >= next_command_drain:
+                    outbox.drain()
+                    next_command_drain = now + 0.2
         except KeyboardInterrupt:
             pass
         finally:

@@ -47,6 +47,7 @@ def test_config_requires_absolute_topics_and_bounded_preview(tmp_path, monkeypat
     }
     config = RosAdapterConfig.from_mapping(value)
     assert config.preview_hz == 1.0
+    assert config.control_plane is None
     assert config.state_path == (tmp_path / "state.json").resolve()
     value["frontend"]["ros_adapter"]["topics"]["low_state"] = "lowstate"
     with pytest.raises(ValueError, match="absolute"):
@@ -77,6 +78,28 @@ def test_deployed_config_uses_videohub_rpc_and_stable_usb_paths(
         "rear",
     )
     assert all("/dev/v4l/by-path/" in path for path in config.usb_camera_devices.values())
+
+
+def test_strict_real_config_enables_only_high_level_control_topics(
+    tmp_path, monkeypatch
+):
+    import yaml
+    from pathlib import Path
+
+    monkeypatch.setenv("T5_LANE_B_RESULTS", str(tmp_path))
+    value = yaml.safe_load(
+        (Path(__file__).resolve().parents[2] / "configs/strict_real_go2.yaml").read_text(
+            encoding="utf-8"
+        )
+    )
+    config = RosAdapterConfig.from_mapping(value)
+    assert config.control_plane is not None
+    assert config.control_plane.instruction_topic == "/user_instruction"
+    assert config.control_plane.canonical_instruction_topic == (
+        "/internvla/mission/canonical"
+    )
+    assert config.control_plane.navigation_dispatch_enabled is False
+    assert config.control_plane.motion_bridge_enabled is False
 
 
 def test_atomic_json_replaces_complete_document(tmp_path):

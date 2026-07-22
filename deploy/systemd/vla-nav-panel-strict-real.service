@@ -1,0 +1,18 @@
+[Unit]
+Description=VLA Nav Panel strict real-Go2 telemetry and mission ingress
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/vla-nav-panel
+EnvironmentFile=%h/.config/vla-nav-panel/strict-real.env
+ExecStart=%h/vla-nav-panel/scripts/run_ros_frontend.sh %h/vla-nav-panel/configs/strict_real_go2.yaml %h/vla-nav-panel/results/strict_real_go2
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=15
+KillMode=control-group
+NoNewPrivileges=true
+
+[Install]
+WantedBy=default.target
