@@ -998,7 +998,7 @@ t5_remote_compute_absent "$dgx_b_target" \
 
 # Exactly the authorization ref is archived.  Credentials, ignored files,
 # mutable results and the grant-only board commit cannot enter a deployment.
-"${git_command[@]}" archive --format=tar "$authorization_ref" | gzip -1n >"$archive"
+bash "$root/scripts/create_source_bundle.sh" "$authorization_ref" "$archive" 1
 archive_sha256="$(sha256sum "$archive" | cut -d' ' -f1)"
 
 deploy() {

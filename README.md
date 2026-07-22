@@ -31,7 +31,7 @@ E-MARS 是一个 ROS 2 导航研究工程，组合 InternVLA 快速导航、可�
 - [Technology stack / 技术栈说明](docs/technology-stack.md)
 - [Development journal / 开发日志](https://strtatqwq.github.io/dgx-hackathon-Journal/)
 - [Hardware repository / 硬件仓库](https://github.com/railgunqaq/unitree-go2-edge-ai-hardware)
-- [Operator panel / 导航前端](https://github.com/strTATQwQ/vla-nav-panel)
+- [Operator-panel submodule / 导航前端子模块](frontend)
 
 ## Branch contract / 分支合同
 
@@ -81,14 +81,15 @@ canonical mission，并必须重新生成与该文本匹配的 InternVLA token�
 | `internvla_go2_controller` | Simulation command adapter / 仿真控制适配器 |
 | `slow_planner`, `step3_graph_nav` | Step/Cosmos semantic planning and normalization / Step/Cosmos 语义规划与规范化 |
 | `isaac_vln_benchmark` | Isaac runtime, sensors, episodes, reset, and evaluator / Isaac 运行时、传感器、episode、reset 与 evaluator |
-| `slow_planner_frontend` | Operator-panel compatibility package / 操作员前端兼容包 |
+| `frontend` | Pinned `vla-nav-panel` submodule shared by simulation and real-Go2 deployments / 仿真与真机部署共用的固定版本 `vla-nav-panel` 子模块 |
 | `configs`, `scripts`, `coordination` | Configuration, launchers, leases, and orchestration / 配置、启动器、资源租约与编排 |
 
 ## Quick start / 快速开始
 
 ```bash
-git clone --branch sim https://github.com/strTATQwQ/E-MARS.git
+git clone --branch sim --recurse-submodules https://github.com/strTATQwQ/E-MARS.git
 cd E-MARS
+git submodule update --init --recursive
 cp .env.example .env.local
 python -m pytest -q \
   tests/test_sim_mission_normalization.py \

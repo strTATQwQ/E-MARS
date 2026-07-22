@@ -101,7 +101,23 @@ shared asset conversion, shader warm-up, and large archival operations remain
 serialized. A candidate becomes portable only after it can start from the same
 code/config bundle without cross-lane topic, reset, port, or cache pollution.
 
-### 7. Public repository boundary
+### 7. Optional simulation operator panel
+
+The pinned `frontend` submodule is the single operator-panel source shared by
+the `sim` and `real-go2` branches. In simulation it is optional: navigation and
+evaluation continue without the browser UI, while enabling it adds a live view
+of episode/reset/sequence identity, simulated cameras, structured decisions,
+ROS/Nav2/recovery/watchdog health, command feedback, latency, and resource
+telemetry. The panel consumes rate-limited projections from its ROS adapter;
+navigation models continue to consume the original ROS sensor streams.
+
+The simulation panel is observational at the deployment boundary. Starting or
+stopping it must not change the frozen episode manifest, `/clock` authority,
+model inputs, motion authority, or evaluator lifecycle. Pinning it as a Git
+submodule lets both E-MARS branches advance to the same reviewed panel commit
+without copying frontend source into each branch.
+
+### 8. Public repository boundary
 
 This repository publishes source code, configuration templates, contracts,
 documentation, and offline tests. It intentionally excludes:
@@ -117,7 +133,7 @@ The dependency lock records known upstream identities, but a local checkout may
 still require private patches or external assets. Read `dependencies.lock.yaml`
 before interpreting a source checkout as a complete runtime installation.
 
-### 8. Completion criteria
+### 9. Completion criteria
 
 A simulation configuration is functionally useful when it can run the complete
 language-to-motion loop, use real simulated sensor streams, recover without
@@ -211,7 +227,20 @@ ROS domain、namespace、端口、cache、run root 和资源租约。两条 Lane
 在相同代码/配置 bundle 下启动，并且无跨 Lane topic、reset、端口或缓存污染时，
 才可认为具备可移植性。
 
-### 7. 公共仓库边界
+### 7. 可选仿真操作员前端
+
+固定版本的 `frontend` 子模块是 `sim` 与 `real-go2` 两个分支共用的唯一正式前端
+来源。在仿真中前端是可选组件：不启动浏览器 UI 时导航与评测仍可继续；启动后可
+实时查看 episode/reset/sequence 身份、模拟相机、结构化决策、ROS/Nav2/recovery/
+watchdog 健康、命令反馈、延迟和资源遥测。前端只读取 ROS adapter 生成的限频投影，
+导航模型仍直接消费原始 ROS 传感器流。
+
+仿真前端在部署边界上只负责观测。启动或停止它不得改变冻结 episode manifest、
+`/clock` authority、模型输入、运动权限或 evaluator 生命周期。使用 Git submodule
+固定前端后，两个 E-MARS 分支可以共同升级到同一个经过审查的前端 commit，无需在
+各分支复制前端源码。
+
+### 8. 公共仓库边界
 
 本仓库发布源码、配置模板、合同、文档和离线测试，明确不发布：
 
@@ -225,7 +254,7 @@ ROS domain、namespace、端口、cache、run root 和资源租约。两条 Lane
 依赖锁记录已知上游身份，但本地运行仍可能需要外部资产或私有补丁。不要仅凭源码
 checkout 就认定运行环境完整，应先阅读 `dependencies.lock.yaml`。
 
-### 8. 功能完成边界
+### 9. 功能完成边界
 
 当一个仿真配置能够运行完整的语言到运动闭环、使用真实模拟传感器、恢复时不产生
 stale motion、episode reset 后无污染，并把原始机器日志保存在公共仓库之外时，

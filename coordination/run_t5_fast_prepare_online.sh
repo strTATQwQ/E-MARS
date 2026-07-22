@@ -1617,8 +1617,8 @@ outer_main() {
   umask 077
   mkdir -p "$result_dir" "$result_dir/logs" "$result_dir/remote" \
     "$result_dir/audits" "$result_dir/lease" "$result_dir/maps"
-  "${git_command[@]}" archive --format=tar "$code_sha" | gzip -1n \
-    >"$result_dir/deployment.tar.gz"
+  bash "$root/scripts/create_source_bundle.sh" "$code_sha" \
+    "$result_dir/deployment.tar.gz" 1
   archive_sha256="$(sha256sum "$result_dir/deployment.tar.gz" | cut -d' ' -f1)"
   printf '%s\n' "$archive_sha256" >"$result_dir/deployment_archive_sha256.txt"
   python3 - "$result_dir/fast_prepare_input.json" "$code_sha" "$run_id" \

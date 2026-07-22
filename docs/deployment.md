@@ -36,10 +36,20 @@ and runtime facts; it does not redistribute external repositories or weights.
 ### 3. Clone and local configuration
 
 ```bash
-git clone --branch sim https://github.com/strTATQwQ/E-MARS.git
+git clone --branch sim --recurse-submodules https://github.com/strTATQwQ/E-MARS.git
 cd E-MARS
+git submodule update --init --recursive
 cp .env.example .env.local
 chmod 600 .env.local
+```
+
+The canonical operator-panel source is the pinned `frontend` submodule. Install
+that checkout rather than copying `slow_planner_frontend` into E-MARS:
+
+```bash
+python3 -m venv .venv-panel
+source .venv-panel/bin/activate
+python -m pip install -e ./frontend
 ```
 
 Keep host names, usernames, model paths, tokens, ROS domain IDs, and result
@@ -181,7 +191,35 @@ commanded/measured yaw rate, command age, GPU utilization/VRAM, CPU utilization,
 RAM, and swap. Low RTF indicates simulator/host throughput before it indicates
 a navigation-policy failure.
 
-### 9. Dual-Lane operation
+### 9. Optional simulation progress panel
+
+The navigation stack does not require the web panel, but an operator may start
+the pinned submodule to monitor a running simulation. Use a Lane-specific ROS
+domain and an external run root; the launcher starts only the panel and its ROS
+telemetry adapter, not Isaac, InternVLA, Nav2, or a motion publisher.
+
+```bash
+export ROS_DOMAIN_ID="<DOMAIN_ID>"
+export E_MARS_FRONTEND_PYTHON="$PWD/.venv-panel/bin/python"
+export E_MARS_ROS_PYTHON="<ROS_PYTHON>"
+export E_MARS_ROS_SETUP="<ROS_WORKSPACE>/install/setup.bash"
+bash scripts/run_sim_frontend.sh \
+  configs/internnav_t5/lane_b_step3.yaml \
+  /var/tmp/e-mars/sim-panel-"$ROS_DOMAIN_ID"
+```
+
+Open `http://<DGX_HOST>:8300/` from the trusted LAN. The panel shows
+rate-limited camera previews, episode/reset/sequence identity, structured model
+decisions, ROS/Nav2/recovery/watchdog state, command feedback, latency, and
+resource telemetry. Original RGB-D/LiDAR/IMU streams remain on ROS and are not
+routed back into the model through HTTP/JPEG. Stop the foreground launcher with
+TERM or Ctrl-C; it performs a bounded cleanup of the two process groups it owns.
+
+For two simultaneous Lanes, give each panel a distinct port in its config,
+`ROS_DOMAIN_ID`, run root, and `E_MARS_SIM_FRONTEND_LOCK`. A panel failure is a
+monitoring failure and must not terminate the simulator or evaluator.
+
+### 10. Dual-Lane operation
 
 Each Lane must have unique values for:
 
@@ -194,7 +232,7 @@ encoding, and large archives. If shared x86 CPU/RAM/SSD/network contention
 reduces either Lane by more than the accepted budget, interleave Isaac workers
 while keeping both DGX development streams active.
 
-### 10. Stop and cleanup
+### 11. Stop and cleanup
 
 Stop through the owning coordinator or lease wrapper. Use TERM, a bounded wait,
 then precise KILL only for the known run root if required. Verify that the
@@ -202,7 +240,7 @@ Lane's PID/PGID, sockets, ports, locks, and simulator processes are zero before
 releasing resources. SIGTERM exit 143 is acceptable only when cleanup proves
 zero residual state.
 
-### 11. Troubleshooting
+### 12. Troubleshooting
 
 | Symptom | Check first |
 | --- | --- |
@@ -251,10 +289,20 @@ DGX 固定为模型服务器、另一台固定为边缘节点，而是每台 DGX
 ### 3. 克隆与本地配置
 
 ```bash
-git clone --branch sim https://github.com/strTATQwQ/E-MARS.git
+git clone --branch sim --recurse-submodules https://github.com/strTATQwQ/E-MARS.git
 cd E-MARS
+git submodule update --init --recursive
 cp .env.example .env.local
 chmod 600 .env.local
+```
+
+正式操作员前端来自固定版本的 `frontend` 子模块，不要再把
+`slow_planner_frontend` 复制进 E-MARS。安装方式如下：
+
+```bash
+python3 -m venv .venv-panel
+source .venv-panel/bin/activate
+python -m pip install -e ./frontend
 ```
 
 主机名、用户名、模型路径、token、ROS domain ID 和结果根目录只能放在
@@ -386,7 +434,33 @@ python scripts/normalize_sim_instruction.py \
 command age、GPU/显存、CPU、RAM 和 swap。RTF 低时应先排查仿真主机吞吐，而不是
 直接归因导航策略。
 
-### 9. 双 Lane 运行
+### 9. 可选仿真进度前端
+
+导航栈不依赖 Web 前端，但操作员可以启动固定版本的子模块监测正在运行的仿真。
+必须使用 Lane 专属 ROS domain 和仓库外 run root。以下启动器只启动前端及其 ROS
+遥测 adapter，不会启动 Isaac、InternVLA、Nav2 或运动 publisher：
+
+```bash
+export ROS_DOMAIN_ID="<DOMAIN_ID>"
+export E_MARS_FRONTEND_PYTHON="$PWD/.venv-panel/bin/python"
+export E_MARS_ROS_PYTHON="<ROS_PYTHON>"
+export E_MARS_ROS_SETUP="<ROS_WORKSPACE>/install/setup.bash"
+bash scripts/run_sim_frontend.sh \
+  configs/internnav_t5/lane_b_step3.yaml \
+  /var/tmp/e-mars/sim-panel-"$ROS_DOMAIN_ID"
+```
+
+在可信局域网中打开 `http://<DGX_HOST>:8300/`。前端显示限频相机预览、
+episode/reset/sequence 身份、结构化模型决策、ROS/Nav2/recovery/watchdog 状态、
+命令反馈、延迟和资源遥测。原始 RGB-D/LiDAR/IMU 仍通过 ROS 直接进入导航消费者，
+不能通过 HTTP/JPEG 回灌模型。使用 TERM 或 Ctrl-C 停止前台 launcher；它只清理自己
+拥有的两个进程组，并进行有限等待。
+
+双 Lane 同时使用前端时，必须在配置中设置不同端口，并分别设置 `ROS_DOMAIN_ID`、
+run root 和 `E_MARS_SIM_FRONTEND_LOCK`。前端故障只能记为监测故障，不得终止
+simulator 或 evaluator。
+
+### 10. 双 Lane 运行
 
 每个 Lane 必须独立设置：
 
@@ -398,13 +472,13 @@ command age、GPU/显存、CPU、RAM 和 swap。RTF 低时应先排查仿真主�
 共享 CPU/RAM/SSD/网络让任一 Lane 超过允许退化，则交错运行 Isaac，但两台 DGX
 的开发仍可并行。
 
-### 10. 停止与清理
+### 11. 停止与清理
 
 必须通过拥有资源的 coordinator/lease wrapper 停止。先 TERM，有限等待，必要时
 只对已知 run root 精确 KILL。释放资源前证明 PID/PGID、socket、port、lock 和
 simulator process 为零。SIGTERM 143 只有在零残留成立时才算正常退出。
 
-### 11. 常见故障
+### 12. 常见故障
 
 | 现象 | 优先检查 |
 | --- | --- |

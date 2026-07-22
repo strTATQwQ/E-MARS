@@ -20,7 +20,7 @@ integration baseline and may be isolated in separate environments.
 | Semantic models | Step3-VL-10B BF16, Step-3.7-Flash, Cosmos Reason2 32B BF16 | Instruction normalization, semantic frontier/viewpoint comparison, research alternatives |
 | Model runtime | PyTorch 2.12.1+cu130, Transformers 4.57.6 | Local BF16 loading and inference for pinned components |
 | Protocols | ROS actions/services/messages, TCP/ZeroMQ, JSON, shared memory | Identity-bound model and navigation requests |
-| Operator UI | FastAPI/Uvicorn, WebSocket, HTML/CSS/JS | Cameras, structured decisions, health, runtime diagnostics |
+| Operator UI | Pinned `frontend` Git submodule; FastAPI/Uvicorn, WebSocket, HTML/CSS/JS | Optional simulation cameras, structured decisions, health, runtime diagnostics |
 | Verification | Pytest, shell syntax checks, ROS introspection | Offline contracts and online smoke checks |
 
 ### 2. Hardware roles
@@ -170,7 +170,7 @@ E-MARS 组合机器人中间件、GPU 加速仿真与感知、视觉语言模型
 | 语义模型 | Step3-VL-10B BF16、Step-3.7-Flash、Cosmos Reason2 32B BF16 | 指令规范化、frontier/viewpoint 语义比较和研究替代路线 |
 | 模型运行时 | PyTorch 2.12.1+cu130、Transformers 4.57.6 | 固定组件的本地 BF16 加载与推理 |
 | 协议 | ROS action/service/message、TCP/ZeroMQ、JSON、shared memory | 绑定身份的模型和导航请求 |
-| 操作员 UI | FastAPI/Uvicorn、WebSocket、HTML/CSS/JS | 相机、结构化决策、健康与运行诊断 |
+| 操作员 UI | 固定版本 `frontend` Git 子模块；FastAPI/Uvicorn、WebSocket、HTML/CSS/JS | 可选仿真相机、结构化决策、健康与运行诊断 |
 | 验证 | Pytest、shell 语法检查、ROS introspection | 离线合同和在线 smoke |
 
 ### 2. 硬件角色

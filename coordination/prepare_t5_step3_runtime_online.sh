@@ -36,8 +36,8 @@ if [[ "${INTERNNAV_T5_INSIDE_STEP3_PREPARE:-0}" != 1 ]]; then
   "${git_command[@]}" cat-file -e "$code_sha^{commit}"
   test "$("${git_command[@]}" rev-parse "$code_sha")" = "$code_sha"
   mkdir -p "$result_dir"
-  "${git_command[@]}" archive --format=tar "$code_sha" | gzip -n -9 \
-    >"$result_dir/deployment.tar.gz"
+  bash "$root/scripts/create_source_bundle.sh" "$code_sha" \
+    "$result_dir/deployment.tar.gz" 9
   sha256sum "$result_dir/deployment.tar.gz" | cut -d' ' -f1 \
     >"$result_dir/deployment_archive_sha256.txt"
   env INTERNNAV_T5_INSIDE_STEP3_PREPARE=1 \
