@@ -1,0 +1,8 @@
+schema_version: 1
+target: completion_sim
+mission_normalization:
+  enabled: true
+  provider: step_3_7_flash
+  endpoint: tcp://127.0.0.1:8210
+  timeout_ms: 12000
+  failure_policy: passthrough

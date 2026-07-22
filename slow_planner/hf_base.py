@@ -5,7 +5,7 @@ import time
 from abc import abstractmethod
 from dataclasses import replace
 from io import BytesIO
-from typing import Any
+from typing import Any, Callable, Sequence
 
 from .base import (
     PlannerMetrics,
@@ -252,7 +252,40 @@ class HuggingFaceSlowPlanner(SlowPlanner):
     ) -> tuple[str, PlannerMetrics]:
         images, decode_ms = self._decode_images(request)
         prompt = self.format_prompt(request, correction=correction)
-        inputs, template_ms, processor_ms = self.prepare_inputs(images=images, prompt=prompt)
+        return self.generate_prompt_raw(
+            prompt,
+            images=images,
+            raw_image_resolutions=tuple(
+                (item.width, item.height) for item in request.ordered_images
+            ),
+            image_decode_ms=decode_ms,
+            complete_json_predicate=self.contains_complete_json,
+        )
+
+    def generate_prompt_raw(
+        self,
+        prompt: str,
+        *,
+        images: Sequence[Any] = (),
+        raw_image_resolutions: Sequence[tuple[int, int]] = (),
+        image_decode_ms: float = 0.0,
+        complete_json_predicate: Callable[[str], bool] | None = None,
+    ) -> tuple[str, PlannerMetrics]:
+        """Generate one bounded JSON response from a caller-owned prompt.
+
+        This is used by the one-time Step3 mission normalizer.  It deliberately
+        accepts no raw navigation authority and can run text-only; the normal
+        frontier planner continues to call :meth:`generate_raw` with images.
+        """
+
+        prepared_images = list(images)
+        resolutions = tuple((int(width), int(height)) for width, height in raw_image_resolutions)
+        if len(resolutions) != len(prepared_images):
+            raise ValueError("image resolutions must match prepared images")
+        predicate = complete_json_predicate or self.contains_complete_json
+        inputs, template_ms, processor_ms = self.prepare_inputs(
+            images=prepared_images, prompt=prompt
+        )
         raw_text, generated = instrumented_generate(
             model=self.model,
             tokenizer=self.tokenizer,
@@ -262,16 +295,16 @@ class HuggingFaceSlowPlanner(SlowPlanner):
             stop_on_complete_json=self.stop_on_complete_json,
             generation_wall_budget_s=self.generation_wall_budget_s,
             generation_join_grace_s=self.generation_join_grace_s,
-            complete_json_predicate=self.contains_complete_json,
+            complete_json_predicate=predicate,
         )
-        preprocessing_ms = decode_ms + template_ms + processor_ms
+        preprocessing_ms = float(image_decode_ms) + template_ms + processor_ms
         metrics = PlannerMetrics(
-            image_count=len(images),
-            raw_image_resolutions=tuple((item.width, item.height) for item in request.ordered_images),
+            image_count=len(prepared_images),
+            raw_image_resolutions=resolutions,
             visual_token_count=_visual_token_count(inputs, self.image_token_id),
             input_token_count=int(generated["input_token_count"]),
             output_token_count=int(generated["output_token_count"]),
-            image_decode_ms=decode_ms,
+            image_decode_ms=float(image_decode_ms),
             prompt_template_ms=template_ms,
             processor_ms=processor_ms,
             preprocessing_ms=preprocessing_ms,

@@ -9,12 +9,20 @@ from typing import Any
 
 from .base import (
     PlannerDecision,
+    PlannerMetrics,
     SlowPlannerProtocolError,
     SlowPlannerRequest,
     StructuredPlannerDecision,
 )
 from .lane_b import REV_C_VIEW_ORDER
 from .hf_base import StepVisionLanguagePlanner
+from .mission import (
+    CanonicalMission,
+    MissionNormalizationRequest,
+    contains_complete_normalization_json,
+    normalization_prompt,
+    parse_canonical_mission,
+)
 
 
 CHECKPOINT_KEY_MAPPING_NAME = "step3_flat_checkpoint_to_nested_v1"
@@ -344,6 +352,17 @@ class Step3VLSlowPlanner(StepVisionLanguagePlanner):
         except SlowPlannerProtocolError:
             return False
         return True
+
+    def normalize_instruction(
+        self, request: MissionNormalizationRequest
+    ) -> tuple[CanonicalMission, PlannerMetrics]:
+        """Normalize multilingual operator text before InternVLA can observe it."""
+
+        raw_text, metrics = self.generate_prompt_raw(
+            normalization_prompt(request),
+            complete_json_predicate=contains_complete_normalization_json,
+        )
+        return parse_canonical_mission(request, raw_text), metrics
 
     def prepare_inputs(self, *, images: list[Any], prompt: str) -> tuple[Any, float, float]:
         """Close Step3's forced thinking block before deterministic JSON generation."""

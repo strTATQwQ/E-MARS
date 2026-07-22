@@ -46,6 +46,7 @@ flowchart LR
     subgraph Agent["本地智能体控制链"]
         Bridge["ROS 2 Sensor Bridge"]
         Gate["身份与运动观测门"]
+        Normalize["可选指令规范化：Step3-VL / Step-3.7-Flash"]
         InternVLA["InternVLA 快速导航"]
         Slow["选定慢规划器：Step3-VL / Step 3.7 Flash"]
         Resolver["Typed Command Resolver"]
@@ -58,7 +59,7 @@ flowchart LR
     Episode --> Bridge
     Bridge --> Gate
     Bridge --> Mapping
-    Gate --> InternVLA
+    Gate --> Normalize --> InternVLA
     Gate --> Slow
     InternVLA -->|"局部轨迹 / 动作"| Resolver
     Slow -->|"语义候选决策"| Resolver
@@ -72,6 +73,13 @@ flowchart LR
 高层决策，并与 InternVLA 快速路径在统一命令解析层汇合。模型不直接发布
 底层速度；Typed Command Resolver 校验身份、时效和候选边界后，才把命令
 交给 Nav2、恢复逻辑和 watchdog 执行。
+
+在 `sim` 分支，任务入口还可选择先用 **Step3-VL-10B**（本地模型）或
+**Step-3.7-Flash**（OpenAI-compatible API）把中文或其他语言规范化为受限英文
+导航指令，再交给 InternVLA。该层默认关闭，因此不会改变冻结 episode；启用时
+两种 provider 只能二选一。超时、abstain 或非法 JSON 的处理由 completion-sim
+配置显式选择 `passthrough` 或 `reject`。API 凭证只从 `STEPFUN_API_KEY` 环境变量
+读取，不写入配置、日志或结果。
 
 The major source packages are:
 
@@ -91,6 +99,9 @@ The major source packages are:
 The slow-advisor stage is required. Select exactly one model for a deployment:
 either **Step3-VL-10B** or **Step-3.7-Flash**. The two choices are mutually
 exclusive and must not be enabled together.
+
+The optional mission-normalization stage uses the same mutually exclusive
+provider choice. See `configs/completion_sim/mission_normalization_*.yaml`.
 
 ## Hardware
 

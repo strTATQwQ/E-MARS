@@ -110,6 +110,32 @@ Relevant repository entry points include:
 - `scripts/run_t5_dgx_lane.sh`
 - `scripts/run_t5_distributed_isaac.sh`
 
+For optional simulation-only language normalization, keep the disabled profile
+as the baseline or select one enabled profile:
+
+```bash
+# Local Step3-VL: reuse the resident service on TCP 8200.
+python scripts/normalize_sim_instruction.py \
+  --config configs/completion_sim/mission_normalization_step3_vl.yaml \
+  --instruction "<TASK>" --mission-id "<MISSION_ID>" \
+  --episode-id "<EPISODE_ID>"
+
+# Hosted Step-3.7-Flash: start the text-only adapter on TCP 8210.
+export STEPFUN_API_KEY="<LOCAL_SECRET>"
+python -m slow_planner.serve \
+  --config configs/slow_models/step_3_7_flash_normalizer.yaml
+python scripts/normalize_sim_instruction.py \
+  --config configs/completion_sim/mission_normalization_step37_flash.yaml \
+  --instruction "<TASK>" --mission-id "<MISSION_ID>" \
+  --episode-id "<EPISODE_ID>"
+```
+
+The command prints only the resolved instruction contract; it does not publish
+motion. A runtime launcher should call it once at mission ingress, then bind the
+canonical instruction and its matching tokenizer output to the episode/reset
+identity before InternVLA starts. Reusing token IDs from a different source
+instruction is invalid. Do not enable both providers for one mission.
+
 These production-oriented launchers intentionally enforce resource leases,
 identity, namespaces, and process ownership. Do not copy machine-specific
 defaults from a launcher into public configuration; provide them through local

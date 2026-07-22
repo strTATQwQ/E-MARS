@@ -47,3 +47,17 @@ language goal, scene images, navigation history, and reachable candidates to
 compare frontier, viewpoint, or motion-primitive choices. Its typed semantic
 decision converges with the InternVLA fast path in the command resolver. Nav2,
 recovery, watchdog, and bounded command components retain motion authority.
+
+## Optional simulation instruction normalization
+
+The `sim` branch can preserve each frozen instruction unchanged (the default),
+or normalize one mission at ingress using exactly one provider:
+
+- local `Step3-VL-10B` through the existing ZeroMQ slow-planner service; or
+- hosted `step-3.7-flash` through StepFun's OpenAI-compatible Chat Completions
+  endpoint.
+
+Both providers return the same bounded JSON contract and release only a
+schema-validated English canonical instruction. The hosted adapter is
+normalization-only: it receives no image, frontier, pose, or velocity data and
+has no navigation authority. Its API key is read from `STEPFUN_API_KEY`.

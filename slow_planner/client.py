@@ -12,6 +12,11 @@ from .base import (
     SlowPlannerRequest,
     StructuredPlannerDecision,
 )
+from .mission import (
+    MISSION_NORMALIZATION_TYPE,
+    CanonicalMission,
+    MissionNormalizationRequest,
+)
 
 
 class SlowPlannerClient:
@@ -87,6 +92,43 @@ class SlowPlannerClient:
         metrics = PlannerMetrics(**metrics_row)
         server_ms = float(response.get("server_total_ms") or metrics.end_to_end_ms)
         return decision, replace(metrics, network_ms=max(0.0, roundtrip_ms - server_ms))
+
+    def normalize_instruction(
+        self, request: MissionNormalizationRequest
+    ) -> tuple[CanonicalMission, PlannerMetrics]:
+        started = time.perf_counter()
+        self.socket.send_json(
+            {"type": MISSION_NORMALIZATION_TYPE, "request": request.metadata()}
+        )
+        response = dict(self.socket.recv_json())
+        roundtrip_ms = (time.perf_counter() - started) * 1000.0
+        if not response.get("ok"):
+            raise RuntimeError(
+                str(response.get("error") or "Step3 mission normalization failed")
+            )
+        mission = CanonicalMission.from_mapping(response["normalization"])
+        if (
+            mission.mission_id != request.mission_id
+            or mission.episode_id != request.episode_id
+            or mission.reset_generation != request.reset_generation
+            or mission.sequence_id != request.sequence_id
+            or mission.source_instruction_sha256
+            != request.metadata()["source_instruction_sha256"]
+            or mission.config_sha256 != request.config_sha256
+        ):
+            raise SlowPlannerProtocolError(
+                "stale or mismatched Step3 mission normalization response"
+            )
+        metrics_row = dict(response["metrics"])
+        metrics_row["raw_image_resolutions"] = tuple(
+            (int(value[0]), int(value[1]))
+            for value in metrics_row.get("raw_image_resolutions", [])
+        )
+        metrics = PlannerMetrics(**metrics_row)
+        server_ms = float(response.get("server_total_ms") or metrics.end_to_end_ms)
+        return mission, replace(
+            metrics, network_ms=max(0.0, roundtrip_ms - server_ms)
+        )
 
     def close(self) -> None:
         self.socket.close(linger=0)

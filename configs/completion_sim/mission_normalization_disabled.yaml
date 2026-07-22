@@ -1,0 +1,8 @@
+schema_version: 1
+target: completion_sim
+mission_normalization:
+  enabled: false
+  provider: step3_vl_10b
+  endpoint: tcp://127.0.0.1:8200
+  timeout_ms: 12000
+  failure_policy: passthrough
