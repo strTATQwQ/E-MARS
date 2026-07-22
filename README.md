@@ -3,10 +3,22 @@
 **E-MARS** — **Edge-deployed Multimodal Agent for Robotic Search-and-rescue**
 
 E-MARS is a ROS 2 navigation stack that combines multimodal language-guided
-planning, InternVLA, optional Step3-VL advice, Nav2, recovery behaviors,
-watchdogs, and bounded robot control. The project targets edge deployment on
-NVIDIA DGX-class hardware with Isaac Sim providing RGB-D, LiDAR, IMU, and Go2
-simulation during development.
+planning, InternVLA fast navigation, Step3-VL multi-view semantic slow planning,
+Nav2, recovery behaviors, watchdogs, and bounded robot control. The project
+targets edge deployment on NVIDIA DGX-class hardware with Isaac Sim providing
+RGB-D, LiDAR, IMU, and Go2 simulation during development.
+
+中文全称：**基于端侧多模态 AI Agent 的自主消防救援机器人**。
+
+## Documentation
+
+- [Deployment guide](docs/deployment.md): local hardware topology, software
+  baseline, model bring-up, health gates, and model optimization.
+- [Technology stack](docs/technology-stack.md): NVIDIA SDKs, models, robotics
+  middleware, communications, and fixed upstream revisions.
+- [Development journal](https://strtatqwq.github.io/dgx-hackathon-Journal/):
+  project motivation, control chain, engineering history, and public release
+  boundary.
 
 ## Branches
 
@@ -22,19 +34,43 @@ freshness or collision policies are not valid real-robot defaults.
 
 ## Architecture
 
-```text
-Natural-language task
-  -> InternVLA policy
-  -> optional bounded Step3-VL advisor
-  -> ROS 2 / Nav2 / recovery / watchdog
-  -> bounded velocity control
-  -> Isaac Go2 simulation
+```mermaid
+flowchart LR
+    subgraph Sim["NVIDIA Isaac Sim / Isaac Lab"]
+        World["USD 场景 + Go2 物理"]
+        Sensors["RGB-D / LiDAR / IMU / Odom / Clock"]
+        Episode["Episode / Reset / Evaluator"]
+    end
 
-Isaac RGB-D + LiDAR + IMU
-  -> ROS 2 sensor bridge
-  -> localization / mapping / local costmap
-  -> InternVLA and Nav2
+    subgraph Agent["本地智能体控制链"]
+        Bridge["ROS 2 Sensor Bridge"]
+        Gate["身份与运动观测门"]
+        InternVLA["InternVLA 快速导航"]
+        Step3["Step3-VL 语义慢规划"]
+        Resolver["Typed Command Resolver"]
+        Mapping["定位 / Nvblox / Costmap"]
+        Nav2["Nav2 规划、控制与恢复"]
+        Controller["Watchdog + Go2 Command Bridge"]
+    end
+
+    World --> Sensors --> Bridge
+    Episode --> Bridge
+    Bridge --> Gate
+    Bridge --> Mapping
+    Gate --> InternVLA
+    Gate --> Step3
+    InternVLA -->|"局部轨迹 / 动作"| Resolver
+    Step3 -->|"语义候选决策"| Resolver
+    Mapping --> Resolver
+    Resolver --> Nav2 --> Controller --> World
+    World -->|"运动与传感器反馈"| Gate
 ```
+
+Step3-VL 是系统的多视角语义慢规划层。它结合自然语言目标、场景图像、
+导航历史和可达候选，为 frontier、viewpoint 或运动 primitive 提供语义比较和
+高层决策，并与 InternVLA 快速路径在统一命令解析层汇合。模型不直接发布
+底层速度；Typed Command Resolver 校验身份、时效和候选边界后，才把命令
+交给 Nav2、恢复逻辑和 watchdog 执行。
 
 The major source packages are:
 
