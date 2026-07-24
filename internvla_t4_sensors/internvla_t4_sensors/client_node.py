@@ -1529,6 +1529,11 @@ class T4OdometryClientNode(InternVLAClientNode):
             raise ClientFailure(
                 STATUS_STALE, "post-reset barrier lacks confirmed old cancellation"
             )
+        with self._step3_timeout_condition:
+            self._step3_timeout_pending = None
+            self._step3_timeout_advice = None
+            self._step3_timeout_override = None
+            self._step3_timeout_interventions = 0
         sim_stamp_ns = _t5_semantic_now_ns(self)
         if sim_stamp_ns is None:
             self._safe_stop(STATUS_STALE, "simulation clock unavailable after reset")
