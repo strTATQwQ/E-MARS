@@ -17,7 +17,7 @@ test "$result_relative" = "results/internnav_t5/step3-prepare-$run_id" || usage
 
 root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
 result_dir="$root/$result_relative"
-target=rail@10.100.120.116
+target=rail@10.100.120.122
 short_sha="${code_sha:0:12}"
 deployment_root="/home/rail/internnav-t1-t2/.t5-deployments/t5step3-${run_id}-${short_sha}"
 remote_result="/home/rail/internnav-t1-t2/results/t5_step3_prepare/$run_id"

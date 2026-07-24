@@ -45,7 +45,7 @@ case "$lane" in
     gpu=1
     ros_domain_id=76
     lane_namespace=/t5/lane_b
-    edge_ip=10.100.120.116
+    edge_ip=10.100.120.122
     controller_port=25138
     model_client_port=25239
     oracle_port=25240

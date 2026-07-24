@@ -110,7 +110,7 @@ dgx_run="$dgx_root/results/$run_token"
 x86_run="$x86_root/results/$run_token"
 dgx_ledger="$dgx_root/results/.${run_token}.supervisor.json"
 x86_ledger="$x86_root/results/.${run_token}.supervisor.json"
-dgx_target=rail@10.100.120.116
+dgx_target=rail@10.100.120.122
 x86_target=song@10.100.120.123
 container=internnav_t5_isaac_b
 ssh_options=(-T -o BatchMode=yes -o ConnectTimeout=8 -o ServerAliveInterval=5 -o ServerAliveCountMax=2)

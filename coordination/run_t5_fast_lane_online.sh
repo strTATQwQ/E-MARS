@@ -80,9 +80,9 @@ case "$lane" in
     ;;
   b)
     resource_profile=lane-b
-    dgx_target=rail@10.100.120.116
+    dgx_target=rail@10.100.120.122
     dgx_user=rail
-    dgx_ip=10.100.120.116
+    dgx_ip=10.100.120.122
     dgx_root_key=dgx_b
     x86_root_key=x86_b
     ros_domain_id=76

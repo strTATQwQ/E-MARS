@@ -351,8 +351,8 @@ cleanup_validation_tmp
 
 ssh_options=(-T -o BatchMode=yes -o ConnectTimeout=8 -o ServerAliveInterval=5 -o ServerAliveCountMax=2)
 dgx_a_target=railgun@10.100.100.128
-dgx_b_target=rail@10.100.120.116
-x86_target=song@10.100.120.111
+dgx_b_target=rail@10.100.120.122
+x86_target=song@10.100.120.123
 tag="${grant_id}-${authorization_ref:0:12}"
 dgx_a_root="/home/railgun/internnav-t1-t2/.t5-deployments/${tag}-lane-a"
 dgx_b_root="/home/rail/internnav-t1-t2/.t5-deployments/${tag}-lane-b"
@@ -967,9 +967,9 @@ trap 'exit 130' INT TERM HUP
 remote "$dgx_a_target" \
   "set -euo pipefail; test \"\$(id -un)\" = railgun; ip -4 -o addr show | grep -Fq ' 10.100.100.128/'; command -v setsid >/dev/null; command -v nvidia-smi >/dev/null; test ! -e '$dgx_a_root'; test -d /home/railgun/internnav-t0/InternNav/checkpoints/InternVLA-N1-DualVLN; test -x /home/railgun/internnav-t0/venv-model/bin/python"
 remote "$dgx_b_target" \
-  "set -euo pipefail; test \"\$(id -un)\" = rail; ip -4 -o addr show | grep -Fq ' 10.100.120.116/'; command -v setsid >/dev/null; command -v nvidia-smi >/dev/null; test ! -e '$dgx_b_root'; test -d /home/rail/internnav-t0/InternNav/checkpoints/InternVLA-N1-DualVLN; test -x /home/rail/internnav-t0/venv-model/bin/python"
+  "set -euo pipefail; test \"\$(id -un)\" = rail; ip -4 -o addr show | grep -Fq ' 10.100.120.122/'; command -v setsid >/dev/null; command -v nvidia-smi >/dev/null; test ! -e '$dgx_b_root'; test -d /home/rail/internnav-t0/InternNav/checkpoints/InternVLA-N1-DualVLN; test -x /home/rail/internnav-t0/venv-model/bin/python"
 remote "$x86_target" \
-  "set -euo pipefail; test \"\$(id -un)\" = song; ip -4 -o addr show | grep -Fq ' 10.100.120.111/'; command -v flock >/dev/null; command -v docker >/dev/null; command -v nvidia-smi >/dev/null; test ! -e '$x86_prepare_root'; test ! -e '$x86_a_root'; test ! -e '$x86_b_root'; test -f '$dataset_root/val_unseen/val_unseen.json.gz'; test \"\$(sha256sum '$dataset_root/val_unseen/val_unseen.json.gz' | cut -d' ' -f1)\" = '$dataset_sha256'; for c in internnav_t5_isaac_a internnav_t5_isaac_b; do if docker container inspect \"\$c\" >/dev/null 2>&1; then test \"\$(docker inspect -f '{{.State.Running}}' \"\$c\")\" != true; fi; done"
+  "set -euo pipefail; test \"\$(id -un)\" = song; ip -4 -o addr show | grep -Fq ' 10.100.120.123/'; command -v flock >/dev/null; command -v docker >/dev/null; command -v nvidia-smi >/dev/null; test ! -e '$x86_prepare_root'; test ! -e '$x86_a_root'; test ! -e '$x86_b_root'; test -f '$dataset_root/val_unseen/val_unseen.json.gz'; test \"\$(sha256sum '$dataset_root/val_unseen/val_unseen.json.gz' | cut -d' ' -f1)\" = '$dataset_sha256'; for c in internnav_t5_isaac_a internnav_t5_isaac_b; do if docker container inspect \"\$c\" >/dev/null 2>&1; then test \"\$(docker inspect -f '{{.State.Running}}' \"\$c\")\" != true; fi; done"
 
 # Arm host-persistent quarantine before the first deployment mutation. The
 # EXIT cleanup removes each marker only after that host proves process, PGID,

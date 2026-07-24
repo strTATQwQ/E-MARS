@@ -91,7 +91,7 @@ test "$(sha256sum "$archive" | cut -d' ' -f1)" = "$archive_sha"
 tag="${run_id}-${code_sha:0:12}"
 dgx_root="/home/rail/internnav-t1-t2/.t5-deployments/${tag}-lane-b"
 x86_root="/home/song/internnav-t1-t2/.t5-deployments/${tag}-isaac-b"
-dgx_target=rail@10.100.120.116
+dgx_target=rail@10.100.120.122
 x86_target=song@10.100.120.123
 ssh_options=(-T -o BatchMode=yes -o ConnectTimeout=8 -o ServerAliveInterval=5 -o ServerAliveCountMax=2)
 

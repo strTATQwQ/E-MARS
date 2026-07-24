@@ -18,7 +18,7 @@ test "$result_relative" = "results/internnav_t5/dgx-b-coexistence-$run_id" || us
 
 root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
 result_dir="$root/$result_relative"
-target=rail@10.100.120.116
+target=rail@10.100.120.122
 remote_result="/home/rail/internnav-t1-t2/results/t5_dgx_b_coexistence/$run_id"
 step3_model=/home/rail/ai-stack/models/Step3-VL-10B
 step3_venv=/home/rail/ai-stack/venvs/step3-vl-10b-tf4.57.6
@@ -65,7 +65,7 @@ run_id="$7"
 ports=(8200 8300 25138 25239 25240 25241)
 
 test "$(id -un)" = rail
-ip -4 -o addr show | grep -Fq ' 10.100.120.116/'
+ip -4 -o addr show | grep -Fq ' 10.100.120.122/'
 test ! -L "$deployment"
 test "$(readlink -f -- "$deployment")" = "$deployment"
 test "$(cat "$deployment/T5_DEPLOYMENT_REF")" = "$code_sha"

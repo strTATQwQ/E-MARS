@@ -12,7 +12,7 @@ def _text() -> str:
 def test_coexistence_online_holds_only_dgx_b_and_uses_exact_lane_b_ref() -> None:
     text = _text()
     assert 'with_resource_lease.sh" dgx-b' in text
-    assert "10.100.120.116" in text
+    assert "10.100.120.122" in text
     assert "T5_DEPLOYMENT_REF" in text
     assert "-${code_sha:0:12}-lane-b" in text
     assert "10.100.100.128" not in text

@@ -66,9 +66,9 @@ def test_v0_manifests_remain_historical_evidence() -> None:
             encoding="utf-8"
         )
     )
-    assert topology["roles"]["isaac_x86"]["host"] == "10.100.120.111"
-    assert d0["lanes"]["a"]["isaac"] == "song@10.100.120.111"
-    assert d0["lanes"]["b"]["isaac"] == "song@10.100.120.111"
+    assert topology["roles"]["isaac_x86"]["host"] == "10.100.120.123"
+    assert d0["lanes"]["a"]["isaac"] == "song@10.100.120.123"
+    assert d0["lanes"]["b"]["isaac"] == "song@10.100.120.123"
 
 
 def test_gpu_leases_default_to_active_host_but_legacy_global_does_not() -> None:

@@ -10,7 +10,7 @@ def test_step3_online_prepare_uses_only_dgx_b_and_exact_archive() -> None:
     )
     assert 'with_resource_lease.sh" dgx-b' in text
     assert "with_resource_lease.sh\" dgx-a" not in text
-    assert "10.100.120.116" in text
+    assert "10.100.120.122" in text
     assert "10.100.100.128" not in text
     assert 'git_command=(git -C "$root")' in text
     assert 'git_command=(git.exe -C "$root_windows")' in text

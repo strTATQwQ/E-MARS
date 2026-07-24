@@ -28,7 +28,7 @@ def test_lane_entrypoint_has_exact_symmetric_assignments() -> None:
     assert "oracle_port=25140" in text
     assert "identity_prefix='a::'" in text
     assert "expected_user=rail" in text
-    assert "10.100.120.116" in text
+    assert "10.100.120.122" in text
     assert "ros_domain_id=76" in text
     assert "controller_port=25138" in text
     assert "model_client_port=25239" in text

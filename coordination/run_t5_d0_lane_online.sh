@@ -56,9 +56,9 @@ case "$stage_selector" in
     resource_profile=lane-b
     grant_prefix=t5d02
     result_prefix=d0-2-lane-b
-    dgx_target=rail@10.100.120.116
+    dgx_target=rail@10.100.120.122
     dgx_user=rail
-    dgx_ip=10.100.120.116
+    dgx_ip=10.100.120.122
     ros_domain_id=76
     container=internnav_t5_isaac_b
     other_container=internnav_t5_isaac_a
@@ -607,7 +607,7 @@ trap - EXIT
 cleanup_validation_tmp
 
 ssh_options=(-T -o BatchMode=yes -o ConnectTimeout=8 -o ServerAliveInterval=5 -o ServerAliveCountMax=2)
-x86_target=song@10.100.120.111
+x86_target=song@10.100.120.123
 dgx_ssh_pid=""
 x86_ssh_pid=""
 dgx_launch_attempted=0
@@ -977,7 +977,7 @@ trap 'exit 130' INT TERM HUP
 remote "$dgx_target" \
   "set -euo pipefail; test \"\$(id -un)\" = '$dgx_user'; ip -4 -o addr show | grep -Fq ' $dgx_ip/'; test \"\$(cat '$dgx_root/T5_DEPLOYMENT_REF')\" = '$code_ref'; test -x '$dgx_root/scripts/run_t5_dgx_lane.sh'; test -f '$dgx_root/ros_ws/install/setup.bash'; test ! -e '$dgx_run'; test ! -e '$dgx_supervisor_ledger'; test \"\$(sha256sum '$map_manifest' | cut -d' ' -f1)\" = '$map_manifest_sha256'"
 remote "$x86_target" \
-  "set -euo pipefail; test \"\$(id -un)\" = song; ip -4 -o addr show | grep -Fq ' 10.100.120.111/'; test \"\$(cat '$x86_root/T5_DEPLOYMENT_REF')\" = '$code_ref'; test -x '$x86_root/scripts/run_t5_distributed_isaac.sh'; test ! -e '$x86_run'; test ! -e '$x86_supervisor_ledger'; test \"\$(sha256sum '$dataset_root/val_unseen/val_unseen.json.gz' | cut -d' ' -f1)\" = '$dataset_sha256'; test \"\$(docker inspect -f '{{.State.Running}}' '$container')\" = false; test \"\$(docker inspect -f '{{.State.Running}}' '$other_container')\" = false; test \"\$(docker inspect -f '{{index .Config.Labels \"internnav.t5.lane\"}}' '$container')\" = '$lane'; test \"\$(docker inspect -f '{{index .Config.Labels \"internnav.t5.gpu\"}}' '$container')\" = '$gpu'; test \"\$(docker inspect -f '{{.HostConfig.CpusetCpus}}' '$container')\" = '$cpuset'"
+  "set -euo pipefail; test \"\$(id -un)\" = song; ip -4 -o addr show | grep -Fq ' 10.100.120.123/'; test \"\$(cat '$x86_root/T5_DEPLOYMENT_REF')\" = '$code_ref'; test -x '$x86_root/scripts/run_t5_distributed_isaac.sh'; test ! -e '$x86_run'; test ! -e '$x86_supervisor_ledger'; test \"\$(sha256sum '$dataset_root/val_unseen/val_unseen.json.gz' | cut -d' ' -f1)\" = '$dataset_sha256'; test \"\$(docker inspect -f '{{.State.Running}}' '$container')\" = false; test \"\$(docker inspect -f '{{.State.Running}}' '$other_container')\" = false; test \"\$(docker inspect -f '{{index .Config.Labels \"internnav.t5.lane\"}}' '$container')\" = '$lane'; test \"\$(docker inspect -f '{{index .Config.Labels \"internnav.t5.gpu\"}}' '$container')\" = '$gpu'; test \"\$(docker inspect -f '{{.HostConfig.CpusetCpus}}' '$container')\" = '$cpuset'"
 capture_container_inspect prestart
 assert_other_lane_quiet
 

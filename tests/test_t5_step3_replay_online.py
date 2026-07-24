@@ -9,7 +9,7 @@ def test_step3_replay_is_lane_b_only_bounded_and_exact() -> None:
         encoding="utf-8"
     )
     assert 'with_resource_lease.sh" dgx-b' in text
-    assert "10.100.120.116" in text
+    assert "10.100.120.122" in text
     assert "10.100.100.128" not in text
     assert "T5_DEPLOYMENT_REF" in text
     assert "--mode bounded_advisor" in text

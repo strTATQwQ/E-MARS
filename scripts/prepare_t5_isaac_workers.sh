@@ -128,7 +128,7 @@ prepare_lane() {
     identity_prefix='a::'
   else
     namespace=/t5/lane_b
-    static_peer=10.100.120.116
+    static_peer=10.100.120.122
     identity_prefix='b::'
   fi
   local lane_root="$worker_root/$lane"

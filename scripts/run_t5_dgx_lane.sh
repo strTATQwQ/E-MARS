@@ -36,7 +36,7 @@ case "$lane" in
     ;;
   b)
     expected_user=rail
-    lane_ip="${INTERNVLA_T5_LANE_IP:-10.100.120.116}"
+    lane_ip="${INTERNVLA_T5_LANE_IP:-10.100.120.122}"
     ros_domain_id=76
     lane_namespace=/t5/lane_b
     controller_port=25138

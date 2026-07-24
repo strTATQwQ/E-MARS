@@ -186,7 +186,7 @@ class LaneBStep3ROS2IPCAgentClient(ROS2IPCAgentClient):
                 self._t5_camera_sensor_identity
                 and self.identity_prefix == "b::"
                 and os.environ.get("INTERNNAV_T5_LANE", "") == "b"
-                and self.tcp_endpoint == "tcp://10.100.120.116:25239"
+                and self.tcp_endpoint == "tcp://10.100.120.122:25239"
             ):
                 raise RuntimeError("Step3 live snapshot transport is restricted to T5 Lane B")
             result_root = Path(os.environ.get("INTERNVLA_T4_RESULT_ROOT", "")).resolve()

@@ -27,7 +27,7 @@ case "$prepare_scope" in
 esac
 ssh_options=(-T -o BatchMode=yes -o ConnectTimeout=8 -o ServerAliveInterval=5 -o ServerAliveCountMax=2)
 dgx_a_target=railgun@10.100.100.128
-dgx_b_target=rail@10.100.120.116
+dgx_b_target=rail@10.100.120.122
 x86_ip="${ISAAC_HOST:-10.100.120.123}"
 [[ "$x86_ip" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]] || {
   echo "ISAAC_HOST must be an IPv4 address" >&2
@@ -1112,7 +1112,7 @@ inside_main() {
     dgx_b)
       test "${INTERNNAV_T5_RESOURCE_LEASE_ACK:-}" = dgx-b
       target="$dgx_b_target"; destination="$dgx_b_root"
-      scope_roots="$dgx_b_root"; expected_user=rail; expected_ip=10.100.120.116
+      scope_roots="$dgx_b_root"; expected_user=rail; expected_ip=10.100.120.122
       ;;
     x86)
       test "${INTERNNAV_T5_RESOURCE_LEASE_ACK:-}" = isaac

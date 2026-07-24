@@ -18,7 +18,7 @@ test "$result_relative" = "results/internnav_t5/step3-replay-$run_id" || usage
 
 root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
 result_dir="$root/$result_relative"
-target=rail@10.100.120.116
+target=rail@10.100.120.122
 remote_result="/home/rail/internnav-t1-t2/results/t5_step3_replay/$run_id"
 model_path=/home/rail/ai-stack/models/Step3-VL-10B
 venv_path=/home/rail/ai-stack/venvs/step3-vl-10b-tf4.57.6

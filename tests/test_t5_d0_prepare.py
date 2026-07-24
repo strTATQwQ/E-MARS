@@ -73,8 +73,8 @@ def test_d0_prepare_uses_all_four_fail_closed_leases_and_no_overwrite() -> None:
 def test_d0_prepare_deploys_same_authorization_ref_to_three_hosts() -> None:
     text = runner_text()
     assert "railgun@10.100.100.128" in text
-    assert "rail@10.100.120.116" in text
-    assert "song@10.100.120.111" in text
+    assert "rail@10.100.120.122" in text
+    assert "song@10.100.120.123" in text
     assert 'archive --format=tar "$authorization_ref"' in text
     assert 'deploy "$dgx_a_target" "$dgx_a_root"' in text
     assert 'deploy "$dgx_b_target" "$dgx_b_root"' in text

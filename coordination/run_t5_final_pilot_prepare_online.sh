@@ -102,7 +102,7 @@ if test "$prepare_scope" = lane-a; then
   x86_a_root="${roots[2]}"
   prepared_lanes=a
 else
-  dgx_b_target=rail@10.100.120.116
+  dgx_b_target=rail@10.100.120.122
   dgx_b_root="${roots[2]}"
   x86_a_root="${roots[3]}"
   x86_b_root="${roots[4]}"
@@ -116,7 +116,7 @@ bindings=(
   "$x86_target|song|$x86_ip|$x86_a_root"
 )
 if test "$prepare_scope" = dual; then
-  bindings+=("$dgx_b_target|rail|10.100.120.116|$dgx_b_root")
+  bindings+=("$dgx_b_target|rail|10.100.120.122|$dgx_b_root")
   bindings+=("$x86_target|song|$x86_ip|$x86_b_root")
 fi
 for binding in "${bindings[@]}"; do
@@ -268,7 +268,7 @@ Path(sys.argv[1]).write_text(json.dumps({"schema_version":1,"status":"PASS","lan
  "code_ref_sha":sys.argv[3],"manifest_path":sys.argv[4],"manifest_sha256":sys.argv[5]},indent=2,sort_keys=True)+"\n",encoding="utf-8")
 PY
 if test "$prepare_scope" = dual; then
-  mapfile -t lane_b_map < <(deploy_map "$dgx_b_target" "$dgx_b_root" rail 10.100.120.116)
+  mapfile -t lane_b_map < <(deploy_map "$dgx_b_target" "$dgx_b_root" rail 10.100.120.122)
   lane_b_map_manifest="${lane_b_map[0]}"
   test "${lane_b_map[1]}" = "$map_manifest_sha"
   python3 - "$result_dir/remote/dgx_b_map.json" b "$code_sha" \

@@ -37,7 +37,7 @@ ssh -o BatchMode=yes -o StrictHostKeyChecking=yes railgun@10.100.100.128 \
   "set -euo pipefail; cd '$source_root'; find . -type f -print0 | sort -z | xargs -0 sha256sum" \
   >"$result_dir/source.sha256" &
 source_pid=$!
-ssh -o BatchMode=yes -o StrictHostKeyChecking=yes rail@10.100.120.116 \
+ssh -o BatchMode=yes -o StrictHostKeyChecking=yes rail@10.100.120.122 \
   "set -euo pipefail; cd '$destination_root'; find . -type f -print0 | sort -z | xargs -0 sha256sum" \
   >"$result_dir/destination.sha256" &
 destination_pid=$!
@@ -69,7 +69,7 @@ payload = {
     "schema_version": 1,
     "status": "COPY_VERIFIED" if all(checks.values()) else "FAIL",
     "source": "railgun@10.100.100.128:/home/railgun/ai-stack/models/Step3-VL-10B",
-    "destination": "rail@10.100.120.116:/home/rail/ai-stack/models/Step3-VL-10B",
+    "destination": "rail@10.100.120.122:/home/rail/ai-stack/models/Step3-VL-10B",
     "file_count": len(rows),
     "manifest_sha256": hashlib.sha256(source).hexdigest(),
     "checks": checks,

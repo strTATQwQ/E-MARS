@@ -34,7 +34,7 @@
       "isaac_clock_udp_port": 25141
     },
     "dgx_b": {
-      "host": "10.100.120.116",
+      "host": "10.100.120.122",
       "user": "rail",
       "cuda_visible_devices": "0",
       "lock_path": "/tmp/internnav_dgx.lock",
@@ -47,7 +47,7 @@
       "isaac_clock_udp_port": 25241
     },
     "isaac_x86": {
-      "host": "10.100.120.111",
+      "host": "10.100.120.123",
       "user": "song",
       "gpu0": "lane_a_isaac_worker",
       "gpu1": "lane_b_isaac_worker",

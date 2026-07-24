@@ -69,7 +69,7 @@ case "$scope" in
     specifications+=("railgun@10.100.100.128|/tmp/internnav_dgx.quarantine|dgx_a")
     ;;
   dgx-b)
-    specifications+=("rail@10.100.120.116|/tmp/internnav_dgx.quarantine|dgx_b")
+    specifications+=("rail@10.100.120.122|/tmp/internnav_dgx.quarantine|dgx_b")
     ;;
   isaac-gpu0)
     specifications+=("song@$t5_isaac_ip|/tmp/internnav_isaac_gpu0.quarantine|x86_gpu0")
@@ -84,7 +84,7 @@ case "$scope" in
     ;;
   all)
     specifications+=("railgun@10.100.100.128|/tmp/internnav_dgx.quarantine|dgx_a")
-    specifications+=("rail@10.100.120.116|/tmp/internnav_dgx.quarantine|dgx_b")
+    specifications+=("rail@10.100.120.122|/tmp/internnav_dgx.quarantine|dgx_b")
     specifications+=("song@$t5_isaac_ip|/tmp/internnav_isaac.quarantine|x86")
     specifications+=("song@$t5_isaac_ip|/tmp/internnav_isaac_gpu0.quarantine|x86_gpu0")
     specifications+=("song@$t5_isaac_ip|/tmp/internnav_isaac_gpu1.quarantine|x86_gpu1")

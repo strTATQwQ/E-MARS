@@ -130,7 +130,7 @@ def test_stale_cache_fixture_fails_closed() -> None:
 def test_stale_dds_peer_or_identity_fixture_fails_closed() -> None:
     expected_value = expected()
     actual = inspected(expected_value)
-    replace_env(actual, "ROS_STATIC_PEERS", "10.100.120.116")
+    replace_env(actual, "ROS_STATIC_PEERS", "10.100.120.122")
     replace_env(actual, "INTERNNAV_T5_ID_PREFIX", "b::")
     result = MODULE.validate(expected_value, actual)
     assert result["status"] == "FAIL"

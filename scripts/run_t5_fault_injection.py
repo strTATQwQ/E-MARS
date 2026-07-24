@@ -118,7 +118,7 @@ class Director:
         self.dgx_run = _validate_remote_path(arguments.dgx_run)
         self.x86_run = _validate_remote_path(arguments.x86_run)
         self.dgx = Remote(
-            "railgun@10.100.100.128" if self.lane == "a" else "rail@10.100.120.116"
+            "railgun@10.100.100.128" if self.lane == "a" else "rail@10.100.120.122"
         )
         self.x86 = Remote("song@10.100.120.123")
         self.wall_timeout = float(arguments.wall_liveness_timeout_sec)

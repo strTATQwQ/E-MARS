@@ -12,7 +12,7 @@ def test_step3_copy_verifier_holds_both_dgx_locks_and_hashes_in_parallel() -> No
         'with_resource_lease.sh" dgx-b'
     )
     assert "railgun@10.100.100.128" in text
-    assert "rail@10.100.120.116" in text
+    assert "rail@10.100.120.122" in text
     assert text.count("sha256sum") == 2
     assert 'source_pid=$!' in text
     assert 'destination_pid=$!' in text

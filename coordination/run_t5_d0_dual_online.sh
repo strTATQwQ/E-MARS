@@ -286,9 +286,9 @@ trap - EXIT
 cleanup_validation_tmp
 
 ssh_options=(-T -o BatchMode=yes -o ConnectTimeout=8 -o ServerAliveInterval=5 -o ServerAliveCountMax=2)
-x86_target=song@10.100.120.111
+x86_target=song@10.100.120.123
 dgx_a_target=railgun@10.100.100.128
-dgx_b_target=rail@10.100.120.116
+dgx_b_target=rail@10.100.120.122
 containers=(internnav_t5_isaac_a internnav_t5_isaac_b)
 declare -A ssh_pid container_started
 declare -A launch_attempted
@@ -610,8 +610,8 @@ trap 'exit 130' INT TERM HUP
 
 # Exact-ref, stopped-container and free-endpoint preflight on all three hosts.
 remote "$dgx_a_target" "set -euo pipefail; test \"\$(id -un)\" = railgun; ip -4 -o addr show | grep -Fq ' 10.100.100.128/'; test \"\$(cat '$dgx_a_root/T5_DEPLOYMENT_REF')\" = '$code_ref'; test -x '$dgx_a_root/scripts/run_t5_dgx_lane.sh'; test -f '$dgx_a_root/ros_ws/install/setup.bash'; test ! -e '$dgx_a_run'; test ! -e '${supervisor[dgx_a]}'; test \"\$(sha256sum '$map_a'|cut -d' ' -f1)\" = '$map_manifest_sha256'"
-remote "$dgx_b_target" "set -euo pipefail; test \"\$(id -un)\" = rail; ip -4 -o addr show | grep -Fq ' 10.100.120.116/'; test \"\$(cat '$dgx_b_root/T5_DEPLOYMENT_REF')\" = '$code_ref'; test -x '$dgx_b_root/scripts/run_t5_dgx_lane.sh'; test -f '$dgx_b_root/ros_ws/install/setup.bash'; test ! -e '$dgx_b_run'; test ! -e '${supervisor[dgx_b]}'; test \"\$(sha256sum '$map_b'|cut -d' ' -f1)\" = '$map_manifest_sha256'"
-remote "$x86_target" "set -euo pipefail; test \"\$(id -un)\" = song; ip -4 -o addr show | grep -Fq ' 10.100.120.111/'; for root in '$x86_a_root' '$x86_b_root'; do test \"\$(cat \"\$root/T5_DEPLOYMENT_REF\")\" = '$code_ref'; test -x \"\$root/scripts/run_t5_distributed_isaac.sh\"; done; test ! -e '$x86_a_run'; test ! -e '$x86_b_run'; test ! -e '${supervisor[x86_a]}'; test ! -e '${supervisor[x86_b]}'; test \"\$(sha256sum '$dataset_root/val_unseen/val_unseen.json.gz'|cut -d' ' -f1)\" = '$dataset_sha256'; for c in internnav_t5_isaac_a internnav_t5_isaac_b; do test \"\$(docker inspect -f '{{.State.Running}}' \"\$c\")\" = false; test \"\$(docker inspect -f '{{.State.Pid}}' \"\$c\")\" = 0; done; for p in 25137 25138 25139 25140 25141 25239 25240 25241; do test -z \"\$(ss -H -lntup|grep -E \"[:.]\$p[[:space:]]\"||true)\"; done; flock -n /tmp/internnav_t5_isaac_shared_assets.lock true"
+remote "$dgx_b_target" "set -euo pipefail; test \"\$(id -un)\" = rail; ip -4 -o addr show | grep -Fq ' 10.100.120.122/'; test \"\$(cat '$dgx_b_root/T5_DEPLOYMENT_REF')\" = '$code_ref'; test -x '$dgx_b_root/scripts/run_t5_dgx_lane.sh'; test -f '$dgx_b_root/ros_ws/install/setup.bash'; test ! -e '$dgx_b_run'; test ! -e '${supervisor[dgx_b]}'; test \"\$(sha256sum '$map_b'|cut -d' ' -f1)\" = '$map_manifest_sha256'"
+remote "$x86_target" "set -euo pipefail; test \"\$(id -un)\" = song; ip -4 -o addr show | grep -Fq ' 10.100.120.123/'; for root in '$x86_a_root' '$x86_b_root'; do test \"\$(cat \"\$root/T5_DEPLOYMENT_REF\")\" = '$code_ref'; test -x \"\$root/scripts/run_t5_distributed_isaac.sh\"; done; test ! -e '$x86_a_run'; test ! -e '$x86_b_run'; test ! -e '${supervisor[x86_a]}'; test ! -e '${supervisor[x86_b]}'; test \"\$(sha256sum '$dataset_root/val_unseen/val_unseen.json.gz'|cut -d' ' -f1)\" = '$dataset_sha256'; for c in internnav_t5_isaac_a internnav_t5_isaac_b; do test \"\$(docker inspect -f '{{.State.Running}}' \"\$c\")\" = false; test \"\$(docker inspect -f '{{.State.Pid}}' \"\$c\")\" = 0; done; for p in 25137 25138 25139 25140 25141 25239 25240 25241; do test -z \"\$(ss -H -lntup|grep -E \"[:.]\$p[[:space:]]\"||true)\"; done; flock -n /tmp/internnav_t5_isaac_shared_assets.lock true"
 
 # Arm every involved host after read-only preflight and before capacity output,
 # remote supervisors, or either Isaac container can be created/started.

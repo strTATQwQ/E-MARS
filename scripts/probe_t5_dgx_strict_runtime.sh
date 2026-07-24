@@ -15,7 +15,7 @@ case "$lane" in
     step3_root="/home/railgun/ai-stack"
     ;;
   b)
-    target="${DGX_B_USER:-rail}@${DGX_B_HOST:-10.100.120.116}"
+    target="${DGX_B_USER:-rail}@${DGX_B_HOST:-10.100.120.122}"
     step3_root="/home/rail/ai-stack"
     ;;
   *) usage ;;

@@ -105,7 +105,7 @@ def test_lane_b_has_frozen_gpu_domain_ports_container_and_cpuset() -> None:
     for fragment in (
         "gpu=1",
         "ros_domain_id=76",
-        "edge_ip=10.100.120.116",
+        "edge_ip=10.100.120.122",
         "controller_port=25138",
         "model_client_port=25239",
         "oracle_port=25240",

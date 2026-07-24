@@ -500,7 +500,7 @@ start_ssh_holder() {
       password_file="${DGX_PASSWORD_FILE:-}"
       ;;
     dgx_b)
-      host="${DGX_B_HOST:-10.100.120.116}"
+      host="${DGX_B_HOST:-10.100.120.122}"
       user="${DGX_B_USER:-rail}"
       port="${DGX_B_PORT:-22}"
       lock_file='/tmp/internnav_dgx.lock'
