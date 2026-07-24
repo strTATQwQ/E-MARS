@@ -27,6 +27,7 @@ def _decision(
     sequence: int,
     stop: bool = False,
     model_stop: bool = False,
+    step3_assisted_stop: bool = False,
     action_source: int = 1,
 ) -> dict[str, object]:
     return {
@@ -37,6 +38,12 @@ def _decision(
         "discrete_action": 0 if model_stop else -1,
         "model_discrete_action": 0 if model_stop else 1,
         "model_stop": model_stop,
+        "step3_assisted_stop": step3_assisted_stop,
+        "termination_source": (
+            "step3_assisted_arrival" if step3_assisted_stop else "model_stop"
+            if model_stop
+            else None
+        ),
         "stop": stop,
         "action_source": action_source,
         "status_message": "ok",
@@ -69,6 +76,10 @@ def _fixture(
     trajectory_id: str = "99_7",
     desired_linear: float = 0.2,
 ) -> None:
+    attributed_stop = any(
+        row.get("model_stop") or row.get("step3_assisted_stop")
+        for row in client_rows
+    )
     evaluator = root / "remote/x86/evaluator/attempt"
     _write(
         evaluator / "per_episode.json",
@@ -81,15 +92,15 @@ def _fixture(
                     "duration_sec": 10.0,
                     "step_count": 100,
                     "termination_reason": (
-                        "success" if any(row.get("model_stop") for row in client_rows) else "not_reach_goal"
+                        "success" if attributed_stop else "not_reach_goal"
                     ),
-                    "success": any(row.get("model_stop") for row in client_rows),
+                    "success": attributed_stop,
                     "TL": 1.0,
                     "shortest_path_length": 2.0,
                     "official_metrics": {
                         "ne_m": 1.0,
                         "os": 1,
-                        "sr": int(any(row.get("model_stop") for row in client_rows)),
+                        "sr": int(attributed_stop),
                         "spl": 0.5,
                     },
                 }
@@ -228,6 +239,38 @@ def test_natural_model_stop_satisfies_decision_budget(tmp_path: Path) -> None:
     episode = payload["runs"][0]["episodes"][0]
     assert episode["true_model_decisions"] == 2
     assert episode["natural_model_stop"] is True
+    assert episode["evaluation_valid"] is True
+
+
+def test_step3_assisted_stop_is_attributed_without_model_stop_credit(
+    tmp_path: Path,
+) -> None:
+    run = tmp_path / "run"
+    _fixture(
+        run,
+        [
+            _decision(sequence=0),
+            _decision(
+                sequence=1,
+                stop=True,
+                model_stop=False,
+                step3_assisted_stop=True,
+            ),
+        ],
+    )
+
+    completed, payload = _run(tmp_path, [f"candidate={run}"])
+
+    assert completed.returncode == 0
+    aggregate = payload["runs"][0]["aggregate"]
+    episode = payload["runs"][0]["episodes"][0]
+    assert aggregate["model_stop_count"] == 0
+    assert aggregate["step3_assisted_stop_count"] == 1
+    assert aggregate["terminal_stop_without_model_stop_count"] == 0
+    assert episode["natural_model_stop"] is False
+    assert episode["step3_assisted_stop"] is True
+    assert episode["termination"]["terminal_cause"] == "step3_assisted_stop"
+    assert episode["termination"]["false_termination"] is False
     assert episode["evaluation_valid"] is True
 
 

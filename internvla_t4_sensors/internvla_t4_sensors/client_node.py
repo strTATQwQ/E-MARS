@@ -53,6 +53,7 @@ from rclpy.executors import MultiThreadedExecutor
 from std_msgs.msg import Bool, Int32, String
 
 from .motion_observation_gate import (
+    DECISION_SAFE_STOP_COMPLETE,
     DECISION_SAFE_STOP_STALE,
     DECISION_SAFE_STOP_TIMEOUT,
     GateDecision,
@@ -63,6 +64,13 @@ from .motion_observation_gate import (
     classify_odometry_stamp,
     is_system1_queue_plan_motion,
     resolved_motion_bounds,
+)
+from .step3_arrival_gate import (
+    CONTINUE_NAVIGATION,
+    REQUEST_CONFIRMATION,
+    TERMINATE_ASSISTED,
+    arrival_transition,
+    completed_motion_action,
 )
 
 
@@ -134,6 +142,10 @@ class T4OdometryClientNode(InternVLAClientNode):
     RECOVERY_BOUNDED_FALLBACK = (
         "recovery latch bounded fallback requires fresh trajectory"
     )
+    STEP3_ARRIVAL_ACTION_INTERVAL = 8
+    STEP3_ARRIVAL_MAX_CHECKS = 24
+    STEP3_ARRIVAL_REQUIRED_CONFIRMATIONS = 2
+    STEP3_ARRIVAL_MINIMUM_CONFIDENCE = 0.80
 
     def __init__(self) -> None:
         super().__init__()
@@ -243,6 +255,8 @@ class T4OdometryClientNode(InternVLAClientNode):
         )
         if not 1 <= self._step3_timeout_max_interventions <= 6:
             raise RuntimeError("Step3 timeout interventions must be in [1, 6]")
+        self._step3_arrival_completed_actions = 0
+        self._step3_arrival_checks = 0
         self._last_navigation_instruction = ""
         self.motion_gate_audit_path = (
             self.result_dir / "motion_observation_gate_records.jsonl"
@@ -368,9 +382,6 @@ class T4OdometryClientNode(InternVLAClientNode):
             value = json.loads(str(message.data))
             if not isinstance(value, dict) or value.get("schema_version") != 1:
                 raise ValueError("invalid advice schema")
-            status = str(value.get("status", ""))
-            if status not in {"ADVISE", "FALLBACK"}:
-                raise ValueError("invalid advice status")
             confidence = float(value.get("confidence", 0.0))
             if not math.isfinite(confidence) or not 0.0 <= confidence <= 1.0:
                 raise ValueError("invalid advice confidence")
@@ -381,22 +392,36 @@ class T4OdometryClientNode(InternVLAClientNode):
             pending = self._step3_timeout_pending
             if pending is None:
                 return
+            pending_kind = str(pending.get("kind", ""))
+            status = str(value.get("status", ""))
+            if pending_kind == "motion_timeout_after_confirmed_safe_stop":
+                allowed_statuses = {"ADVISE", "FALLBACK"}
+            elif pending_kind == "arrival_check_after_completed_motion":
+                allowed_statuses = {"ARRIVED", "NOT_ARRIVED", "FALLBACK"}
+            else:
+                self.get_logger().warning("discarding advice for unknown Step3 context")
+                return
+            if status not in allowed_statuses:
+                self.get_logger().warning("discarding Step3 advice with invalid status")
+                return
             observed_identity = (
                 str(value.get("episode_id", "")),
                 int(value.get("reset_generation", -1)),
                 int(value.get("trigger_sequence_id", -1)),
                 str(value.get("trigger_request_id", "")),
+                int(value.get("advisor_round", -1)),
             )
             expected_identity = (
                 pending["episode_id"],
                 pending["reset_generation"],
                 pending["trigger_sequence_id"],
                 pending["trigger_request_id"],
+                pending["advisor_round"],
             )
             if observed_identity != expected_identity:
                 self.get_logger().warning("discarding stale/cross-reset Step3 advice")
                 return
-            if status == "ADVISE":
+            if pending_kind == "motion_timeout_after_confirmed_safe_stop" and status == "ADVISE":
                 action = value.get("advised_action")
                 if (
                     isinstance(action, bool)
@@ -407,6 +432,26 @@ class T4OdometryClientNode(InternVLAClientNode):
                 ):
                     self.get_logger().warning(
                         "discarding illegal or low-confidence Step3 advice"
+                    )
+                    return
+            if pending_kind == "arrival_check_after_completed_motion":
+                snapshot_stamp_ns = value.get("snapshot_sim_stamp_ns")
+                if status != "FALLBACK" and (
+                    isinstance(snapshot_stamp_ns, bool)
+                    or not isinstance(snapshot_stamp_ns, int)
+                    or snapshot_stamp_ns
+                    <= int(pending.get("minimum_snapshot_sim_stamp_ns", 0))
+                    or snapshot_stamp_ns
+                    < int(pending.get("camera_sensor_stamp_ns", 0))
+                    or int(value.get("camera_count", 0)) != 4
+                    or (
+                        status == "ARRIVED"
+                        and confidence < self.STEP3_ARRIVAL_MINIMUM_CONFIDENCE
+                    )
+                ):
+                    self.get_logger().warning(
+                        "discarding stale, incomplete, or low-confidence "
+                        "Step3 arrival advice"
                     )
                     return
             self._step3_timeout_advice = value
@@ -444,6 +489,7 @@ class T4OdometryClientNode(InternVLAClientNode):
             "wall_deadline_monotonic_ns": time.monotonic_ns()
             + 12_000_000_000,
             "camera_order": ["front_left", "front", "front_right", "rear"],
+            "advisor_round": 0,
         }
         with self._step3_timeout_condition:
             self._step3_timeout_pending = value
@@ -452,6 +498,77 @@ class T4OdometryClientNode(InternVLAClientNode):
         message.data = json.dumps(value, sort_keys=True, separators=(",", ":"))
         self.step3_timeout_context_publisher.publish(message)
         self._record_motion_gate_event("step3_timeout_requested", token, value)
+
+    def _publish_step3_arrival_context(
+        self,
+        *,
+        token: str,
+        pending: dict[str, Any],
+        advisor_round: int,
+        minimum_snapshot_sim_stamp_ns: int = 0,
+    ) -> bool:
+        """Request one non-control arrival classification while motion is stopped."""
+
+        if (
+            not self._step3_timeout_enabled
+            or self.step3_timeout_context_publisher is None
+            or self._step3_arrival_checks >= self.STEP3_ARRIVAL_MAX_CHECKS
+            or advisor_round not in {1, 2}
+        ):
+            return False
+        action = completed_motion_action(pending)
+        if action is None:
+            return False
+        with self._t4_pose_lock:
+            camera_stamp_ns = int(self._camera_sensor_stamp_ns)
+        value = {
+            "schema_version": 1,
+            "kind": "arrival_check_after_completed_motion",
+            "episode_id": self.episode_id,
+            "reset_generation": self.reset_generation,
+            "trigger_sequence_id": int(
+                pending.get("sequence_id", self.last_committed_sequence)
+            ),
+            "trigger_request_id": str(pending.get("request_id", "")),
+            "expected_sequence_id": int(self.next_sequence_id),
+            "completed_action": action,
+            "instruction": self._last_navigation_instruction,
+            "stop_token": token,
+            "wall_deadline_monotonic_ns": time.monotonic_ns()
+            + 12_000_000_000,
+            "camera_order": ["front_left", "front", "front_right", "rear"],
+            "camera_sensor_stamp_ns": camera_stamp_ns,
+            "minimum_snapshot_sim_stamp_ns": int(minimum_snapshot_sim_stamp_ns),
+            "advisor_round": advisor_round,
+            "required_confirmations": self.STEP3_ARRIVAL_REQUIRED_CONFIRMATIONS,
+        }
+        with self._step3_timeout_condition:
+            self._step3_timeout_pending = value
+            self._step3_timeout_advice = None
+        self._step3_arrival_checks += 1
+        message = String()
+        message.data = json.dumps(value, sort_keys=True, separators=(",", ":"))
+        self.step3_timeout_context_publisher.publish(message)
+        self._record_motion_gate_event("step3_arrival_requested", token, value)
+        return True
+
+    def _maybe_publish_step3_arrival_context(
+        self, *, token: str, pending: dict[str, Any]
+    ) -> None:
+        if not self._step3_timeout_enabled:
+            return
+        self._step3_arrival_completed_actions += 1
+        if (
+            self._step3_arrival_completed_actions
+            % self.STEP3_ARRIVAL_ACTION_INTERVAL
+            != 0
+        ):
+            return
+        self._publish_step3_arrival_context(
+            token=token,
+            pending=pending,
+            advisor_round=1,
+        )
 
     def _request_motion_stop_and_wait(self, decision: GateDecision) -> GateDecision:
         """Publish safe-stop, prove Nav2 cancellation, then arm sensor baselines.
@@ -568,6 +685,8 @@ class T4OdometryClientNode(InternVLAClientNode):
             audit_errors.append(f"cancel barrier audit failed: {exc}")
         if decision.kind == DECISION_SAFE_STOP_TIMEOUT:
             self._publish_step3_timeout_context(token=token, pending=pending)
+        elif decision.kind == DECISION_SAFE_STOP_COMPLETE:
+            self._maybe_publish_step3_arrival_context(token=token, pending=pending)
         if audit_errors:
             self._motion_gate_fault = "; ".join(audit_errors)
             self.get_logger().error(self._motion_gate_fault)
@@ -1077,7 +1196,12 @@ class T4OdometryClientNode(InternVLAClientNode):
         with self._step3_timeout_condition:
             pending = self._step3_timeout_pending
             advice = self._step3_timeout_advice
-            if pending is None or advice is None:
+            if (
+                pending is None
+                or advice is None
+                or pending.get("kind")
+                != "motion_timeout_after_confirmed_safe_stop"
+            ):
                 return
             identity = (
                 str(command.episode_id),
@@ -1159,28 +1283,144 @@ class T4OdometryClientNode(InternVLAClientNode):
 
         if not self._step3_timeout_enabled:
             return None
+        arrival_followup: tuple[str, dict[str, Any], int] | None = None
+        arrival_terminal: tuple[dict[str, Any], dict[str, Any]] | None = None
+        arrival_fallback: tuple[dict[str, Any], dict[str, Any]] | None = None
         with self._step3_timeout_condition:
             pending = self._step3_timeout_pending
             advice = self._step3_timeout_advice
-            if pending is None or advice is not None:
+            if pending is None:
                 return None
             if time.monotonic_ns() >= int(pending["wall_deadline_monotonic_ns"]):
-                self._step3_timeout_advice = {
+                advice = {
                     "schema_version": 1,
                     "status": "FALLBACK",
                     "episode_id": pending["episode_id"],
                     "reset_generation": pending["reset_generation"],
                     "trigger_sequence_id": pending["trigger_sequence_id"],
                     "trigger_request_id": pending["trigger_request_id"],
+                    "advisor_round": pending["advisor_round"],
                     "confidence": 0.0,
                     "reason": "step3_service_wall_timeout",
                 }
+                self._step3_timeout_advice = advice
+            kind = str(pending.get("kind", ""))
+            if kind == "motion_timeout_after_confirmed_safe_stop" and advice is not None:
                 return None
-            remaining = max(
-                0.0,
-                (int(pending["wall_deadline_monotonic_ns"]) - time.monotonic_ns())
-                / 1_000_000_000,
+            if kind == "arrival_check_after_completed_motion" and advice is not None:
+                transition = arrival_transition(
+                    pending,
+                    advice,
+                    required_confirmations=(
+                        self.STEP3_ARRIVAL_REQUIRED_CONFIRMATIONS
+                    ),
+                )
+                if transition.action == REQUEST_CONFIRMATION:
+                    arrival_followup = (
+                        str(pending.get("stop_token", "")),
+                        dict(pending),
+                        int(transition.snapshot_sim_stamp_ns or 0),
+                    )
+                elif transition.action == TERMINATE_ASSISTED:
+                    arrival_terminal = (dict(pending), dict(advice))
+                elif transition.action == CONTINUE_NAVIGATION:
+                    arrival_fallback = (dict(pending), dict(advice))
+                self._step3_timeout_pending = None
+                self._step3_timeout_advice = None
+            if arrival_terminal is None and arrival_fallback is None:
+                remaining = max(
+                    0.0,
+                    (
+                        int(pending["wall_deadline_monotonic_ns"])
+                        - time.monotonic_ns()
+                    )
+                    / 1_000_000_000,
+                )
+            else:
+                remaining = 0.0
+        if arrival_followup is not None:
+            token, previous, first_snapshot_stamp_ns = arrival_followup
+            published = self._publish_step3_arrival_context(
+                token=token,
+                pending=previous,
+                advisor_round=2,
+                minimum_snapshot_sim_stamp_ns=first_snapshot_stamp_ns,
             )
+            if not published:
+                self._record_motion_gate_event(
+                    "step3_arrival_fallback",
+                    token,
+                    {"reason": "arrival_confirmation_budget_exhausted"},
+                )
+                return None
+            pending = self._step3_timeout_pending or previous
+            remaining = 12.0
+        if arrival_fallback is not None:
+            fallback_pending, fallback_advice = arrival_fallback
+            self._record_motion_gate_event(
+                "step3_arrival_not_confirmed",
+                str(fallback_pending.get("stop_token", "")),
+                {
+                    "status": fallback_advice.get("status"),
+                    "reason": fallback_advice.get("reason"),
+                    "confidence": fallback_advice.get("confidence"),
+                    "advisor_round": fallback_pending.get("advisor_round"),
+                },
+            )
+            return None
+        if arrival_terminal is not None:
+            terminal_pending, terminal_advice = arrival_terminal
+            terminal = {
+                "status_code": STATUS_OK,
+                "status_message": (
+                    "Step3 arrival advisor confirmed destination on two "
+                    "fresh safe-hold snapshots"
+                ),
+                "episode_id": self.episode_id,
+                "reset_generation": self.reset_generation,
+                "sequence_id": int(terminal_pending["trigger_sequence_id"]),
+                "request_id": str(terminal_pending["trigger_request_id"]),
+                "sim_stamp_ns": int(sim_stamp_ns),
+                "discrete_action": ACTION_STAND_STILL,
+                "model_discrete_action": int(
+                    terminal_pending.get("completed_action", ACTION_STAND_STILL)
+                ),
+                "stop": True,
+                "model_stop": False,
+                "step3_assisted_stop": True,
+                "termination_source": "step3_assisted_arrival",
+                "step3_arrival_confidence": float(terminal_advice["confidence"]),
+                "step3_arrival_confirmations": (
+                    self.STEP3_ARRIVAL_REQUIRED_CONFIRMATIONS
+                ),
+                "step3_arrival_snapshot_id": str(
+                    terminal_advice.get("snapshot_id", "")
+                ),
+                "control_mode": self.control_mode,
+                "action_source": 1,
+                "trajectory_source": 0,
+                "trajectory_valid": False,
+                "local_path": [],
+                "nav2_goal_sent": False,
+                "nav2_plan_valid": False,
+                "motion_observation_gate_only": False,
+                "observation_pose_source": "navigation_odometry",
+                "evaluator_ground_truth_pose_discarded": True,
+                "navigation_odometry_age_sec": age,
+                "navigation_odometry_stamp_ns": int(odom_stamp_ns),
+                "navigation_odometry_serial": int(odom_serial),
+            }
+            self._record_motion_gate_event(
+                "step3_assisted_stop",
+                str(terminal_pending.get("stop_token", "")),
+                {
+                    "termination_source": terminal["termination_source"],
+                    "model_stop": False,
+                    "confidence": terminal["step3_arrival_confidence"],
+                    "confirmations": terminal["step3_arrival_confirmations"],
+                },
+            )
+            return terminal
         return {
             "status_code": STATUS_OK,
             "status_message": "safe-stop held while Step3 timeout advice is pending",
@@ -1198,6 +1438,7 @@ class T4OdometryClientNode(InternVLAClientNode):
             "nav2_plan_valid": False,
             "motion_observation_gate_only": True,
             "step3_timeout_advisor_pending": True,
+            "step3_advisor_kind": str(pending.get("kind", "")),
             "step3_timeout_advisor_remaining_wall_sec": remaining,
             "observation_pose_source": "navigation_odometry",
             "evaluator_ground_truth_pose_discarded": True,
@@ -1534,6 +1775,8 @@ class T4OdometryClientNode(InternVLAClientNode):
             self._step3_timeout_advice = None
             self._step3_timeout_override = None
             self._step3_timeout_interventions = 0
+            self._step3_arrival_completed_actions = 0
+            self._step3_arrival_checks = 0
         sim_stamp_ns = _t5_semantic_now_ns(self)
         if sim_stamp_ns is None:
             self._safe_stop(STATUS_STALE, "simulation clock unavailable after reset")
@@ -1598,6 +1841,8 @@ class T4OdometryClientNode(InternVLAClientNode):
             self._step3_timeout_advice = None
             self._step3_timeout_override = None
             self._step3_timeout_interventions = 0
+            self._step3_arrival_completed_actions = 0
+            self._step3_arrival_checks = 0
         self._motion_gate_fault = None
         sim_stamp_ns = _t5_semantic_now_ns(self)
         if sim_stamp_ns is None:

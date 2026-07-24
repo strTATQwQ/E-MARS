@@ -213,6 +213,8 @@ def _last_response_summary(row: dict[str, Any]) -> dict[str, Any]:
         "model_discrete_action": row.get("model_discrete_action"),
         "stop": row.get("stop"),
         "model_stop": row.get("model_stop"),
+        "step3_assisted_stop": row.get("step3_assisted_stop") is True,
+        "termination_source": row.get("termination_source"),
         "motion_gate_only": row.get("motion_observation_gate_only") is True,
         "motion_gate_kind": _gate_kind(row),
         "status_message": row.get("status_message"),
@@ -655,16 +657,24 @@ def analyze_t5_run(
         gate_kinds = Counter(_gate_kind(row) or "unknown" for row in gate_rows)
         model_stop_count = sum(row.get("model_stop") is True for row in decisions)
         natural_model_stop = model_stop_count > 0
+        step3_assisted_stop_count = sum(
+            row.get("step3_assisted_stop") is True for row in decisions
+        )
+        step3_assisted_stop = step3_assisted_stop_count > 0
         last = selected_client[-1]
         last_kind = _gate_kind(last)
         client_terminal_stop_without_model_stop = (
-            last.get("stop") is True and last.get("model_stop") is not True
+            last.get("stop") is True
+            and last.get("model_stop") is not True
+            and last.get("step3_assisted_stop") is not True
         )
         log_terminal_event = _episode_log_terminal_event(
             log_corroboration, ordinal - 1, len(evaluator_episodes)
         )
         evaluator_action_zero_without_model_stop = (
-            log_terminal_event is not None and not natural_model_stop
+            log_terminal_event is not None
+            and not natural_model_stop
+            and not step3_assisted_stop
         )
         ipc_step_error_termination = bool(
             log_terminal_event is not None
@@ -695,19 +705,25 @@ def analyze_t5_run(
                     "natural_model_stop"
                     if natural_model_stop
                     else (
-                        "unattributed_evaluator_stop"
-                        if evaluator_action_zero_without_model_stop
+                        "step3_assisted_stop"
+                        if step3_assisted_stop
                         else (
-                            "client_stop_without_model_stop"
-                            if client_terminal_stop_without_model_stop
-                            else "no_terminal_stop"
+                            "unattributed_evaluator_stop"
+                            if evaluator_action_zero_without_model_stop
+                            else (
+                                "client_stop_without_model_stop"
+                                if client_terminal_stop_without_model_stop
+                                else "no_terminal_stop"
+                            )
                         )
                     )
                 )
             )
         )
         low_decision_termination = (
-            len(decisions) < minimum_true_decisions and not natural_model_stop
+            len(decisions) < minimum_true_decisions
+            and not natural_model_stop
+            and not step3_assisted_stop
         )
         safety = _episode_safety(selected_controller, max_linear, max_angular)
         failures: list[str] = []
@@ -747,6 +763,8 @@ def analyze_t5_run(
                 "action_sources": _action_source_counts(decisions),
                 "model_stop_count": model_stop_count,
                 "natural_model_stop": natural_model_stop,
+                "step3_assisted_stop_count": step3_assisted_stop_count,
+                "step3_assisted_stop": step3_assisted_stop,
                 "termination": {
                     "evaluator_reason": raw.get("termination_reason"),
                     "evaluator_success": raw.get("success"),
@@ -764,6 +782,7 @@ def analyze_t5_run(
                         client_terminal_stop_without_model_stop
                     ),
                     "terminal_stop_without_model_stop": terminal_stop_without_model_stop,
+                    "step3_assisted_stop": step3_assisted_stop,
                     "safe_stop_terminal_conflation": safe_stop_terminal_conflation,
                     "false_termination": terminal_stop_without_model_stop,
                     "low_true_model_decision_termination": low_decision_termination,
@@ -843,6 +862,9 @@ def analyze_t5_run(
                 for name in ACTION_SOURCES.values()
             },
             "model_stop_count": sum(row["model_stop_count"] for row in episodes),
+            "step3_assisted_stop_count": sum(
+                row["step3_assisted_stop_count"] for row in episodes
+            ),
             "terminal_stop_without_model_stop_count": sum(
                 row["termination"]["terminal_stop_without_model_stop"]
                 for row in episodes

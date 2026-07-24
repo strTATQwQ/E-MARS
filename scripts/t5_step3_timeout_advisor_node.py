@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
-"""Advise one bounded Lane-A primitive after a measured-motion timeout.
+"""Advise one bounded primitive or classify arrival from Rev-C snapshots.
 
 The node has no velocity or terminal-stop publisher.  It only binds a verified
-same-render-tick Rev-C snapshot to SlowPlanner protocol v1 and publishes one
-identity-bound primitive choice (or deterministic fallback) for the existing
-Nav2 adapter.
+same-render-tick Rev-C snapshot to SlowPlanner protocol v1.  The client-side
+termination arbiter, not this node, owns any eventual Step3-assisted STOP.
 """
 
 from __future__ import annotations
@@ -64,9 +63,14 @@ def _append_jsonl(path: Path, value: dict[str, Any]) -> None:
 
 
 def _context(value: dict[str, Any]) -> dict[str, Any]:
+    kind = value.get("kind")
     if (
         value.get("schema_version") != 1
-        or value.get("kind") != "motion_timeout_after_confirmed_safe_stop"
+        or kind
+        not in {
+            "motion_timeout_after_confirmed_safe_stop",
+            "arrival_check_after_completed_motion",
+        }
         or not str(value.get("episode_id", "")).startswith("a::")
         or isinstance(value.get("reset_generation"), bool)
         or not isinstance(value.get("reset_generation"), int)
@@ -75,14 +79,36 @@ def _context(value: dict[str, Any]) -> dict[str, Any]:
         or isinstance(value.get("expected_sequence_id"), bool)
         or not isinstance(value.get("expected_sequence_id"), int)
         or value.get("expected_sequence_id") != value.get("trigger_sequence_id") + 1
-        or isinstance(value.get("excluded_action"), bool)
-        or not isinstance(value.get("excluded_action"), int)
-        or value.get("excluded_action") not in PRIMITIVES
         or value.get("camera_order") != list(CAMERA_ORDER)
         or not str(value.get("trigger_request_id", ""))
         or not str(value.get("instruction", "")).strip()
+        or isinstance(value.get("advisor_round"), bool)
+        or not isinstance(value.get("advisor_round"), int)
     ):
-        raise TimeoutAdvisorError("invalid Lane-A timeout context")
+        raise TimeoutAdvisorError("invalid Lane-A Step3 context")
+    if kind == "motion_timeout_after_confirmed_safe_stop":
+        if (
+            value.get("advisor_round") != 0
+            or isinstance(value.get("excluded_action"), bool)
+            or not isinstance(value.get("excluded_action"), int)
+            or value.get("excluded_action") not in PRIMITIVES
+        ):
+            raise TimeoutAdvisorError("invalid Lane-A timeout context")
+    else:
+        if (
+            value.get("advisor_round") not in {1, 2}
+            or value.get("required_confirmations") != 2
+            or isinstance(value.get("completed_action"), bool)
+            or not isinstance(value.get("completed_action"), int)
+            or value.get("completed_action") not in PRIMITIVES
+            or isinstance(value.get("camera_sensor_stamp_ns"), bool)
+            or not isinstance(value.get("camera_sensor_stamp_ns"), int)
+            or value.get("camera_sensor_stamp_ns") <= 0
+            or isinstance(value.get("minimum_snapshot_sim_stamp_ns"), bool)
+            or not isinstance(value.get("minimum_snapshot_sim_stamp_ns"), int)
+            or value.get("minimum_snapshot_sim_stamp_ns") < 0
+        ):
+            raise TimeoutAdvisorError("invalid Lane-A arrival context")
     return value
 
 
@@ -165,17 +191,36 @@ def _planner_request(
         )
         for view_id in CAMERA_ORDER
     )
-    candidates = tuple(
-        primitive
-        for action, primitive in PRIMITIVES.items()
-        if action != int(context["excluded_action"])
-    )
-    instruction = (
-        f"{context['instruction']} Previous bounded action "
-        f"{context['excluded_action']} timed out after confirmed safe-stop. "
-        "Choose one listed short primitive that changes the local motion and "
-        "best escapes the visible blockage; do not stop and do not invent a goal."
-    )
+    if context["kind"] == "motion_timeout_after_confirmed_safe_stop":
+        candidates = tuple(
+            primitive
+            for action, primitive in PRIMITIVES.items()
+            if action != int(context["excluded_action"])
+        )
+        instruction = (
+            f"{context['instruction']} Previous bounded action "
+            f"{context['excluded_action']} timed out after confirmed safe-stop. "
+            "Choose one listed short primitive that changes the local motion and "
+            "best escapes the visible blockage; do not stop and do not invent a goal."
+        )
+        history = (
+            f"timed_out_action={context['excluded_action']}",
+            f"snapshot_sim_stamp_ns={sidecar['sim_stamp_before_ns']}",
+        )
+    else:
+        candidates = tuple(PRIMITIVES.values())
+        instruction = (
+            f"{context['instruction']} The robot is physically safe-stopped after "
+            f"bounded action {context['completed_action']}. Decide only whether the "
+            "instruction's destination is visibly reached now. Return target_found "
+            "only when the current four-camera evidence clearly shows arrival; "
+            "otherwise abstain. Do not select a movement primitive."
+        )
+        history = (
+            f"arrival_confirmation_round={context['advisor_round']}",
+            f"required_confirmations={context['required_confirmations']}",
+            f"snapshot_sim_stamp_ns={sidecar['sim_stamp_before_ns']}",
+        )
     snapshot_id = (
         f"a::{context['episode_id']}::{context['reset_generation']}::"
         f"{context['trigger_sequence_id']}"
@@ -187,12 +232,21 @@ def _planner_request(
         ordered_images=ordered,
         candidate_frontiers=candidates,
         agent_pose=(0.0, 0.0, 0.0, 0.0),
-        compact_history=(
-            f"timed_out_action={context['excluded_action']}",
-            f"snapshot_sim_stamp_ns={sidecar['sim_stamp_before_ns']}",
-        ),
+        compact_history=history,
         timestamp=time.time(),
     )
+
+
+def _arrival_outcome(
+    decision: Any, minimum_confidence: float
+) -> tuple[str, str]:
+    if (
+        decision.decision == "target_found"
+        and not decision.fallback_used
+        and float(decision.confidence) >= minimum_confidence
+    ):
+        return "ARRIVED", "step3_visible_destination_reached"
+    return "NOT_ARRIVED", "step3_arrival_not_confirmed"
 
 
 class TimeoutAdvisorNode(Node):
@@ -201,7 +255,8 @@ class TimeoutAdvisorNode(Node):
         self.args = args
         self._lock = threading.Lock()
         self._active = False
-        self._active_identity: tuple[str, int, int, str] | None = None
+        self._active_identity: tuple[str, int, int, str, int] | None = None
+        self._queued_arrival_confirmation: dict[str, Any] | None = None
         self.publisher = self.create_publisher(
             String, "/internvla/t5_step3_timeout_advice", 10
         )
@@ -216,6 +271,7 @@ class TimeoutAdvisorNode(Node):
             "reset_generation": context["reset_generation"],
             "trigger_sequence_id": context["trigger_sequence_id"],
             "trigger_request_id": context["trigger_request_id"],
+            "advisor_round": context["advisor_round"],
             **fields,
         }
         message = String()
@@ -229,15 +285,25 @@ class TimeoutAdvisorNode(Node):
         except (TypeError, ValueError, json.JSONDecodeError, TimeoutAdvisorError) as exc:
             self.get_logger().warning(f"discarding timeout context: {exc}")
             return
+        identity = (
+            context["episode_id"],
+            context["reset_generation"],
+            context["trigger_sequence_id"],
+            context["trigger_request_id"],
+            context["advisor_round"],
+        )
         with self._lock:
             if self._active:
-                identity = (
-                    context["episode_id"],
-                    context["reset_generation"],
-                    context["trigger_sequence_id"],
-                    context["trigger_request_id"],
-                )
                 if identity == self._active_identity:
+                    return
+                if (
+                    self._active_identity is not None
+                    and identity[:4] == self._active_identity[:4]
+                    and self._active_identity[4] == 1
+                    and identity[4] == 2
+                    and self._queued_arrival_confirmation is None
+                ):
+                    self._queued_arrival_confirmation = context
                     return
                 self._publish(
                     context,
@@ -247,12 +313,7 @@ class TimeoutAdvisorNode(Node):
                 )
                 return
             self._active = True
-            self._active_identity = (
-                context["episode_id"],
-                context["reset_generation"],
-                context["trigger_sequence_id"],
-                context["trigger_request_id"],
-            )
+            self._active_identity = identity
         threading.Thread(target=self._work, args=(context,), daemon=True).start()
 
     def _work(self, context: dict[str, Any]) -> None:
@@ -268,12 +329,37 @@ class TimeoutAdvisorNode(Node):
                 deadline=deadline,
             )
             request = _planner_request(context, capture, self.args.result_root)
+            sidecar = _load_regular_json(
+                self.args.result_root / capture["sidecar"], "snapshot sidecar"
+            )
+            snapshot_sim_stamp_ns = int(sidecar["sim_stamp_before_ns"])
+            if snapshot_sim_stamp_ns <= int(
+                context.get("minimum_snapshot_sim_stamp_ns", 0)
+            ):
+                raise TimeoutAdvisorError(
+                    "arrival snapshot did not advance in simulation time"
+                )
             remaining_ms = max(1, int((deadline - time.monotonic()) * 1000.0))
             if remaining_ms <= 1:
                 raise TimeoutAdvisorError("no wall budget remains for Step3")
             with SlowPlannerClient(self.args.endpoint, timeout_ms=remaining_ms) as client:
                 decision, metrics = client.decide(request)
-            if (
+            if context["kind"] == "arrival_check_after_completed_motion":
+                status, reason = _arrival_outcome(
+                    decision, self.args.arrival_minimum_confidence
+                )
+                self._publish(
+                    context,
+                    status=status,
+                    confidence=float(decision.confidence),
+                    reason=reason,
+                    snapshot_id=request.snapshot_id,
+                    snapshot_sim_stamp_ns=snapshot_sim_stamp_ns,
+                    camera_count=len(request.ordered_images),
+                    service_wall_latency_sec=time.monotonic() - started,
+                    metrics=metrics.to_mapping(),
+                )
+            elif (
                 decision.decision != "select_frontier"
                 or decision.frontier_id not in {
                     item.frontier_id for item in request.candidate_frontiers
@@ -287,6 +373,7 @@ class TimeoutAdvisorNode(Node):
                     confidence=float(decision.confidence),
                     reason="step3_abstain_or_low_confidence",
                     snapshot_id=request.snapshot_id,
+                    snapshot_sim_stamp_ns=snapshot_sim_stamp_ns,
                     camera_count=len(request.ordered_images),
                     service_wall_latency_sec=time.monotonic() - started,
                 )
@@ -298,6 +385,7 @@ class TimeoutAdvisorNode(Node):
                     confidence=float(decision.confidence),
                     reason="bounded_visible_escape_primitive",
                     snapshot_id=request.snapshot_id,
+                    snapshot_sim_stamp_ns=snapshot_sim_stamp_ns,
                     camera_count=len(request.ordered_images),
                     service_wall_latency_sec=time.monotonic() - started,
                     metrics=metrics.to_mapping(),
@@ -312,9 +400,25 @@ class TimeoutAdvisorNode(Node):
             )
             self.get_logger().warning(f"Step3 timeout advisor fallback: {exc}")
         finally:
+            queued: dict[str, Any] | None
             with self._lock:
                 self._active = False
                 self._active_identity = None
+                queued = self._queued_arrival_confirmation
+                self._queued_arrival_confirmation = None
+                if queued is not None:
+                    self._active = True
+                    self._active_identity = (
+                        queued["episode_id"],
+                        queued["reset_generation"],
+                        queued["trigger_sequence_id"],
+                        queued["trigger_request_id"],
+                        queued["advisor_round"],
+                    )
+            if queued is not None:
+                threading.Thread(
+                    target=self._work, args=(queued,), daemon=True
+                ).start()
 
 
 def parse_args() -> argparse.Namespace:
@@ -327,11 +431,14 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--deadline-sec", type=float, default=12.0)
     parser.add_argument("--minimum-confidence", type=float, default=0.35)
+    parser.add_argument("--arrival-minimum-confidence", type=float, default=0.80)
     args = parser.parse_args()
     if not 1.0 <= args.deadline_sec <= 12.0:
         parser.error("deadline must be in [1, 12] seconds")
     if not 0.35 <= args.minimum_confidence <= 1.0:
         parser.error("minimum confidence must be in [0.35, 1]")
+    if not 0.80 <= args.arrival_minimum_confidence <= 1.0:
+        parser.error("arrival minimum confidence must be in [0.80, 1]")
     args.result_root = args.result_root.resolve()
     for path in (args.request, args.ack, args.output):
         if not path.resolve().is_relative_to(args.result_root):
