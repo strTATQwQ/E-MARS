@@ -25,6 +25,7 @@ from internvla_ros2.recovery_contract import (
     reject_response,
     response_snapshot,
     restore_response,
+    system2_replan_policy,
     system2_primitive_signature,
     t5_completion_sim_enabled,
     trajectory_signature,
@@ -68,6 +69,7 @@ class T4RecoveryAdapter(ActiveNav2Adapter):
             os.environ.get("INTERNNAV_RUNTIME_POLICY", "") == "completion_sim"
             and os.environ.get("INTERNNAV_SIMULATION_TARGET", "") == "isaac"
         )
+        self.system2_replan_policy = system2_replan_policy()
         factor_defaults = {
             "system_mode": "full_system1_system2",
             "trajectory_mode": "full_trajectory",
@@ -528,27 +530,82 @@ class T4RecoveryAdapter(ActiveNav2Adapter):
                         episode_id=str(command.episode_id),
                         reset_generation=int(command.reset_generation),
                         sequence_id=int(command.sequence_id),
+                        observation_digest=str(command.observation_digest),
                         x=float(odom[0]),
                         y=float(odom[1]),
                         yaw_rad=float(odom[2]),
                     )
                 except (IndexError, TypeError, ValueError):
                     primitive_signature = None
-        signatures = (
-            (signature, primitive_signature)
-            if fresh_system2_action
-            else (signature,)
+        policy = getattr(self, "system2_replan_policy", "observation_bound")
+        # T5 turn primitives rotate about the footprint centre, so all of
+        # their generated path samples intentionally share the same x/y.
+        # observation_bound therefore requires the pose/action/observation
+        # primitive and treats the generated path as supplementary.  strict
+        # reproduces the original dual-signature gate.  raw_wire_warn is an
+        # explicitly scoped completion_sim diagnostic: it records what the
+        # signature gate would reject but lets a finite, identity-bound
+        # System2 primitive reach the existing Nav2 adapter.
+        required_signature = primitive_signature if fresh_system2_action else signature
+        signatures = tuple(
+            candidate
+            for candidate in (
+                (signature, primitive_signature)
+                if fresh_system2_action
+                else (signature,)
+            )
+            if candidate is not None
         )
-        fresh = bool(
+        evidence_signature = signature or primitive_signature
+        evidence_source = (
+            signature_source if signature is not None else "system2_primitive"
+        )
+        signature_fresh = bool(
             self.recovery_replan_armed
-            and all(candidate is not None for candidate in signatures)
+            and required_signature is not None
+            and (
+                not fresh_system2_action
+                or policy != "strict"
+                or signature is not None
+            )
             and all(
                 candidate.absolute_sha256 not in self.recovery_excluded_absolute
                 and candidate.shape_sha256 not in self.recovery_excluded_shape
                 for candidate in signatures
-                if candidate is not None
             )
         )
+        raw_wire_safe = bool(
+            fresh_system2_action
+            and self.recovery_replan_armed
+            and self.latest_odom is not None
+            and all(math.isfinite(float(value)) for value in self.latest_odom)
+        )
+        fresh = bool(
+            raw_wire_safe if policy == "raw_wire_warn" else signature_fresh
+        )
+        if policy == "raw_wire_warn" and raw_wire_safe and not signature_fresh:
+            self._append(
+                {
+                    "schema_version": 1,
+                    "event": "raw_wire_system2_signature_bypass_warn",
+                    "episode_id": str(command.episode_id),
+                    "reset_generation": int(command.reset_generation),
+                    "sequence_id": int(command.sequence_id),
+                    "recovery_id": self.recovery_latched_id,
+                    "absolute_sha256": (
+                        evidence_signature.absolute_sha256
+                        if evidence_signature is not None
+                        else None
+                    ),
+                    "shape_sha256": (
+                        evidence_signature.shape_sha256
+                        if evidence_signature is not None
+                        else None
+                    ),
+                    "trajectory_source": evidence_source,
+                    "deviation": "signature_and_semantic_rejection_warn_only",
+                }
+            )
         if not fresh:
             excluded_after_arm = bool(
                 self.recovery_replan_armed
@@ -613,12 +670,16 @@ class T4RecoveryAdapter(ActiveNav2Adapter):
                     "sequence_id": int(command.sequence_id),
                     "recovery_id": self.recovery_latched_id,
                     "absolute_sha256": (
-                        signature.absolute_sha256 if signature is not None else None
+                        evidence_signature.absolute_sha256
+                        if evidence_signature is not None
+                        else None
                     ),
                     "shape_sha256": (
-                        signature.shape_sha256 if signature is not None else None
+                        evidence_signature.shape_sha256
+                        if evidence_signature is not None
+                        else None
                     ),
-                    "trajectory_source": signature_source,
+                    "trajectory_source": evidence_source,
                     "excluded_hold_count": self.recovery_excluded_hold_count,
                 }
             )
@@ -632,7 +693,7 @@ class T4RecoveryAdapter(ActiveNav2Adapter):
                         "sequence_id": int(command.sequence_id),
                         "recovery_id": self.recovery_latched_id,
                         "excluded_hold_count": self.recovery_excluded_hold_count,
-                        "trajectory_source": signature_source,
+                        "trajectory_source": evidence_source,
                         "motion_disabled": True,
                     }
                 )
@@ -664,9 +725,18 @@ class T4RecoveryAdapter(ActiveNav2Adapter):
                     "reset_generation": int(command.reset_generation),
                     "sequence_id": int(command.sequence_id),
                     "recovery_id": self.recovery_latched_id,
-                    "absolute_sha256": signature.absolute_sha256,
-                    "shape_sha256": signature.shape_sha256,
-                    "trajectory_source": signature_source,
+                    "absolute_sha256": (
+                        evidence_signature.absolute_sha256
+                        if evidence_signature is not None
+                        else None
+                    ),
+                    "shape_sha256": (
+                        evidence_signature.shape_sha256
+                        if evidence_signature is not None
+                        else None
+                    ),
+                    "trajectory_source": evidence_source,
+                    "system2_replan_policy": policy,
                 }
             )
         except BaseException:
@@ -968,6 +1038,7 @@ class T4RecoveryAdapter(ActiveNav2Adapter):
                 "config_sha256": self.ablation_config_sha256,
                 "factors": dict(self.factors),
                 "activation_counts": dict(self.activation_counts),
+                "system2_replan_policy": self.system2_replan_policy,
             }
         )
         super()._write_summary(status)

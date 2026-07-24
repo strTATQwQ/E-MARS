@@ -182,6 +182,7 @@ class ROS2IPCAgentClient:
         )
         self.last_result: dict[str, Any] | None = None
         self.last_error = ""
+        self.last_step_safe_stop_kind: str | None = None
         self._t5_last_camera_sensor_sequence = 0
         self._t5_last_camera_sensor_stamp_ns = 0
         self._t5_camera_sensor_identity = bool(
@@ -362,6 +363,7 @@ class ROS2IPCAgentClient:
     def step(self, obs: list[dict[str, Any]]) -> list[dict[str, Any]]:
         rgb_memory: SharedMemory | None = None
         depth_memory: SharedMemory | None = None
+        self.last_step_safe_stop_kind = None
         try:
             fault_control = getattr(self, "_fault_control", None)
             if fault_control is not None:
@@ -372,6 +374,7 @@ class ROS2IPCAgentClient:
                     self._fault_reset_event_id = reset_event
                     self.last_result = None
                     self.last_error = "injected episode reset safe-stop"
+                    self.last_step_safe_stop_kind = "expected_episode_reset"
                     fault_control.record(
                         reset_event,
                         "episode_reset",
@@ -389,6 +392,7 @@ class ROS2IPCAgentClient:
                     # recovery cannot be masked by a reconnect side effect.
                     self.last_result = None
                     self.last_error = "injected lane network data-plane outage"
+                    self.last_step_safe_stop_kind = "expected_network_outage"
                     return SAFE_STOP_ACTION
             if len(obs) != 1 or not isinstance(obs[0], dict):
                 raise ValueError("InternVLA IPC expects one observation dictionary")
@@ -511,12 +515,15 @@ class ROS2IPCAgentClient:
             marker = "INTERNVLA_LOCAL_IPC_STEP_ERROR"
             if expected_timeout_event is not None:
                 marker = "INTERNVLA_EXPECTED_FAULT_SAFE_STOP"
+                self.last_step_safe_stop_kind = "expected_model_timeout"
                 fault_control.record(
                     expected_timeout_event,
                     "model_request_timeout",
                     "expected_timeout_safe_stop",
                     snapshot.observed_sim_ns,
                 )
+            else:
+                self.last_step_safe_stop_kind = "unexpected_ipc_error"
             print(
                 marker + " "
                 + json.dumps(

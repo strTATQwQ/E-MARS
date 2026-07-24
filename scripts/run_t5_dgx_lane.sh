@@ -58,6 +58,11 @@ case "$candidate_profile" in
   a0|a1|a0+b0|a0+b1|a1+b0|a1+b1|a1+b0+c0|a1+b0+c1|a1+b0+c2|a1+b1+c0|a1+b1+c1|a1+b1+c2) ;;
   *) echo "invalid T5 candidate profile: $candidate_profile" >&2; exit 64 ;;
 esac
+system2_replan_policy="${INTERNVLA_T5_SYSTEM2_REPLAN_POLICY:-observation_bound}"
+case "$system2_replan_policy" in
+  strict|observation_bound|raw_wire_warn) ;;
+  *) echo "invalid System2 replan policy: $system2_replan_policy" >&2; exit 64 ;;
+esac
 
 root="${INTERNNAV_T1_CONTROL_ROOT:-$HOME/internnav-t1-t2}"
 ros_ws="${INTERNVLA_ROS_WS:-$root/ros_ws}"
@@ -88,6 +93,8 @@ esac
 export INTERNNAV_T5_FAULT_INJECTION_PROFILE="$fault_injection_profile"
 step3_live_advisor="${INTERNNAV_T5_STEP3_LIVE_ADVISOR:-0}"
 case "$step3_live_advisor" in 0|1) ;; *) usage ;; esac
+step3_timeout_advisor="${INTERNVLA_T5_STEP3_TIMEOUT_ADVISOR:-0}"
+case "$step3_timeout_advisor" in 0|1) ;; *) usage ;; esac
 live_frontier_capture="${INTERNNAV_T5_LIVE_FRONTIER_CAPTURE:-$step3_live_advisor}"
 case "$live_frontier_capture" in 0|1) ;; *) usage ;; esac
 if test "$live_frontier_capture" = 1; then
@@ -100,6 +107,17 @@ if test "$step3_live_advisor" = 1; then
   test "$strict_extension_profile" = off
   test "$nvblox_mode" = off
   test "$fault_injection_profile" = off
+fi
+if test "$step3_timeout_advisor" = 1; then
+  test "$lane" = a
+  test "$mode" = model
+  test "$candidate_profile" = recovery_a
+  test "$strict_extension_profile" = off
+  test "$nvblox_mode" = off
+  test "$fault_injection_profile" = off
+  test "$system2_replan_policy" = observation_bound
+  test "$step3_live_advisor" = 0
+  test "$live_frontier_capture" = 0
 fi
 if test "$cuvslam_mode" = shadow; then
   test "$lane" = a
@@ -183,6 +201,11 @@ for candidate_assignment in "${candidate_env[@]}"; do
   fi
 done
 case "$effective_candidate_profile" in baseline|recovery_a) ;; *) exit 64 ;; esac
+if test "$system2_replan_policy" != observation_bound; then
+  test "$lane" = a
+  test "$mode" = model
+  test "$effective_candidate_profile" = recovery_a
+fi
 if test "$effective_candidate_profile" = recovery_a; then
   test -f "$root/scripts/t4_recovery_runtime.py"
   test -f "$root/configs/completion_sim/recovery/profile_a.json"
@@ -847,7 +870,7 @@ python3 - "$result_dir/lane_contract.json" "$lane" "$mode" "$ros_domain_id" \
   "$params" "$nav2_params" "$candidate_profile" "$effective_candidate_profile" \
   "$result_dir/candidate_resolution.json" "$recovery_runtime_manifest" \
   "$candidate_config" "$nvblox_mode" "$nvblox_contract" \
-  "$live_frontier_capture" <<'PY'
+  "$live_frontier_capture" "$system2_replan_policy" <<'PY'
 import hashlib, json, os, sys, time
 from pathlib import Path
 
@@ -920,6 +943,8 @@ Path(sys.argv[1]).write_text(json.dumps({
         "enabled": sys.argv[16] == "recovery_a",
         "runtime_manifest": evidence(sys.argv[18]) if sys.argv[18] else None,
         "candidate_config": evidence(sys.argv[19]) if sys.argv[19] else None,
+        "system2_replan_policy": sys.argv[23],
+        "raw_wire_warn_only": sys.argv[23] == "raw_wire_warn",
     },
     "nvblox": {
         "mode": sys.argv[20],
@@ -958,7 +983,9 @@ common_env=(
   INTERNNAV_T5_FAULT_CONTROL_PATH="$fault_control_path"
   INTERNNAV_T5_FAULT_EVENT_PATH="$fault_event_path"
   INTERNNAV_T5_STEP3_LIVE_ADVISOR="$step3_live_advisor"
+  INTERNVLA_T5_STEP3_TIMEOUT_ADVISOR="$step3_timeout_advisor"
   INTERNNAV_T5_LIVE_FRONTIER_CAPTURE="$live_frontier_capture"
+  INTERNVLA_T5_SYSTEM2_REPLAN_POLICY="$system2_replan_policy"
   INTERNNAV_T5_STEP3_ENDPOINT=tcp://127.0.0.1:8200
   T5_LANE_B_LIVE_FRONTIER_PATH="$result_dir/live_frontier/current.json"
   T5_LANE_B_RESULTS="$result_dir"

@@ -15,8 +15,8 @@ usage: run_t5_fast_lane_online.sh LANE PROFILE RUN_ID CODE_SHA PREP_RESULT_ROOT 
       lidar_off_probe | lidar_720 | depth_stride8 | sensor_2p5hz
       (default navigation_fast; only diagnostic profiles require canary60)
   INTERNNAV_T5_ISAAC_SENSOR_PROFILE: baseline | lane_b_revc_smoke |
-      lane_b_revc_fixed5_capture | lane_b_step3_live_canary
-      (default baseline; Rev-C is Lane B observational evidence only)
+      lane_b_revc_fixed5_capture | lane_b_step3_live_canary |
+      lane_a_step3_timeout_advisor
   INTERNNAV_T5_STRICT_EXTENSION_PROFILE: off | cuvslam_shadow
       (default off; cuVSLAM shadow is Lane A screen3 only)
   INTERNNAV_T5_NVBLOX_MODE: off | shadow | active_local_gt
@@ -26,6 +26,9 @@ usage: run_t5_fast_lane_online.sh LANE PROFILE RUN_ID CODE_SHA PREP_RESULT_ROOT 
       (default follows the Lane-B Step3 advisor; capture-only ROS sidecar)
   INTERNNAV_T5_RUN_MODE: model | oracle
       (default model; oracle is reserved for Lane-A active-local acceptance)
+  INTERNVLA_T5_SYSTEM2_REPLAN_POLICY: strict | observation_bound | raw_wire_warn
+      (default observation_bound; strict/raw-wire are Lane-A Recovery-A
+      completion_sim diagnostics only)
 
 Engineering-only T5 lane runner.  It deliberately does not consume a board
 grant or a D0 predecessor.  A run is bound to one clean code commit and one
@@ -115,6 +118,15 @@ else
   candidate_profile=baseline
 fi
 case "$candidate_profile" in baseline|recovery_a) ;; a0|a1|a0+b0|a0+b1|a1+b0|a1+b1|a1+b0+c0|a1+b0+c1|a1+b0+c2|a1+b1+c0|a1+b1+c1|a1+b1+c2) ;; *) usage ;; esac
+system2_replan_policy="${INTERNVLA_T5_SYSTEM2_REPLAN_POLICY:-observation_bound}"
+case "$system2_replan_policy" in
+  strict|observation_bound|raw_wire_warn) ;;
+  *) usage ;;
+esac
+if test "$system2_replan_policy" != observation_bound; then
+  test "$lane" = a || usage
+  test "$candidate_profile" != baseline || usage
+fi
 candidate_runtime_names=(
   INTERNVLA_T4_VIEW_MODE
   INTERNVLA_T4_HISTORY_MODE
@@ -149,30 +161,46 @@ fi
 isaac_sensor_profile="${INTERNNAV_T5_ISAAC_SENSOR_PROFILE:-baseline}"
 step3_live_advisor="${INTERNNAV_T5_STEP3_LIVE_ADVISOR:-0}"
 case "$step3_live_advisor" in 0|1) ;; *) usage ;; esac
+step3_timeout_advisor="${INTERNVLA_T5_STEP3_TIMEOUT_ADVISOR:-0}"
+case "$step3_timeout_advisor" in 0|1) ;; *) usage ;; esac
 live_frontier_capture="${INTERNNAV_T5_LIVE_FRONTIER_CAPTURE:-$step3_live_advisor}"
 case "$live_frontier_capture" in 0|1) ;; *) usage ;; esac
 test "$live_frontier_capture" != 1 || test "$lane" = b || usage
 step3_dgx_ports=""
 test "$step3_live_advisor" != 1 || step3_dgx_ports="8200 8300"
 case "$isaac_sensor_profile" in
-  baseline) test "$step3_live_advisor" = 0 || usage ;;
+  baseline)
+    test "$step3_live_advisor" = 0 || usage
+    test "$step3_timeout_advisor" = 0 || usage
+    ;;
   lane_b_revc_smoke)
     test "$step3_live_advisor" = 0 || usage
+    test "$step3_timeout_advisor" = 0 || usage
     test "$lane" = b || usage
     test "$profile" = canary60 || usage
     case "$rtf_ablation_profile" in navigation_fast|off) ;; *) usage ;; esac
     ;;
   lane_b_revc_fixed5_capture)
     test "$step3_live_advisor" = 0 || usage
+    test "$step3_timeout_advisor" = 0 || usage
     test "$lane" = b || usage
     test "$profile" = fixed5 || usage
     case "$rtf_ablation_profile" in navigation_fast|off) ;; *) usage ;; esac
     ;;
   lane_b_step3_live_canary)
     test "$step3_live_advisor" = 1 || usage
+    test "$step3_timeout_advisor" = 0 || usage
     test "$lane" = b || usage
     case "$profile" in screen1|screen3) ;; *) usage ;; esac
     test "$candidate_profile" = a1+b1+c1 || usage
+    case "$rtf_ablation_profile" in navigation_fast|off) ;; *) usage ;; esac
+    ;;
+  lane_a_step3_timeout_advisor)
+    test "$step3_live_advisor" = 0 || usage
+    test "$step3_timeout_advisor" = 1 || usage
+    test "$lane" = a || usage
+    case "$profile" in screen1|screen3|fixed5) ;; *) usage ;; esac
+    test "$candidate_profile" = recovery_a || usage
     case "$rtf_ablation_profile" in navigation_fast|off) ;; *) usage ;; esac
     ;;
   *) usage ;;
@@ -225,6 +253,7 @@ case "$run_mode" in
   *) usage ;;
 esac
 if test "$profile" = final10; then
+  test "$system2_replan_policy" = observation_bound || usage
   test "$candidate_profile" = a1+b1+c1 || usage
   test "$rtf_ablation_profile" = navigation_fast || usage
   test "$isaac_sensor_profile" = baseline || usage
@@ -237,6 +266,12 @@ if test "$step3_live_advisor" = 1; then
   test "$strict_extension_profile" = off || usage
   test "$nvblox_mode" = off || usage
   test "$run_mode" = model || usage
+fi
+if test "$step3_timeout_advisor" = 1; then
+  test "$strict_extension_profile" = off || usage
+  test "$nvblox_mode" = off || usage
+  test "$run_mode" = model || usage
+  test "$system2_replan_policy" = observation_bound || usage
 fi
 fault_injection_profile="${INTERNNAV_T5_FAULT_INJECTION_PROFILE:-off}"
 case "$fault_injection_profile" in
@@ -296,11 +331,13 @@ if [[ "${INTERNNAV_T5_INSIDE_FAST_LANE:-0}" != 1 ]]; then
       INTERNNAV_T5_RTF_ABLATION_PROFILE="$rtf_ablation_profile" \
       INTERNNAV_T5_ISAAC_SENSOR_PROFILE="$isaac_sensor_profile" \
       INTERNNAV_T5_STEP3_LIVE_ADVISOR="$step3_live_advisor" \
+      INTERNVLA_T5_STEP3_TIMEOUT_ADVISOR="$step3_timeout_advisor" \
       INTERNNAV_T5_LIVE_FRONTIER_CAPTURE="$live_frontier_capture" \
       INTERNNAV_T5_STRICT_EXTENSION_PROFILE="$strict_extension_profile" \
       INTERNNAV_T5_NVBLOX_MODE="$nvblox_mode" \
       INTERNNAV_T5_RUN_MODE="$run_mode" \
       INTERNNAV_T5_FAULT_INJECTION_PROFILE="$fault_injection_profile" \
+      INTERNVLA_T5_SYSTEM2_REPLAN_POLICY="$system2_replan_policy" \
       bash "$root/coordination/run_t5_fast_lane_online.sh" \
         "$lane" "$profile" "$run_id" "$code_sha" \
         "$prep_relative" "$result_relative"
@@ -420,6 +457,7 @@ else
   "$nvblox_mode" "$run_mode" "$profile" "$screen_episode_count" \
   "$fault_injection_profile" "$live_frontier_capture" \
   "$live_frontier_ready_required" \
+  "$system2_replan_policy" \
   "$validation_tmp/candidate_resolution.json" \
   "$validation_tmp/input_binding.json" <<'PY'
 import hashlib, json, re, sys
@@ -428,12 +466,12 @@ from pathlib import Path, PurePosixPath
 input_path, prep_path, final_path, prepare_root = map(Path, sys.argv[1:5])
 code_sha, lane, candidate_profile, rtf_ablation_profile, isaac_sensor_profile, \
     nvblox_mode, run_mode, profile, screen_count, fault_injection_profile, \
-    live_frontier_capture, live_frontier_ready_required = (
+    live_frontier_capture, live_frontier_ready_required, system2_replan_policy = (
     sys.argv[5], sys.argv[6], sys.argv[7], sys.argv[8], sys.argv[9],
     sys.argv[10], sys.argv[11], sys.argv[12], int(sys.argv[13]), sys.argv[14],
-    sys.argv[15] == "1", sys.argv[16] == "1"
+    sys.argv[15] == "1", sys.argv[16] == "1", sys.argv[17]
 )
-candidate_path, output = map(Path, sys.argv[17:19])
+candidate_path, output = map(Path, sys.argv[18:20])
 frozen_input = json.loads(input_path.read_text(encoding="utf-8"))
 prep = json.loads(prep_path.read_text(encoding="utf-8"))
 final = json.loads(final_path.read_text(encoding="utf-8"))
@@ -584,7 +622,7 @@ checks = {
     },
     "isaac_sensor_profile_allowed": isaac_sensor_profile in {
         "baseline", "lane_b_revc_smoke", "lane_b_revc_fixed5_capture",
-        "lane_b_step3_live_canary",
+        "lane_b_step3_live_canary", "lane_a_step3_timeout_advisor",
     },
     "fault_injection_exact_scope": fault_injection_profile == "off" or (
         fault_injection_profile == "completion_sim_minimal_v1"
@@ -612,6 +650,13 @@ checks = {
         and candidate_profile == "a1+b1+c1"
         and run_mode == "model" and nvblox_mode == "off"
         and rtf_ablation_profile in {"navigation_fast", "off"}
+    ) or (
+        isaac_sensor_profile == "lane_a_step3_timeout_advisor"
+        and lane == "a" and profile in {"screen1", "screen3", "fixed5"}
+        and candidate_profile == "recovery_a"
+        and run_mode == "model" and nvblox_mode == "off"
+        and system2_replan_policy == "observation_bound"
+        and rtf_ablation_profile in {"navigation_fast", "off"}
     ),
     "nvblox_mode_allowed": nvblox_mode in {
         "off", "shadow", "active_local_gt",
@@ -626,6 +671,16 @@ checks = {
         and isaac_sensor_profile == "baseline"
     ),
     "run_mode_allowed": run_mode in {"model", "oracle"},
+    "system2_replan_policy_allowed": system2_replan_policy in {
+        "strict", "observation_bound", "raw_wire_warn",
+    },
+    "system2_replan_policy_exact_scope": (
+        system2_replan_policy == "observation_bound"
+        or (
+            lane == "a" and run_mode == "model"
+            and candidate.get("effective_candidate_profile") == "recovery_a"
+        )
+    ),
     "oracle_exact_scope": run_mode == "model" or (
         lane == "a" and profile == "screen3"
         and candidate_profile == "baseline"
@@ -696,6 +751,7 @@ payload = {
     "isaac_sensor_profile": isaac_sensor_profile,
     "nvblox_mode": nvblox_mode,
     "run_mode": run_mode,
+    "system2_replan_policy": system2_replan_policy,
     "fault_injection_profile": fault_injection_profile,
     "live_frontier_capture": live_frontier_capture,
     "live_frontier_ready_required": live_frontier_ready_required,
@@ -1934,7 +1990,7 @@ IFS= read -r HF_ENDPOINT
 [[ "$HF_TOKEN" =~ ^hf_[A-Za-z0-9]{20,}$ ]]
 exec {hf_token_fd}<<<"$HF_TOKEN"
 unset HF_TOKEN
-deployment="$1"; lane="$2"; result="$3"; map="$4"; lease="$5"; domain="$6"; ledger="$7"; candidate="$8"; isaac_ip="$9"; candidate_resolution_sha256="${10}"; strict_extension_profile="${11}"; nvblox_mode="${12}"; run_mode="${13}"; fault_injection_profile="${14}"; step3_live_advisor="${15}"; live_frontier_capture="${16}"
+deployment="$1"; lane="$2"; result="$3"; map="$4"; lease="$5"; domain="$6"; ledger="$7"; candidate="$8"; isaac_ip="$9"; candidate_resolution_sha256="${10}"; strict_extension_profile="${11}"; nvblox_mode="${12}"; run_mode="${13}"; fault_injection_profile="${14}"; step3_live_advisor="${15}"; live_frontier_capture="${16}"; system2_replan_policy="${17}"; step3_timeout_advisor="${18}"
 [[ "$candidate_resolution_sha256" =~ ^[0-9a-f]{64}$ ]]
 case "$strict_extension_profile" in off|cuvslam_shadow) ;; *) exit 64 ;; esac
 case "$nvblox_mode" in off|shadow|active_local_gt) ;; *) exit 64 ;; esac
@@ -1942,6 +1998,8 @@ case "$run_mode" in model|oracle) ;; *) exit 64 ;; esac
 case "$fault_injection_profile" in off|completion_sim_minimal_v1) ;; *) exit 64 ;; esac
 case "$step3_live_advisor" in 0|1) ;; *) exit 64 ;; esac
 case "$live_frontier_capture" in 0|1) ;; *) exit 64 ;; esac
+case "$system2_replan_policy" in strict|observation_bound|raw_wire_warn) ;; *) exit 64 ;; esac
+case "$step3_timeout_advisor" in 0|1) ;; *) exit 64 ;; esac
 test "$live_frontier_capture" != 1 || test "$lane" = b
 pgid="$(ps -o pgid= -p "$$"|tr -d ' ')"
 sid="$(ps -o sid= -p "$$"|tr -d ' ')"
@@ -1967,7 +2025,9 @@ env INTERNNAV_T5_RESOURCE_LEASE_ACK="$lease" INTERNVLA_HF_TOKEN_FD="$hf_token_fd
  INTERNNAV_T5_NVBLOX_MODE="$nvblox_mode" \
  INTERNNAV_T5_FAULT_INJECTION_PROFILE="$fault_injection_profile" \
  INTERNNAV_T5_STEP3_LIVE_ADVISOR="$step3_live_advisor" \
+ INTERNVLA_T5_STEP3_TIMEOUT_ADVISOR="$step3_timeout_advisor" \
  INTERNNAV_T5_LIVE_FRONTIER_CAPTURE="$live_frontier_capture" \
+ INTERNVLA_T5_SYSTEM2_REPLAN_POLICY="$system2_replan_policy" \
  INTERNVLA_T5_ISAAC_IP="$isaac_ip" \
  HF_ENDPOINT="$HF_ENDPOINT" INTERNNAV_RUNTIME_POLICY=completion_sim INTERNNAV_SIMULATION_TARGET=isaac \
  ROS_DOMAIN_ID="$domain" CUDA_VISIBLE_DEVICES=0 INTERNNAV_T1_CONTROL_ROOT="$deployment" \
@@ -1975,7 +2035,7 @@ env INTERNNAV_T5_RESOURCE_LEASE_ACK="$lease" INTERNVLA_HF_TOKEN_FD="$hf_token_fd
  "$lane" "$run_mode" "$result" "$map"
 REMOTE_DGX
 dgx_runtime_b64="$(printf '%s' "$dgx_runtime_program"|base64|tr -d '\r\n')"
-dgx_command="exec setsid --wait bash -c \"\$(printf '%s' '$dgx_runtime_b64'|base64 -d)\" fast-dgx '$dgx_root' '$lane' '$dgx_run' '$map_manifest' '$resource_profile' '$ros_domain_id' '$dgx_supervisor_ledger' '$candidate_profile' '$x86_ip' '$candidate_resolution_sha256' '$strict_extension_profile' '$nvblox_mode' '$run_mode' '$fault_injection_profile' '$step3_live_advisor' '$live_frontier_capture'"
+dgx_command="exec setsid --wait bash -c \"\$(printf '%s' '$dgx_runtime_b64'|base64 -d)\" fast-dgx '$dgx_root' '$lane' '$dgx_run' '$map_manifest' '$resource_profile' '$ros_domain_id' '$dgx_supervisor_ledger' '$candidate_profile' '$x86_ip' '$candidate_resolution_sha256' '$strict_extension_profile' '$nvblox_mode' '$run_mode' '$fault_injection_profile' '$step3_live_advisor' '$live_frontier_capture' '$system2_replan_policy' '$step3_timeout_advisor'"
 dgx_launch_attempted=1
 printf '%s\n%s\n' "$HF_TOKEN" "$HF_ENDPOINT" | \
   ssh "${ssh_options[@]}" "$dgx_target" "$dgx_command" \
@@ -2000,13 +2060,14 @@ remote "$x86_target" \
 container_started=1
 read -r -d '' x86_runtime_program <<'REMOTE_X86' || true
 set -euo pipefail
-deployment="$1"; lane="$2"; result="$3"; dataset="$4"; lease="$5"; domain="$6"; gpu="$7"; ledger="$8"; canary_sec="$9"; canary_ack="${10}"; rtf_ablation_profile="${11}"; cpuset="${12}"; screen_count="${13}"; source_dataset_sha256="${14}"; frozen_episode_keys_csv="${15}"; isaac_sensor_profile="${16}"; strict_extension_profile="${17}"; run_mode="${18}"; canary_timebase="${19}"; execution_count="${20}"; final_pilot_lane="${21}"; fault_injection_profile="${22}"; nvblox_mode="${23}"; step3_live_advisor="${24}"
+deployment="$1"; lane="$2"; result="$3"; dataset="$4"; lease="$5"; domain="$6"; gpu="$7"; ledger="$8"; canary_sec="$9"; canary_ack="${10}"; rtf_ablation_profile="${11}"; cpuset="${12}"; screen_count="${13}"; source_dataset_sha256="${14}"; frozen_episode_keys_csv="${15}"; isaac_sensor_profile="${16}"; strict_extension_profile="${17}"; run_mode="${18}"; canary_timebase="${19}"; execution_count="${20}"; final_pilot_lane="${21}"; fault_injection_profile="${22}"; nvblox_mode="${23}"; step3_live_advisor="${24}"; step3_timeout_advisor="${25}"
 [[ "$cpuset" =~ ^[0-9,-]+$ ]]
 case "$canary_timebase" in wall|sim) ;; *) exit 64 ;; esac
 if test "$canary_timebase" = sim; then test "$canary_sec" = 600; fi
 case "$screen_count" in 0|1|3) ;; *) exit 64 ;; esac
-case "$isaac_sensor_profile" in baseline|lane_b_revc_smoke|lane_b_revc_fixed5_capture|lane_b_step3_live_canary) ;; *) exit 64 ;; esac
+case "$isaac_sensor_profile" in baseline|lane_b_revc_smoke|lane_b_revc_fixed5_capture|lane_b_step3_live_canary|lane_a_step3_timeout_advisor) ;; *) exit 64 ;; esac
 case "$step3_live_advisor" in 0|1) ;; *) exit 64 ;; esac
+case "$step3_timeout_advisor" in 0|1) ;; *) exit 64 ;; esac
 case "$strict_extension_profile" in off|cuvslam_shadow) ;; *) exit 64 ;; esac
 case "$run_mode" in model|oracle) ;; *) exit 64 ;; esac
 case "$fault_injection_profile" in off|completion_sim_minimal_v1) ;; *) exit 64 ;; esac
@@ -2036,8 +2097,15 @@ elif test "$isaac_sensor_profile" = lane_b_step3_live_canary; then
   test "$lane" = b
   case "$screen_count" in 1|3) ;; *) exit 64 ;; esac
   case "$rtf_ablation_profile" in navigation_fast|off) ;; *) exit 64 ;; esac
+elif test "$isaac_sensor_profile" = lane_a_step3_timeout_advisor; then
+  test "$step3_live_advisor" = 0
+  test "$step3_timeout_advisor" = 1
+  test "$lane" = a
+  case "$screen_count" in 0|1|3) ;; *) exit 64 ;; esac
+  case "$rtf_ablation_profile" in navigation_fast|off) ;; *) exit 64 ;; esac
 else
   test "$step3_live_advisor" = 0
+  test "$step3_timeout_advisor" = 0
 fi
 [[ "$source_dataset_sha256" =~ ^[0-9a-f]{64}$ ]]
 [[ "$execution_count" =~ ^[1-9][0-9]*$ ]]
@@ -2101,6 +2169,7 @@ env INTERNNAV_T5_RESOURCE_LEASE_ACK="$lease" INTERNNAV_RUNTIME_POLICY=completion
  INTERNNAV_T5_RTF_ABLATION_PROFILE="$rtf_ablation_profile" \
  INTERNNAV_T5_ISAAC_SENSOR_PROFILE="$isaac_sensor_profile" \
  INTERNNAV_T5_STEP3_LIVE_ADVISOR="$step3_live_advisor" \
+ INTERNVLA_T5_STEP3_TIMEOUT_ADVISOR="$step3_timeout_advisor" \
  INTERNNAV_T5_STRICT_EXTENSION_PROFILE="$strict_extension_profile" \
  INTERNNAV_T5_NVBLOX_MODE="$nvblox_mode" \
  INTERNNAV_T5_FINAL_PILOT_LANE="$final_pilot_lane" \
@@ -2129,7 +2198,7 @@ case "$profile" in
     ;;
   final10) final_pilot_lane="$lane" ;;
 esac
-x86_command="exec setsid --wait bash -c \"\$(printf '%s' '$x86_runtime_b64'|base64 -d)\" fast-x86 '$x86_root' '$lane' '$x86_run' '$dataset_root' '$resource_profile' '$ros_domain_id' '$gpu' '$x86_supervisor_ledger' '$engineering_canary_sec' '$engineering_canary_ack' '$rtf_ablation_profile' '$cpuset' '$screen_episode_count' '$dataset_sha256' '$episode_keys_csv' '$isaac_sensor_profile' '$strict_extension_profile' '$run_mode' '$engineering_canary_timebase' '$execution_episode_count' '$final_pilot_lane' '$fault_injection_profile' '$nvblox_mode' '$step3_live_advisor'"
+x86_command="exec setsid --wait bash -c \"\$(printf '%s' '$x86_runtime_b64'|base64 -d)\" fast-x86 '$x86_root' '$lane' '$x86_run' '$dataset_root' '$resource_profile' '$ros_domain_id' '$gpu' '$x86_supervisor_ledger' '$engineering_canary_sec' '$engineering_canary_ack' '$rtf_ablation_profile' '$cpuset' '$screen_episode_count' '$dataset_sha256' '$episode_keys_csv' '$isaac_sensor_profile' '$strict_extension_profile' '$run_mode' '$engineering_canary_timebase' '$execution_episode_count' '$final_pilot_lane' '$fault_injection_profile' '$nvblox_mode' '$step3_live_advisor' '$step3_timeout_advisor'"
 x86_launch_attempted=1
 remote "$x86_target" "$x86_command" >"$result_dir/logs/x86_runtime_ssh.log" 2>&1 &
 x86_ssh_pid=$!

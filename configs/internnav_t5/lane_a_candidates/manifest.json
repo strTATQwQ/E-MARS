@@ -1,0 +1,130 @@
+{
+  "schema_version": 1,
+  "manifest_id": "t5-lane-a-internvla-successive-halving-v2",
+  "lane": "a",
+  "base_sha": "2aa660cf1452a40a15248f06d5872115bb1a7032",
+  "baseline": {
+    "golden_bundle": "configs/internnav_t5/golden_bundle_manifest.json",
+    "frozen_t4_episode_count": 20,
+    "frozen_t4_success_count": 1,
+    "frozen_t4_sr": 0.05
+  },
+  "fixed_evaluation": {
+    "episode_manifest": "configs/internnav_t3/model_canary_episode_manifest.json",
+    "episode_count": 5,
+    "episode_keys": [
+      "433_121",
+      "5203_1339",
+      "2776_676",
+      "1036_259",
+      "2617_628"
+    ],
+    "same_prefix_for_every_candidate": true,
+    "held_out_tuning_forbidden": true
+  },
+  "successive_halving": {
+    "per_family": true,
+    "rounds": [
+      {
+        "round_id": "screen_1",
+        "cumulative_episode_count": 1,
+        "survivor_count": 1
+      },
+      {
+        "round_id": "confirm_3",
+        "cumulative_episode_count": 3,
+        "survivor_count": 1
+      },
+      {
+        "round_id": "fixed_5",
+        "cumulative_episode_count": 5,
+        "survivor_count": 1
+      }
+    ],
+    "ranking_priority": [
+      "success_count_desc",
+      "stuck_count_asc",
+      "mean_SPL_desc",
+      "mean_nDTW_desc",
+      "mean_NE_asc",
+      "mean_command_age_sec_asc",
+      "candidate_id_asc"
+    ]
+  },
+  "provenance_contract": {
+    "hash_kind": "sha256",
+    "code_bundle_sha256": "7ed25896b67d94c03fff167f13dc9f80f6dd08c7a112a0f679e00b8d11d740ca",
+    "code_paths": [
+      "internvla_t4_sensors/internvla_t4_sensors/motion_observation_gate.py",
+      "internvla_t4_sensors/internvla_t4_sensors/client_node.py",
+      "internvla_t4_recovery/internvla_t4_recovery/adapter_node.py",
+      "internvla_t4_recovery/internvla_t4_recovery/recovery_node.py",
+      "internvla_nav2_adapter/internvla_nav2_adapter/active_node.py",
+      "internvla_nav2_adapter/internvla_nav2_adapter/motion_primitives.py",
+      "internvla_nav2_adapter/internvla_nav2_adapter/system1_target.py",
+      "internvla_ros2/internvla_ros2/client_node.py",
+      "internvla_ros2/internvla_ros2/model_node.py",
+      "internvla_ros2/internvla_ros2/recovery_contract.py",
+      "internvla_ros2/internvla_ros2/trajectory_capture.py",
+      "internvla_ros2/internvla_ros2/trajectory_rerank.py",
+      "scripts/internnav_go2_runtime.py",
+      "scripts/internvla_go2_continuous_agent_client.py",
+      "scripts/internvla_ipc_agent_client.py",
+      "scripts/analyze_t5_lane_a_candidates.py"
+    ],
+    "result_required_fields": [
+      "predecessor_candidate_ids",
+      "code_bundle_sha256",
+      "candidate_config_sha256",
+      "candidate_manifest_sha256"
+    ],
+    "manifest_hash_kind": "canonical_json_sha256"
+  },
+  "candidate_families": [
+    {
+      "family_id": "action_observation_recovery",
+      "config": "configs/internnav_t5/lane_a_candidates/action_observation_recovery.json",
+      "config_sha256": "e0e8f50c52ba63f42ec5e80f726009e21c1c157397a2eb625f81742911b7f3bd",
+      "candidate_ids": [
+        "a0_action_gate_only",
+        "a1_action_gate_recovery_a"
+      ]
+    },
+    {
+      "family_id": "camera_history_alignment",
+      "config": "configs/internnav_t5/lane_a_candidates/camera_history_alignment.json",
+      "config_sha256": "fa40df9d884422f4b024721206571ad9c970d415a69d7f5fb9381d79ed7be97e",
+      "candidate_ids": [
+        "b0_go2_history_off",
+        "b1_go2_history_on"
+      ]
+    },
+    {
+      "family_id": "trajectory_horizon_refresh",
+      "config": "configs/internnav_t5/lane_a_candidates/trajectory_horizon_refresh.json",
+      "config_sha256": "38d5f4720db4334425fdb7fa0ae7fb8d50885e4bad58675f71fd598334cb71f6",
+      "candidate_ids": [
+        "c0_upstream_mean",
+        "c1_depth_geometry_rerank",
+        "c2_rerank_short_fresh"
+      ]
+    }
+  ],
+  "plateau_rule": {
+    "requires_all_three_family_winners_at_fixed_5": true,
+    "candidate_set_exhausted_required": true,
+    "successive_non_improving_family_winners": 2,
+    "improvement_if_any": {
+      "additional_success_count": 1,
+      "mean_NE_reduction_m": 0.3,
+      "stuck_count_reduction": 1
+    }
+  },
+  "prohibited": [
+    "Step-3.7",
+    "NVFP4",
+    "model_finetuning",
+    "real_Go2_motion",
+    "held_out_parameter_tuning"
+  ]
+}

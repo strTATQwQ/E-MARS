@@ -151,18 +151,22 @@ export INTERNNAV_T5_NVBLOX_MODE="$nvblox_mode"
 isaac_sensor_profile="${INTERNNAV_T5_ISAAC_SENSOR_PROFILE:-baseline}"
 step3_live_advisor="${INTERNNAV_T5_STEP3_LIVE_ADVISOR:-0}"
 step3_direct_high_level="${INTERNNAV_T5_STEP3_DIRECT_HIGH_LEVEL:-0}"
+step3_timeout_advisor="${INTERNVLA_T5_STEP3_TIMEOUT_ADVISOR:-0}"
 case "$step3_live_advisor" in 0|1) ;; *) exit 64 ;; esac
 case "$step3_direct_high_level" in 0|1) ;; *) exit 64 ;; esac
+case "$step3_timeout_advisor" in 0|1) ;; *) exit 64 ;; esac
 case "$isaac_sensor_profile" in
   baseline)
     test "$step3_live_advisor" = 0
     test "$step3_direct_high_level" = 0
+    test "$step3_timeout_advisor" = 0
     test "${INTERNVLA_T5_REVC_ENABLE:-0}" = 0
     export INTERNVLA_T5_REVC_ENABLE=0
     ;;
   lane_b_revc_smoke)
     test "$step3_live_advisor" = 0
     test "$step3_direct_high_level" = 0
+    test "$step3_timeout_advisor" = 0
     test "$lane" = b
     test "$mode" = model
     test "$execution_profile" = engineering_canary
@@ -172,6 +176,7 @@ case "$isaac_sensor_profile" in
   lane_b_revc_fixed5_capture)
     test "$step3_live_advisor" = 0
     test "$step3_direct_high_level" = 0
+    test "$step3_timeout_advisor" = 0
     test "$lane" = b
     test "$mode" = model
     test "$execution_profile" = fixed_dataset
@@ -180,6 +185,7 @@ case "$isaac_sensor_profile" in
   lane_b_step3_live_canary)
     test "$step3_live_advisor" = 1
     test "$step3_direct_high_level" = 0
+    test "$step3_timeout_advisor" = 0
     test "$lane" = b
     test "$mode" = model
     test "$execution_profile" = fixed_dataset
@@ -189,7 +195,18 @@ case "$isaac_sensor_profile" in
   lane_b_step3_direct_fixed5)
     test "$step3_live_advisor" = 0
     test "$step3_direct_high_level" = 1
+    test "$step3_timeout_advisor" = 0
     test "$lane" = b
+    test "$mode" = model
+    test "$execution_profile" = fixed_dataset
+    test "$fault_injection_profile" = off
+    export INTERNVLA_T5_REVC_ENABLE=1
+    ;;
+  lane_a_step3_timeout_advisor)
+    test "$step3_live_advisor" = 0
+    test "$step3_direct_high_level" = 0
+    test "$step3_timeout_advisor" = 1
+    test "$lane" = a
     test "$mode" = model
     test "$execution_profile" = fixed_dataset
     test "$fault_injection_profile" = off
@@ -198,6 +215,7 @@ case "$isaac_sensor_profile" in
   *) echo "unsupported T5 Isaac sensor profile: $isaac_sensor_profile" >&2; exit 64 ;;
 esac
 export INTERNNAV_T5_ISAAC_SENSOR_PROFILE="$isaac_sensor_profile"
+export INTERNVLA_T5_STEP3_TIMEOUT_ADVISOR="$step3_timeout_advisor"
 # The promoted navigation-fast profile is usable for functional evidence.
 # Other named profiles remain diagnostic-only single-Lane ablations.
 rtf_ablation_profile="${INTERNNAV_T5_RTF_ABLATION_PROFILE:-navigation_fast}"
@@ -373,6 +391,12 @@ if test "$isaac_sensor_profile" = lane_b_step3_direct_fixed5; then
     exit 64
   fi
 fi
+if test "$isaac_sensor_profile" = lane_a_step3_timeout_advisor; then
+  if test "$dataset_episode_count" != 1 && test "$dataset_episode_count" != 2 \
+      && test "$dataset_episode_count" != 3 && test "$dataset_episode_count" != 5; then
+    exit 64
+  fi
+fi
 if test "$nvblox_mode" = active_local_gt; then
   test "$dataset_episode_count" = 3
   export INTERNVLA_T4_MIN_SR_OVERRIDE=0.6666666666666666
@@ -395,6 +419,7 @@ test -f "$root/scripts/sample_t5_host_telemetry.py"
 test -f "$root/scripts/summarize_t5_rtf_ablation.py"
 test -f "$root/scripts/probe_t5_revc_snapshot_smoke.py"
 test -f "$root/scripts/probe_t5_revc_fixed5_capture.py"
+test -f "$root/scripts/t5_step3_timeout_advisor_node.py"
 test -f "$root/scripts/t5_process_identity_audit.py"
 test -f "$root/configs/internnav_t5/go2_continuous_completion_cfg.py"
 test -f "$root/configs/internnav_t5/revc_four_camera_snapshot.json"
@@ -1291,6 +1316,8 @@ revc_probe_reaped=0
 revc_probe_rc=125
 revc_probe_output=""
 revc_probe_log=""
+step3_timeout_advisor_pid=""
+step3_timeout_advisor_container_pid=""
 case "$isaac_sensor_profile" in
   lane_b_revc_smoke)
     revc_probe_output="$result_root/evaluator/revc_snapshot_smoke.json"
@@ -1311,6 +1338,7 @@ wait_revc_snapshot_probe() {
   test "$isaac_sensor_profile" != baseline || return 0
   test "$isaac_sensor_profile" != lane_b_step3_live_canary || return 0
   test "$isaac_sensor_profile" != lane_b_step3_direct_fixed5 || return 0
+  test "$isaac_sensor_profile" != lane_a_step3_timeout_advisor || return 0
   test -n "$revc_probe_pid"
   if test "$revc_probe_reaped" = 0; then
     revc_probe_rc=0
@@ -1426,6 +1454,38 @@ stop_clock() {
     "$result_root/logs/clock.log"
   record_pid_event clock_container "$clock_container_pid" verified_absent \
     "$result_root/logs/clock.log" container
+}
+
+stop_step3_timeout_advisor() {
+  test -n "$step3_timeout_advisor_pid" || return 0
+  if test -n "$step3_timeout_advisor_container_pid"; then
+    docker exec --user admin "$container" \
+      kill -TERM "$step3_timeout_advisor_container_pid" 2>/dev/null || true
+    for _ in $(seq 1 300); do
+      docker exec --user admin "$container" \
+        kill -0 "$step3_timeout_advisor_container_pid" 2>/dev/null || break
+      sleep 0.1
+    done
+    if docker exec --user admin "$container" \
+        kill -0 "$step3_timeout_advisor_container_pid" 2>/dev/null; then
+      docker exec --user admin "$container" \
+        kill -KILL "$step3_timeout_advisor_container_pid" 2>/dev/null || true
+    fi
+  fi
+  wait "$step3_timeout_advisor_pid" 2>/dev/null || true
+  if test -n "$step3_timeout_advisor_container_pid" && \
+      docker exec --user admin "$container" \
+        kill -0 "$step3_timeout_advisor_container_pid" 2>/dev/null; then
+    record_pid_event step3_timeout_advisor_container \
+      "$step3_timeout_advisor_container_pid" residual \
+      "$result_root/logs/step3_timeout_advisor.log" container
+    return 1
+  fi
+  record_pid_event step3_timeout_advisor "$step3_timeout_advisor_pid" \
+    verified_absent "$result_root/logs/step3_timeout_advisor.log"
+  record_pid_event step3_timeout_advisor_container \
+    "$step3_timeout_advisor_container_pid" verified_absent \
+    "$result_root/logs/step3_timeout_advisor.log" container
 }
 
 write_status() {
@@ -1627,6 +1687,7 @@ finalize() {
       "$revc_probe_log" || residual=$((residual + 1))
     revc_probe_reaped=1
   fi
+  stop_step3_timeout_advisor || residual=$((residual + 1))
   # Read typed application markers only after the evaluator process group is
   # absent.  This closes the final sampling-to-cleanup race without connecting
   # another client to either single-client framed TCP endpoint.
@@ -2126,6 +2187,58 @@ elif test "$isaac_sensor_profile" = lane_b_revc_fixed5_capture; then
   revc_probe_pid=$!
   record_pid_event revc_snapshot_probe "$revc_probe_pid" started \
     "$revc_probe_log"
+elif test "$isaac_sensor_profile" = lane_a_step3_timeout_advisor; then
+  test ! -e "$INTERNVLA_T5_REVC_SNAPSHOT_REQUEST_PATH"
+  test ! -e "$INTERNVLA_T5_REVC_SNAPSHOT_ACK_PATH"
+  test "$INTERNVLA_T4_RESULT_ROOT" = "$result_root/evaluator"
+  mkdir -p "$INTERNVLA_T4_RESULT_ROOT"
+  advisor_python_deps="$result_root/runtime_deps/python3.12"
+  advisor_pyzmq_source=/home/song/env_isaacsim/lib/python3.12/site-packages
+  test -d "$advisor_pyzmq_source/zmq"
+  test -d "$advisor_pyzmq_source/pyzmq.libs"
+  test -d "$advisor_pyzmq_source/pyzmq-27.1.0.dist-info"
+  test ! -e "$advisor_python_deps"
+  mkdir -p "$advisor_python_deps"
+  cp -a "$advisor_pyzmq_source/zmq" "$advisor_pyzmq_source/pyzmq.libs" \
+    "$advisor_pyzmq_source/pyzmq-27.1.0.dist-info" "$advisor_python_deps/"
+  step3_timeout_advisor_pid_file="$result_root/pids/step3_timeout_advisor.container.pid"
+  setsid docker exec --user admin --workdir "$root" \
+    -e "ROS_DOMAIN_ID=$ros_domain_id" -e "ROS_NAMESPACE=$lane_namespace" \
+    -e ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST -e "ROS_STATIC_PEERS=$edge_ip" \
+    -e ROS_LOCALHOST_ONLY=0 -e "PYTHONPATH=$root:$advisor_python_deps" \
+    -e "STEP3_TIMEOUT_ADVISOR_PID_FILE=$step3_timeout_advisor_pid_file" \
+    "$container" bash -lc '
+      set -eo pipefail
+      set +u
+      source /opt/ros/jazzy/setup.bash
+      source /workspaces/isaac/install/setup.bash
+      set -u
+      python3 -c "import rclpy, zmq, slow_planner, scripts.probe_t5_revc_snapshot_smoke"
+      printf "%s\n" "$$" >"$STEP3_TIMEOUT_ADVISOR_PID_FILE"
+      exec python3 -u "$1/scripts/t5_step3_timeout_advisor_node.py" \
+        --endpoint "$2" --result-root "$3" --contract "$4" \
+        --request "$5" --ack "$6" --output "$7" --deadline-sec 12
+    ' bash "$root" \
+    "${INTERNVLA_T5_STEP3_TIMEOUT_ENDPOINT:-tcp://10.100.120.122:8200}" \
+    "$INTERNVLA_T4_RESULT_ROOT" "$INTERNVLA_T5_REVC_CAMERA_CONFIG" \
+    "$INTERNVLA_T5_REVC_SNAPSHOT_REQUEST_PATH" \
+    "$INTERNVLA_T5_REVC_SNAPSHOT_ACK_PATH" \
+    "$INTERNVLA_T4_RESULT_ROOT/step3_timeout_advice.jsonl" \
+    >"$result_root/logs/step3_timeout_advisor.log" 2>&1 &
+  step3_timeout_advisor_pid=$!
+  record_pid_event step3_timeout_advisor "$step3_timeout_advisor_pid" started \
+    "$result_root/logs/step3_timeout_advisor.log"
+  for _ in $(seq 1 200); do
+    test -s "$step3_timeout_advisor_pid_file" && break
+    leader_is_alive "$step3_timeout_advisor_pid" || break
+    sleep 0.1
+  done
+  test -s "$step3_timeout_advisor_pid_file"
+  step3_timeout_advisor_container_pid="$(cat "$step3_timeout_advisor_pid_file")"
+  [[ "$step3_timeout_advisor_container_pid" =~ ^[1-9][0-9]*$ ]]
+  record_pid_event step3_timeout_advisor_container \
+    "$step3_timeout_advisor_container_pid" started \
+    "$result_root/logs/step3_timeout_advisor.log" container
 fi
 
 write_health_state STARTING_SIM

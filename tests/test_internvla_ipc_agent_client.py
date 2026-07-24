@@ -463,6 +463,47 @@ def test_step_failure_records_diagnostic_and_closes_before_safe_stop(capsys) -> 
     assert "INTERNVLA_MODEL_ACTION_OK" not in stderr
 
 
+def test_continuous_wrapper_aborts_batch_after_unexpected_ipc_safe_stop(
+    monkeypatch,
+) -> None:
+    client = continuous_client_module.ContinuousROS2IPCAgentClient.__new__(
+        continuous_client_module.ContinuousROS2IPCAgentClient
+    )
+    client.connection = None
+    client.scenario_by_instruction_digest = {}
+
+    def parent_step(instance, _obs):
+        instance.last_result = None
+        instance.last_error = "RuntimeError('model failed')"
+        instance.last_step_safe_stop_kind = "unexpected_ipc_error"
+        return SAFE_STOP_ACTION
+
+    monkeypatch.setattr(ROS2IPCAgentClient, "step", parent_step)
+
+    with pytest.raises(RuntimeError, match="unexpected InternVLA IPC step failure"):
+        client.step([{"instruction": "go"}])
+
+
+def test_continuous_wrapper_preserves_expected_fault_safe_stop(
+    monkeypatch,
+) -> None:
+    client = continuous_client_module.ContinuousROS2IPCAgentClient.__new__(
+        continuous_client_module.ContinuousROS2IPCAgentClient
+    )
+    client.connection = None
+    client.scenario_by_instruction_digest = {}
+
+    def parent_step(instance, _obs):
+        instance.last_result = None
+        instance.last_error = "injected timeout"
+        instance.last_step_safe_stop_kind = "expected_model_timeout"
+        return SAFE_STOP_ACTION
+
+    monkeypatch.setattr(ROS2IPCAgentClient, "step", parent_step)
+
+    assert client.step([{"instruction": "go"}]) == SAFE_STOP_ACTION
+
+
 def test_successful_step_emits_exactly_one_model_action_marker(
     monkeypatch, capsys
 ) -> None:

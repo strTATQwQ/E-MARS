@@ -217,7 +217,10 @@ def validate_capture(
     *,
     expected_sidecar_count: int = 1,
     profile: str = "lane_b_revc_smoke",
+    expected_lane: str = "b",
 ) -> dict[str, Any]:
+    if expected_lane not in {"a", "b"}:
+        raise SmokeContractError("expected lane must be a or b")
     result_root = result_root.resolve()
     contract = _load_regular_json(contract_path.resolve(), "Rev-C contract")
     expected_contract_sha = _sha256(contract_path.resolve())
@@ -350,7 +353,7 @@ def validate_capture(
         "schema_version": 1,
         "status": "PASS",
         "profile": profile,
-        "lane": "b",
+        "lane": expected_lane,
         "request": request,
         "ack_canonical_sha256": hashlib.sha256(
             json.dumps(ack, sort_keys=True, separators=(",", ":")).encode("utf-8")

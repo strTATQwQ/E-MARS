@@ -33,6 +33,11 @@ _SHA256 = re.compile(r"^[0-9a-f]{64}$")
 _MAX_DEADLINE_AHEAD_NS = 120_000_000_000
 _NANOSECONDS_PER_SECOND = 1_000_000_000
 
+SYSTEM2_REPLAN_POLICY_ENV = "INTERNVLA_T5_SYSTEM2_REPLAN_POLICY"
+SYSTEM2_REPLAN_POLICIES = frozenset(
+    {"strict", "observation_bound", "raw_wire_warn"}
+)
+
 RESPONSE_FIELDS = (
     "success",
     "status_code",
@@ -136,6 +141,34 @@ def t5_completion_sim_enabled(
         and values.get("INTERNNAV_SIMULATION_TARGET", "") == "isaac"
         and values.get("INTERNNAV_T5_LANE", "") in {"a", "b"}
     )
+
+
+def system2_replan_policy(
+    environment: Mapping[str, str] | None = None,
+) -> str:
+    """Resolve the T5-only System2 recovery comparison policy.
+
+    ``observation_bound`` is the functional default.  The strict and raw-wire
+    arms are explicit completion-simulation diagnostics and cannot leak into a
+    real-robot or non-T5 process.  Raw-wire is additionally confined to Lane A
+    with Recovery A selected.
+    """
+
+    values = os.environ if environment is None else environment
+    policy = values.get(SYSTEM2_REPLAN_POLICY_ENV, "observation_bound")
+    if policy not in SYSTEM2_REPLAN_POLICIES:
+        raise ValueError(f"unsupported System2 replan policy: {policy}")
+    explicitly_selected = SYSTEM2_REPLAN_POLICY_ENV in values
+    if explicitly_selected and not t5_completion_sim_enabled(values):
+        raise ValueError(
+            "System2 replan comparison policies require T5 Isaac completion_sim"
+        )
+    if policy == "raw_wire_warn" and (
+        values.get("INTERNNAV_T5_LANE", "") != "a"
+        or values.get("INTERNNAV_T5_CANDIDATE_PROFILE", "") != "recovery_a"
+    ):
+        raise ValueError("raw-wire System2 replan is restricted to Lane A Recovery A")
+    return policy
 
 
 def recovery_deadline_ns(now_ns: int, timeout_sec: float) -> int:
@@ -344,6 +377,7 @@ def system2_primitive_signature(
     episode_id: str,
     reset_generation: int,
     sequence_id: int,
+    observation_digest: str,
     x: float,
     y: float,
     yaw_rad: float,
@@ -351,14 +385,16 @@ def system2_primitive_signature(
     """Fingerprint a System2 primitive in absolute and semantic domains.
 
     The absolute fingerprint names one command at a quantized pose.  The shape
-    fingerprint intentionally omits sequence and pose so the same semantic
-    action cannot evade a recovery exclusion merely by receiving a new
-    sequence or by observing small asynchronous odometry drift.
+    fingerprint intentionally omits sequence and pose but binds the source
+    observation.  Reissuing an excluded action against the same observation
+    remains forbidden, while a genuinely new action-observation cycle can
+    choose the same discrete primitive again.
     """
 
     action = int(action)
     reset_generation = int(reset_generation)
     sequence_id = int(sequence_id)
+    observation_digest = str(observation_digest)
     pose = (
         float(x),
         float(y),
@@ -367,6 +403,7 @@ def system2_primitive_signature(
     if (
         action not in {1, 2, 3}
         or not str(episode_id)
+        or not observation_digest
         or reset_generation < 0
         or sequence_id < 0
         or not all(math.isfinite(value) for value in pose)
@@ -378,6 +415,7 @@ def system2_primitive_signature(
         "action": action,
         "episode_id": str(episode_id),
         "reset_generation": reset_generation,
+        "observation_digest": observation_digest,
     }
     absolute = {
         **semantic,

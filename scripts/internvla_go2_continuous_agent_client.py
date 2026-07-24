@@ -89,6 +89,18 @@ class ContinuousROS2IPCAgentClient(ROS2IPCAgentClient):
         result = super().step(obs)
         response = self.last_result
         if response is None or result == SAFE_STOP:
+            if (
+                getattr(self, "last_step_safe_stop_kind", None)
+                == "unexpected_ipc_error"
+            ):
+                # The base client has already closed its IPC channel and the
+                # ROS side has asserted safe-stop.  Do not translate an
+                # unexpected transport/model failure into the evaluator's
+                # official STOP action: that can be scored as success merely
+                # because the robot happens to be inside the success radius.
+                raise RuntimeError(
+                    f"unexpected InternVLA IPC step failure: {self.last_error}"
+                )
             return SAFE_STOP
         execution_stop = _continuous_execution_stop(response)
         evaluator_action = _continuous_evaluator_action(response)

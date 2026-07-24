@@ -28,7 +28,10 @@ from internvla_ros2.recovery_contract import (  # noqa: E402
 from internvla_ros2_msgs.srv import RecoveryControl  # noqa: E402
 from internvla_nav2_adapter.active_node import ActiveNav2Adapter  # noqa: E402
 from internvla_t4_recovery.adapter_node import T4RecoveryAdapter  # noqa: E402
-from internvla_t4_recovery.recovery_node import RecoverySupervisor  # noqa: E402
+from internvla_t4_recovery.recovery_node import (  # noqa: E402
+    RecoverySupervisor,
+    _no_progress_recovery_eligible,
+)
 from internvla_t4_sensors import client_node as t4_client_module  # noqa: E402
 from internvla_t4_sensors.client_node import T4OdometryClientNode  # noqa: E402
 
@@ -40,12 +43,14 @@ def _command(
     sequence: int = 17,
     source: int = 3,
     action: int = 1,
+    observation_digest: str = "observation:17",
 ) -> SimpleNamespace:
     return SimpleNamespace(
         episode_id=episode,
         reset_generation=generation,
         sequence_id=sequence,
         request_id=f"{episode}:{generation}:{sequence}",
+        observation_digest=observation_digest,
         action_source=source,
         discrete_action=action,
         stop=False,
@@ -94,13 +99,18 @@ def _bare_client() -> T4OdometryClientNode:
 
 
 def _primitive(
-    *, action: int = 2, sequence: int = 17, generation: int = 1
+    *,
+    action: int = 2,
+    sequence: int = 17,
+    generation: int = 1,
+    observation_digest: str = "observation:17",
 ) -> object:
     return system2_primitive_signature(
         action=action,
         episode_id="a::259",
         reset_generation=generation,
         sequence_id=sequence,
+        observation_digest=observation_digest,
         x=1.25,
         y=-0.5,
         yaw_rad=0.0,
@@ -123,12 +133,13 @@ def _pending_replan(old_signature: object, *, operation: str) -> dict[str, objec
     }
 
 
-def test_shared_system2_primitive_signature_has_stable_semantic_shape() -> None:
+def test_shared_system2_primitive_signature_binds_the_source_observation() -> None:
     signature = system2_primitive_signature(
         action=2,
         episode_id="a::259",
         reset_generation=1,
         sequence_id=17,
+        observation_digest="observation:17",
         x=1.25,
         y=-0.5,
         yaw_rad=0.0,
@@ -138,18 +149,25 @@ def test_shared_system2_primitive_signature_has_stable_semantic_shape() -> None:
         episode_id="a::259",
         reset_generation=1,
         sequence_id=18,
+        observation_digest="observation:17",
         x=1.251,
         y=-0.499,
         yaw_rad=0.001,
     )
     different_action = _primitive(action=3, sequence=18)
+    new_observation = _primitive(
+        action=2,
+        sequence=18,
+        observation_digest="observation:18",
+    )
 
     assert same_action.absolute_sha256 != signature.absolute_sha256
     assert same_action.shape_sha256 == signature.shape_sha256
     assert different_action.shape_sha256 != signature.shape_sha256
+    assert new_observation.shape_sha256 != signature.shape_sha256
 
 
-def test_client_rejects_same_system2_primitive_and_accepts_different_action(
+def test_client_rejects_same_observation_and_accepts_new_action_observation_cycle(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     old_signature = _primitive()
@@ -189,6 +207,124 @@ def test_client_rejects_same_system2_primitive_and_accepts_different_action(
     )
     assert accepted.nav2_goal_sent is True
     assert different._pending_typed_replan is None
+
+    refreshed = _bare_client()
+    refreshed._pending_typed_replan = _pending_replan(
+        old_signature, operation="operation:new-observation"
+    )
+    refreshed._record_replan = lambda *_args, **_kwargs: None  # type: ignore[method-assign]
+    accepted = refreshed._resolve_nav2(
+        _command(
+            sequence=18,
+            source=1,
+            action=2,
+            observation_digest="observation:18",
+        )
+    )
+    assert accepted.nav2_goal_sent is True
+    assert refreshed._pending_typed_replan is None
+
+
+def test_raw_wire_client_warns_and_releases_same_observation_system2(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    old_signature = _primitive()
+    client = _bare_client()
+    client.system2_replan_policy = "raw_wire_warn"
+    client._pending_typed_replan = _pending_replan(
+        old_signature, operation="operation:raw-wire"
+    )
+    events: list[str] = []
+    client._record_replan = (  # type: ignore[method-assign]
+        lambda event, *_args, **_extra: events.append(event)
+    )
+    monkeypatch.setattr(t4_client_module, "_contract_now_ns", lambda _node: 100)
+    monkeypatch.setattr(
+        InternVLAClientNode,
+        "_resolve_nav2",
+        lambda _self, _command: _resolution(goal=True),
+    )
+
+    response = client._resolve_nav2(_command(sequence=18, source=1, action=2))
+
+    assert response.nav2_goal_sent is True
+    assert client._pending_typed_replan is None
+    assert "raw_wire_semantic_bypass_warn" in events
+    assert "consumed_by_fresh_model_step" in events
+
+
+def test_strict_client_requires_generated_path_and_primitive_signatures(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = _bare_client()
+    client.system2_replan_policy = "strict"
+    client._pending_typed_replan = _pending_replan(
+        _primitive(), operation="operation:strict"
+    )
+    client._record_replan = lambda *_args, **_kwargs: None  # type: ignore[method-assign]
+    client._safe_stop = lambda *_args, **_kwargs: None  # type: ignore[method-assign]
+    monkeypatch.setattr(t4_client_module, "_contract_now_ns", lambda _node: 100)
+    monkeypatch.setattr(
+        InternVLAClientNode,
+        "_resolve_nav2",
+        lambda _self, _command: _resolution(goal=True),
+    )
+
+    with pytest.raises(ClientFailure, match="excluded recovery trajectory"):
+        client._resolve_nav2(
+            _command(
+                sequence=18,
+                source=1,
+                action=2,
+                observation_digest="observation:18",
+            )
+        )
+
+
+def test_raw_wire_client_still_rejects_stale_odometry(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = _bare_client()
+    client.system2_replan_policy = "raw_wire_warn"
+    client._pending_typed_replan = _pending_replan(
+        _primitive(), operation="operation:raw-wire-stale"
+    )
+    client._t4_odometry_stamp_ns = 1
+    client._reset_sim_barrier_ns = 0
+    client.navigation_odometry_timeout = 1e-7
+    client._record_replan = lambda *_args, **_kwargs: None  # type: ignore[method-assign]
+    client._safe_stop = lambda *_args, **_kwargs: None  # type: ignore[method-assign]
+    monkeypatch.setattr(t4_client_module, "_contract_now_ns", lambda _node: 200)
+    monkeypatch.setattr(
+        InternVLAClientNode,
+        "_resolve_nav2",
+        lambda _self, _command: _resolution(goal=True),
+    )
+
+    with pytest.raises(ClientFailure, match="excluded recovery trajectory"):
+        client._resolve_nav2(_command(sequence=18, source=1, action=2))
+
+
+def test_raw_wire_client_still_rejects_nonfinite_odometry(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = _bare_client()
+    client.system2_replan_policy = "raw_wire_warn"
+    client._pending_typed_replan = _pending_replan(
+        _primitive(), operation="operation:raw-wire-nonfinite"
+    )
+    client._t4_odometry.pose.pose.position.x = float("nan")
+    client._record_replan = lambda *_args, **_kwargs: None  # type: ignore[method-assign]
+    client._safe_stop = lambda *_args, **_kwargs: None  # type: ignore[method-assign]
+    monkeypatch.setattr(t4_client_module, "_contract_now_ns", lambda _node: 200)
+    monkeypatch.setattr(
+        InternVLAClientNode,
+        "_resolve_nav2",
+        lambda _self, _command: _resolution(goal=True),
+    )
+
+    with pytest.raises(ClientFailure, match="excluded recovery trajectory"):
+        client._resolve_nav2(_command(sequence=18, source=1, action=2))
 
 
 @pytest.mark.parametrize(
@@ -242,6 +378,21 @@ def _bare_recovery_supervisor() -> RecoverySupervisor:
     supervisor.samples = [(90, 1.25, -0.5, 0.0)]
     supervisor._semantic_now_ns = lambda: 100  # type: ignore[method-assign]
     return supervisor
+
+
+def test_t5_no_progress_recovery_waits_for_the_bounded_action_window() -> None:
+    assert not _no_progress_recovery_eligible(
+        t5_completion_sim=True, command_age_sec=0.25
+    )
+    assert not _no_progress_recovery_eligible(
+        t5_completion_sim=True, command_age_sec=3.0
+    )
+    assert _no_progress_recovery_eligible(
+        t5_completion_sim=True, command_age_sec=3.01
+    )
+    assert _no_progress_recovery_eligible(
+        t5_completion_sim=False, command_age_sec=0.0
+    )
 
 
 def test_turn_progress_arms_for_both_command_and_motion_edge_orders() -> None:
@@ -349,6 +500,123 @@ def test_adapter_excludes_same_system2_primitive_but_accepts_different_action(
     assert different.nav2_goal_sent is True
     assert adapter.recovery_latched is False
     assert committed == [18, 19]
+
+
+def test_adapter_accepts_fresh_in_place_turn_without_path_signature(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A zero-translation T5 turn is identified by its primitive signature."""
+
+    adapter = T4RecoveryAdapter.__new__(T4RecoveryAdapter)
+    old_signature = _primitive(action=3, sequence=17)
+    adapter.allow_system2_recovery_replan = True
+    adapter.recovery_latched = True
+    adapter.recovery_latched_id = "recovery:in-place"
+    adapter.recovery_latched_goal_id = "goal:in-place"
+    adapter.recovery_replan_armed = True
+    adapter.recovery_replan_deadline_ns = 1_000
+    adapter.recovery_excluded_absolute = {old_signature.absolute_sha256}
+    adapter.recovery_excluded_shape = {old_signature.shape_sha256}
+    adapter.recovery_excluded_hold_count = 0
+    adapter.odom_lock = threading.Lock()
+    adapter.latest_odom = (1.25, -0.5, 0.0)
+    adapter._recovery_contract_now_ns = lambda: 100  # type: ignore[method-assign]
+    adapter._system2_path = (  # type: ignore[method-assign]
+        lambda _command, _action: SimpleNamespace(
+            poses=[_pose(1.25, -0.5) for _ in range(9)]
+        )
+    )
+    committed: list[int] = []
+    adapter._check_identity = (  # type: ignore[method-assign]
+        lambda command: committed.append(int(command.sequence_id))
+    )
+    adapter._apply_ablation = lambda _request: None  # type: ignore[method-assign]
+    events: list[dict[str, object]] = []
+    adapter._append = lambda record: events.append(record)  # type: ignore[method-assign]
+    adapter._publish_motion = lambda _enabled: None  # type: ignore[method-assign]
+
+    def resolve_fresh(
+        self: object, request: object, response: object
+    ) -> object:
+        adapter._check_identity(request.command)
+        resolved = _resolution(goal=True)
+        for name, value in vars(resolved).items():
+            setattr(response, name, value)
+        return response
+
+    monkeypatch.setattr(ActiveNav2Adapter, "_resolve", resolve_fresh)
+
+    response = adapter._resolve_recovery_latched(
+        SimpleNamespace(command=_command(sequence=18, source=1, action=2)),
+        SimpleNamespace(),
+    )
+
+    assert response.nav2_goal_sent is True
+    assert adapter.recovery_latched is False
+    assert committed == [18]
+    accepted = [
+        event
+        for event in events
+        if event["event"] == "recovery_latch_fresh_trajectory_accepted"
+    ]
+    assert accepted[0]["trajectory_source"] == "system2_primitive"
+
+
+def test_raw_wire_adapter_warns_and_releases_excluded_system2_primitive(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    adapter = T4RecoveryAdapter.__new__(T4RecoveryAdapter)
+    old_signature = _primitive(action=2, sequence=17)
+    adapter.system2_replan_policy = "raw_wire_warn"
+    adapter.allow_system2_recovery_replan = True
+    adapter.recovery_latched = True
+    adapter.recovery_latched_id = "recovery:raw-wire"
+    adapter.recovery_latched_goal_id = "goal:raw-wire"
+    adapter.recovery_replan_armed = True
+    adapter.recovery_replan_deadline_ns = 1_000
+    adapter.recovery_excluded_absolute = {old_signature.absolute_sha256}
+    adapter.recovery_excluded_shape = {old_signature.shape_sha256}
+    adapter.recovery_excluded_hold_count = 0
+    adapter.odom_lock = threading.Lock()
+    adapter.latest_odom = (1.25, -0.5, 0.0)
+    adapter._recovery_contract_now_ns = lambda: 100  # type: ignore[method-assign]
+    adapter._system2_path = (  # type: ignore[method-assign]
+        lambda _command, _action: SimpleNamespace(
+            poses=[_pose(1.25, -0.5) for _ in range(9)]
+        )
+    )
+    committed: list[int] = []
+    adapter._check_identity = (  # type: ignore[method-assign]
+        lambda command: committed.append(int(command.sequence_id))
+    )
+    adapter._apply_ablation = lambda _request: None  # type: ignore[method-assign]
+    events: list[dict[str, object]] = []
+    adapter._append = lambda record: events.append(record)  # type: ignore[method-assign]
+    adapter._publish_motion = lambda _enabled: None  # type: ignore[method-assign]
+
+    def resolve_fresh(
+        self: object, request: object, response: object
+    ) -> object:
+        adapter._check_identity(request.command)
+        resolved = _resolution(goal=True)
+        for name, value in vars(resolved).items():
+            setattr(response, name, value)
+        return response
+
+    monkeypatch.setattr(ActiveNav2Adapter, "_resolve", resolve_fresh)
+
+    response = adapter._resolve_recovery_latched(
+        SimpleNamespace(command=_command(sequence=18, source=1, action=2)),
+        SimpleNamespace(),
+    )
+
+    assert response.nav2_goal_sent is True
+    assert adapter.recovery_latched is False
+    assert committed == [18]
+    assert any(
+        event["event"] == "raw_wire_system2_signature_bypass_warn"
+        for event in events
+    )
 
 
 def test_missing_system1_queue_target_drains_as_nonterminal_same_reset_hold(

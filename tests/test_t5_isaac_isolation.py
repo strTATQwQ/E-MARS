@@ -47,7 +47,7 @@ def test_embedded_python_blocks_compile() -> None:
         )
         compiled += 1
         index = end + 1
-    assert compiled == 25
+    assert compiled == 26
 
 
 def test_entrypoint_is_lane_parameterized_and_requires_exact_lane_lease() -> None:

@@ -115,6 +115,42 @@ def test_invalid_candidate_profile_exits_before_any_resource_action(
     assert "ACQUIRED" not in completed.stdout + completed.stderr
 
 
+def test_final10_rejects_raw_wire_before_any_resource_action() -> None:
+    env = dict(os.environ)
+    env["INTERNNAV_T5_CANDIDATE_PROFILE"] = "a1+b1+c1"
+    env["INTERNVLA_T5_SYSTEM2_REPLAN_POLICY"] = "raw_wire_warn"
+    if os.name == "nt":
+        forwarded = env.get("WSLENV", "")
+        env["WSLENV"] = ":".join(
+            item
+            for item in (
+                forwarded,
+                "INTERNNAV_T5_CANDIDATE_PROFILE",
+                "INTERNVLA_T5_SYSTEM2_REPLAN_POLICY",
+            )
+            if item
+        )
+    completed = subprocess.run(
+        [
+            "bash",
+            RUNNER.relative_to(ROOT).as_posix(),
+            "a",
+            "final10",
+            "t5fast01",
+            "a" * 40,
+            "results/internnav_t5/d0-0-prepare-t5d0020260719t000000",
+            "results/internnav_t5/fast-lane-a-final10-t5fast01",
+        ],
+        cwd=ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert completed.returncode == 64
+    assert "ACQUIRED" not in completed.stdout + completed.stderr
+
+
 def test_candidate_profile_is_bound_forwarded_and_reported() -> None:
     text = source()
     assert "if [[ -v INTERNNAV_T5_CANDIDATE_PROFILE ]]" in text

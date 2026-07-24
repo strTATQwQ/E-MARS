@@ -42,6 +42,7 @@ _SYSTEM2_ACTION_SOURCE = 1
 _SYSTEM2_MOTION_ACTIONS = frozenset({ACTION_FORWARD, ACTION_LEFT, ACTION_RIGHT})
 _SYSTEM2_TURN_ACTIONS = frozenset({ACTION_LEFT, ACTION_RIGHT})
 _SYSTEM2_TURN_PROGRESS_RAD = math.radians(12.0)
+_T5_ACTION_NO_PROGRESS_GRACE_SEC = 3.0
 
 
 def _wrapped_angle(angle_rad: float) -> float:
@@ -92,6 +93,19 @@ def _directed_system2_yaw_progress(
         unwrapped_delta if action == ACTION_LEFT else -unwrapped_delta
     )
     return max(0.0, commanded_delta)
+
+
+def _no_progress_recovery_eligible(
+    *, t5_completion_sim: bool, command_age_sec: float | None
+) -> bool:
+    """Do not let an old progress window preempt a fresh bounded action."""
+
+    if not t5_completion_sim:
+        return True
+    return bool(
+        command_age_sec is not None
+        and command_age_sec > _T5_ACTION_NO_PROGRESS_GRACE_SEC
+    )
 
 
 class _SemanticDeadlineExpired(TimeoutError):
@@ -767,6 +781,7 @@ class RecoverySupervisor(Node):
                         episode_id=str(message.episode_id),
                         reset_generation=generation,
                         sequence_id=int(message.sequence_id),
+                        observation_digest=str(message.observation_digest),
                         x=current[1],
                         y=current[2],
                         yaw_rad=current[3],
@@ -880,26 +895,35 @@ class RecoverySupervisor(Node):
                 if self.latest_path
                 else 0.0
             )
+            command_age = semantic_age_sec(
+                now_ns, self.latest_command_semantic_ns
+            )
+            progress_recovery_eligible = _no_progress_recovery_eligible(
+                t5_completion_sim=self._recovery_uses_sim_time,
+                command_age_sec=command_age,
+            )
             if self.motion_enabled:
-                if displacement < self.minimum_progress and not yaw_progress_sufficient:
+                if (
+                    displacement < self.minimum_progress and not yaw_progress_sufficient
+                    and progress_recovery_eligible
+                ):
                     reason = "no_progress"
                 if (
-                    travel >= self.oscillation_travel
+                    progress_recovery_eligible
+                    and travel >= self.oscillation_travel
                     and displacement < 1.5 * self.minimum_progress
                     and not yaw_progress_sufficient
                 ):
                     reason = "short_period_oscillation"
                 if (
-                    repeated
+                    progress_recovery_eligible
+                    and repeated
                     and displacement < 2.0 * self.minimum_progress
                     and not yaw_progress_sufficient
                 ):
                     reason = "repeated_trajectory_no_progress"
                 if deviation > self.trajectory_deviation:
                     reason = "trajectory_deviation"
-            command_age = semantic_age_sec(
-                now_ns, self.latest_command_semantic_ns
-            )
             if (
                 reason is None
                 and self.enable_scheduled_refresh

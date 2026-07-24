@@ -1585,7 +1585,7 @@ PY
     env ISAAC_HOST="$x86_ip" bash "$root/scripts/with_resource_lease.sh" "$profile" \
       --owner codex-00 --task "t5-fast-prepare:$role:$run_id:$code_sha" \
       --log-dir "$result_dir/lease/$role" --acquire-timeout 30 \
-      --cleanup-timeout 180 --kill-wait-timeout 30 -- \
+      --cleanup-timeout 60 --kill-wait-timeout 30 -- \
       env INTERNNAV_T5_RESOURCE_LEASE_ACK="$profile" \
         bash "$root/coordination/run_t5_fast_prepare_online.sh" \
           --lane-a-pair "$code_sha" "$run_id" "$result_relative" "$result_dir"
@@ -1593,7 +1593,7 @@ PY
     env ISAAC_HOST="$x86_ip" bash "$root/scripts/with_resource_lease.sh" "$profile" \
       --owner codex-00 --task "t5-fast-prepare:$role:$run_id:$code_sha" \
       --log-dir "$result_dir/lease/$role" --acquire-timeout 30 \
-      --cleanup-timeout 180 --kill-wait-timeout 30 -- \
+      --cleanup-timeout 60 --kill-wait-timeout 30 -- \
       env INTERNNAV_T5_RESOURCE_LEASE_ACK="$profile" \
         bash "$root/coordination/run_t5_fast_prepare_online.sh" \
           --inside "$role" "$code_sha" "$run_id" "$result_relative" "$result_dir"

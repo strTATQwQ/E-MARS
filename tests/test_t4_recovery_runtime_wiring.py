@@ -28,6 +28,7 @@ from internvla_ros2.recovery_contract import (  # noqa: E402
     recovery_deadline_ns,
     recovery_identity,
     semantic_age_sec,
+    system2_replan_policy,
     system2_primitive_signature,
     t5_completion_sim_enabled,
     trajectory_signature,
@@ -219,6 +220,37 @@ def test_t5_recovery_sim_clock_guard_is_exact() -> None:
     )
 
 
+def test_system2_replan_policy_is_t5_only_and_raw_wire_is_lane_a_recovery() -> None:
+    exact = {
+        "INTERNNAV_RUNTIME_POLICY": "completion_sim",
+        "INTERNNAV_SIMULATION_TARGET": "isaac",
+        "INTERNNAV_T5_LANE": "a",
+        "INTERNNAV_T5_CANDIDATE_PROFILE": "recovery_a",
+    }
+    assert system2_replan_policy({}) == "observation_bound"
+    assert system2_replan_policy(
+        {**exact, "INTERNVLA_T5_SYSTEM2_REPLAN_POLICY": "strict"}
+    ) == "strict"
+    assert system2_replan_policy(
+        {**exact, "INTERNVLA_T5_SYSTEM2_REPLAN_POLICY": "raw_wire_warn"}
+    ) == "raw_wire_warn"
+    with pytest.raises(ValueError, match="T5 Isaac completion_sim"):
+        system2_replan_policy(
+            {
+                "INTERNVLA_T5_SYSTEM2_REPLAN_POLICY": "strict",
+                "INTERNNAV_RUNTIME_POLICY": "strict_evidence",
+            }
+        )
+    with pytest.raises(ValueError, match="Lane A Recovery A"):
+        system2_replan_policy(
+            {
+                **exact,
+                "INTERNNAV_T5_LANE": "b",
+                "INTERNVLA_T5_SYSTEM2_REPLAN_POLICY": "raw_wire_warn",
+            }
+        )
+
+
 def test_trajectory_signature_rejects_translated_repetition_by_shape() -> None:
     original = trajectory_signature([(0.0, 0.0), (0.5, 0.0), (1.0, 0.0)])
     translated = trajectory_signature(
@@ -228,12 +260,13 @@ def test_trajectory_signature_rejects_translated_repetition_by_shape() -> None:
     assert original.shape_sha256 == translated.shape_sha256
 
 
-def test_system2_primitive_shape_excludes_same_action_across_sequence_and_drift() -> None:
+def test_system2_primitive_shape_excludes_same_observation_across_sequence_and_drift() -> None:
     original = system2_primitive_signature(
         action=2,
         episode_id="a::259",
         reset_generation=1,
         sequence_id=17,
+        observation_digest="observation:17",
         x=1.25,
         y=-0.5,
         yaw_rad=0.1,
@@ -243,6 +276,7 @@ def test_system2_primitive_shape_excludes_same_action_across_sequence_and_drift(
         episode_id="a::259",
         reset_generation=1,
         sequence_id=18,
+        observation_digest="observation:17",
         x=1.251,
         y=-0.499,
         yaw_rad=0.101,
@@ -252,6 +286,7 @@ def test_system2_primitive_shape_excludes_same_action_across_sequence_and_drift(
         episode_id="a::259",
         reset_generation=1,
         sequence_id=18,
+        observation_digest="observation:17",
         x=1.251,
         y=-0.499,
         yaw_rad=0.101,
@@ -260,6 +295,18 @@ def test_system2_primitive_shape_excludes_same_action_across_sequence_and_drift(
     assert original.absolute_sha256 != next_sequence.absolute_sha256
     assert original.shape_sha256 == next_sequence.shape_sha256
     assert original.shape_sha256 != different_action.shape_sha256
+
+    refreshed_observation = system2_primitive_signature(
+        action=2,
+        episode_id="a::259",
+        reset_generation=1,
+        sequence_id=18,
+        observation_digest="observation:18",
+        x=1.251,
+        y=-0.499,
+        yaw_rad=0.101,
+    )
+    assert original.shape_sha256 != refreshed_observation.shape_sha256
 
 
 def test_ros_runtime_uses_typed_transactions_and_recovery_latch() -> None:
@@ -320,7 +367,7 @@ def test_pending_stand_sequence_is_delegated_before_fresh_consumption() -> None:
         method_start : client.index("    def _on_t4_odometry(", method_start)
     ]
     rejected_block = method[
-        method.index("                rejected = (") :
+        method.index("                would_reject = any(") :
         method.index(
             "        response = self._resolve_nav2_with_terminal_fallback(command)"
         )
