@@ -75,7 +75,8 @@ def test_d0_prepare_deploys_same_authorization_ref_to_three_hosts() -> None:
     assert "railgun@10.100.100.128" in text
     assert "rail@10.100.120.122" in text
     assert "song@10.100.120.123" in text
-    assert 'archive --format=tar "$authorization_ref"' in text
+    bundle = 'bash "$root/scripts/create_source_bundle.sh" "$authorization_ref" "$archive" 1'
+    assert bundle in text
     assert 'deploy "$dgx_a_target" "$dgx_a_root"' in text
     assert 'deploy "$dgx_b_target" "$dgx_b_root"' in text
     assert 'deploy "$x86_target" "$x86_prepare_root"' in text
@@ -186,7 +187,7 @@ def test_prepare_arms_persistent_quarantine_and_only_audited_cleanup_clears_it()
     assert "elif quarantine_owned and all(checks.values()):" in text
     assert 'quarantine_values.get("run_tag") == expected_quarantine_tag' in text
     assert text.index('t5_quarantine_arm "$dgx_a_target"') < text.index(
-        '"${git_command[@]}" archive'
+        'bash "$root/scripts/create_source_bundle.sh"'
     )
     assert text.index("quarantine_path.unlink()") > text.index(
         '"owned_containers_absent_or_stopped": container_cleanup_ok'
@@ -205,7 +206,9 @@ def test_prepare_globally_audits_both_quarantined_dgx_hosts_before_deploy() -> N
     assert text.index('t5_quarantine_arm "$dgx_a_target"') < text.index(audit_a)
     assert text.index('t5_quarantine_arm "$dgx_b_target"') < text.index(audit_a)
     assert text.index(audit_a) < text.index(audit_b)
-    assert text.index(audit_b) < text.index('"${git_command[@]}" archive')
+    assert text.index(audit_b) < text.index(
+        'bash "$root/scripts/create_source_bundle.sh"'
+    )
     assert text.index(audit_b) < text.index('deploy "$dgx_a_target"')
     assert 't5_remote_compute_absent "$x86_target"' not in text
 

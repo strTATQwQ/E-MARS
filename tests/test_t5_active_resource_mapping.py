@@ -57,18 +57,13 @@ def test_active_fast_path_and_workers_match_resource_candidate() -> None:
         assert lane_b in texts[name]
 
 
-def test_v0_manifests_remain_historical_evidence() -> None:
+def test_current_topology_is_code_but_historical_d0_evidence_is_not_bundled() -> None:
     topology = json.loads(
         (ROOT / "configs/internnav_t5/topology.json").read_text(encoding="utf-8")
     )
-    d0 = json.loads(
-        (ROOT / "configs/internnav_t5/d0_run_manifest.json").read_text(
-            encoding="utf-8"
-        )
-    )
     assert topology["roles"]["isaac_x86"]["host"] == "10.100.120.123"
-    assert d0["lanes"]["a"]["isaac"] == "song@10.100.120.123"
-    assert d0["lanes"]["b"]["isaac"] == "song@10.100.120.123"
+    assert topology["roles"]["dgx_b"]["host"] == "10.100.120.122"
+    assert not (ROOT / "configs/internnav_t5/d0_run_manifest.json").exists()
 
 
 def test_gpu_leases_default_to_active_host_but_legacy_global_does_not() -> None:

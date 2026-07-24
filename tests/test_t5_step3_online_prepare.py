@@ -14,7 +14,8 @@ def test_step3_online_prepare_uses_only_dgx_b_and_exact_archive() -> None:
     assert "10.100.100.128" not in text
     assert 'git_command=(git -C "$root")' in text
     assert 'git_command=(git.exe -C "$root_windows")' in text
-    assert '"${git_command[@]}" archive --format=tar "$code_sha"' in text
+    assert 'bash "$root/scripts/create_source_bundle.sh" "$code_sha" \\' in text
+    assert '"$result_dir/deployment.tar.gz" 9' in text
     assert "T5_DEPLOYMENT_REF" in text
     assert "deployment_archive_sha256" in text
     assert "step3-vl-10b-tf4.57.6" in text

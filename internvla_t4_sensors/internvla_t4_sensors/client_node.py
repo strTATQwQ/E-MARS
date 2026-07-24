@@ -362,7 +362,7 @@ class T4OdometryClientNode(InternVLAClientNode):
     def _on_step3_timeout_advice(self, message: String) -> None:
         """Accept one identity-bound, non-control Step3 result."""
 
-        if not self._step3_timeout_enabled:
+        if not getattr(self, "_step3_timeout_enabled", False):
             return
         try:
             value = json.loads(str(message.data))
@@ -1072,7 +1072,7 @@ class T4OdometryClientNode(InternVLAClientNode):
     def _apply_step3_timeout_advice(self, command: Any) -> None:
         """Map one Step3 choice onto the existing bounded System2 primitive path."""
 
-        if not self._step3_timeout_enabled:
+        if not getattr(self, "_step3_timeout_enabled", False):
             return
         with self._step3_timeout_condition:
             pending = self._step3_timeout_pending

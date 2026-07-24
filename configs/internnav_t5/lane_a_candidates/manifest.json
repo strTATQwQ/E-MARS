@@ -53,7 +53,7 @@
   },
   "provenance_contract": {
     "hash_kind": "sha256",
-    "code_bundle_sha256": "7ed25896b67d94c03fff167f13dc9f80f6dd08c7a112a0f679e00b8d11d740ca",
+    "code_bundle_sha256": "1201db59debc6691dd686c6cfabe571666f8618138ecf933773420a745383868",
     "code_paths": [
       "internvla_t4_sensors/internvla_t4_sensors/motion_observation_gate.py",
       "internvla_t4_sensors/internvla_t4_sensors/client_node.py",
