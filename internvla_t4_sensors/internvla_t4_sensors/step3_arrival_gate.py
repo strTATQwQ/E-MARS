@@ -28,6 +28,22 @@ def completed_motion_action(pending: Mapping[str, Any]) -> int | None:
     return value if value in BOUNDED_MOTION_ACTIONS else None
 
 
+def pending_model_action(pending: Mapping[str, Any]) -> int:
+    """Attribute a safe hold without assuming timeout-only context fields."""
+
+    if pending.get("kind") == "arrival_check_after_completed_motion":
+        value = completed_motion_action(pending)
+    else:
+        value = pending.get("excluded_action")
+        if (
+            isinstance(value, bool)
+            or not isinstance(value, int)
+            or value not in BOUNDED_MOTION_ACTIONS
+        ):
+            value = None
+    return int(value) if value is not None else 0
+
+
 def arrival_transition(
     pending: Mapping[str, Any],
     advice: Mapping[str, Any],

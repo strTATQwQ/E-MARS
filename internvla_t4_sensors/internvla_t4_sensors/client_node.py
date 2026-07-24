@@ -71,6 +71,7 @@ from .step3_arrival_gate import (
     TERMINATE_ASSISTED,
     arrival_transition,
     completed_motion_action,
+    pending_model_action,
 )
 
 
@@ -1430,7 +1431,7 @@ class T4OdometryClientNode(InternVLAClientNode):
             "request_id": str(pending["trigger_request_id"]),
             "sim_stamp_ns": int(sim_stamp_ns),
             "discrete_action": ACTION_STAND_STILL,
-            "model_discrete_action": int(pending["excluded_action"]),
+            "model_discrete_action": pending_model_action(pending),
             "stop": True,
             "model_stop": False,
             "control_mode": self.control_mode,

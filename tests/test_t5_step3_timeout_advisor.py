@@ -13,6 +13,7 @@ from internvla_t4_sensors.internvla_t4_sensors.step3_arrival_gate import (
     TERMINATE_ASSISTED,
     arrival_transition,
     completed_motion_action,
+    pending_model_action,
 )
 from scripts.t5_step3_timeout_advisor_node import (
     CAMERA_ORDER,
@@ -122,6 +123,17 @@ def test_arrival_context_requires_two_identity_bound_rounds() -> None:
     invalid["minimum_snapshot_sim_stamp_ns"] = -1
     with pytest.raises(TimeoutAdvisorError):
         _context(invalid)
+
+
+def test_safe_hold_attributes_timeout_and_arrival_contexts_without_key_error() -> None:
+    assert pending_model_action(valid_context()) == 1
+    assert pending_model_action(valid_arrival_context()) == 1
+    assert pending_model_action(
+        {"kind": "arrival_check_after_completed_motion", "completed_action": True}
+    ) == 0
+    assert pending_model_action(
+        {"kind": "motion_timeout_after_confirmed_safe_stop"}
+    ) == 0
 
 
 @pytest.mark.parametrize(
