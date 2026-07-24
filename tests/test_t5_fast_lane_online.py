@@ -294,6 +294,9 @@ def test_screen_profiles_materialize_a_frozen_first_n_dataset() -> None:
     assert 'materialize_t5_screen_dataset.py' in text
     assert '--expected-source-sha256 "$source_dataset_sha256"' in text
     assert '--expected-episode-keys "$frozen_episode_keys_csv"' in text
+    assert 'screen_episode_key="${INTERNNAV_T5_SCREEN_EPISODE_KEY:-}"' in text
+    assert 'screen_key_args=(--episode-key "$screen_episode_key")' in text
+    assert '"screen_episode_key_exact_scope"' in text
     assert 'print(",".join(value["episode_keys"]))' in text
     assert 'print(",".join(value["execution_episode_keys"]))' in text
     assert (

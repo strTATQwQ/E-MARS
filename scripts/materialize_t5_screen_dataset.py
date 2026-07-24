@@ -49,6 +49,7 @@ def main() -> None:
     parser.add_argument("--source-root", required=True, type=Path)
     parser.add_argument("--output-root", required=True, type=Path)
     parser.add_argument("--count", required=True, type=int, choices=(1, 3))
+    parser.add_argument("--episode-key")
     parser.add_argument("--expected-source-sha256", required=True)
     parser.add_argument("--expected-episode-keys", required=True)
     args = parser.parse_args()
@@ -74,19 +75,29 @@ def main() -> None:
         raise SystemExit("expected episode keys must name five unique episodes")
     if source_keys != expected_keys:
         raise SystemExit("source episode order differs from the frozen input binding")
+    if args.episode_key is not None:
+        if args.count != 1:
+            raise SystemExit("episode-key selection is only valid for count=1")
+        if args.episode_key not in source_keys:
+            raise SystemExit("episode-key is not present in the frozen input binding")
+        selected_episodes = [episodes[source_keys.index(args.episode_key)]]
+        selection = "frozen_episode_key"
+    else:
+        selected_episodes = episodes[: args.count]
+        selection = "frozen_first_n"
 
     output_root = args.output_root.resolve(strict=False)
     if output_root.exists() or output_root.is_symlink():
         raise SystemExit("screen output root already exists")
     output = output_root / "val_unseen/val_unseen.json.gz"
     selected = dict(payload)
-    selected["episodes"] = episodes[: args.count]
+    selected["episodes"] = selected_episodes
     try:
         write_gzip_json(output, selected)
         audit = {
             "schema_version": 1,
             "status": "PASS",
-            "selection": "frozen_first_n",
+            "selection": selection,
             "source_dataset": str(source),
             "source_sha256": source_hash,
             "source_episode_count": len(episodes),
@@ -94,7 +105,9 @@ def main() -> None:
             "output_dataset": str(output),
             "output_sha256": sha256(output),
             "selected_episode_count": args.count,
-            "selected_episode_keys": source_keys[: args.count],
+            "selected_episode_keys": [
+                episode_key(episode) for episode in selected_episodes
+            ],
         }
         audit_path = output_root / "screen_dataset_audit.json"
         audit_path.write_text(

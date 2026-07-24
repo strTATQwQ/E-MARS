@@ -112,6 +112,11 @@ case "$profile" in
   screen3) screen_episode_count=3 ;;
   *) screen_episode_count=0 ;;
 esac
+screen_episode_key="${INTERNNAV_T5_SCREEN_EPISODE_KEY:-}"
+if test -n "$screen_episode_key"; then
+  test "$profile" = screen1 || usage
+  [[ "$screen_episode_key" =~ ^[A-Za-z0-9_.-]+$ ]] || usage
+fi
 if [[ -v INTERNNAV_T5_CANDIDATE_PROFILE ]]; then
   candidate_profile="$INTERNNAV_T5_CANDIDATE_PROFILE"
 else
@@ -459,7 +464,8 @@ else
   "$live_frontier_ready_required" \
   "$system2_replan_policy" \
   "$validation_tmp/candidate_resolution.json" \
-  "$validation_tmp/input_binding.json" <<'PY'
+  "$validation_tmp/input_binding.json" \
+  "$screen_episode_key" <<'PY'
 import hashlib, json, re, sys
 from pathlib import Path, PurePosixPath
 
@@ -472,6 +478,7 @@ code_sha, lane, candidate_profile, rtf_ablation_profile, isaac_sensor_profile, \
     sys.argv[15] == "1", sys.argv[16] == "1", sys.argv[17]
 )
 candidate_path, output = map(Path, sys.argv[18:20])
+screen_episode_key = sys.argv[20]
 frozen_input = json.loads(input_path.read_text(encoding="utf-8"))
 prep = json.loads(prep_path.read_text(encoding="utf-8"))
 final = json.loads(final_path.read_text(encoding="utf-8"))
@@ -692,6 +699,16 @@ checks = {
     "screen_count_matches_profile": screen_count == {
         "screen1": 1, "screen3": 3
     }.get(profile, 0),
+    "screen_episode_key_exact_scope": (
+        not screen_episode_key
+        or (
+            profile == "screen1"
+            and isinstance(expected_keys, list)
+            and screen_episode_key in expected_keys
+            and re.fullmatch(r"[A-Za-z0-9_.-]+", screen_episode_key)
+                is not None
+        )
+    ),
     "preparation_pass": prep.get("status") == "PASS"
         and bool(prep.get("checks")) and all(prep["checks"].values()),
     "final_pass": final.get("status") == "PASS"
@@ -758,8 +775,11 @@ payload = {
     "execution_profile": profile,
     "execution_episode_count": screen_count or dataset.get("episode_count"),
     "execution_episode_keys": (
-        expected_keys[:screen_count] if screen_count else expected_keys
+        [screen_episode_key] if screen_episode_key
+        else expected_keys[:screen_count] if screen_count
+        else expected_keys
     ),
+    "screen_episode_key": screen_episode_key or None,
     "deployment_roots": {"dgx": dgx_root, "x86": x86_root},
     "dataset_root": dataset_root,
     "dataset_sha256": dataset.get("dataset_sha256"),
@@ -2060,7 +2080,7 @@ remote "$x86_target" \
 container_started=1
 read -r -d '' x86_runtime_program <<'REMOTE_X86' || true
 set -euo pipefail
-deployment="$1"; lane="$2"; result="$3"; dataset="$4"; lease="$5"; domain="$6"; gpu="$7"; ledger="$8"; canary_sec="$9"; canary_ack="${10}"; rtf_ablation_profile="${11}"; cpuset="${12}"; screen_count="${13}"; source_dataset_sha256="${14}"; frozen_episode_keys_csv="${15}"; isaac_sensor_profile="${16}"; strict_extension_profile="${17}"; run_mode="${18}"; canary_timebase="${19}"; execution_count="${20}"; final_pilot_lane="${21}"; fault_injection_profile="${22}"; nvblox_mode="${23}"; step3_live_advisor="${24}"; step3_timeout_advisor="${25}"
+deployment="$1"; lane="$2"; result="$3"; dataset="$4"; lease="$5"; domain="$6"; gpu="$7"; ledger="$8"; canary_sec="$9"; canary_ack="${10}"; rtf_ablation_profile="${11}"; cpuset="${12}"; screen_count="${13}"; source_dataset_sha256="${14}"; frozen_episode_keys_csv="${15}"; isaac_sensor_profile="${16}"; strict_extension_profile="${17}"; run_mode="${18}"; canary_timebase="${19}"; execution_count="${20}"; final_pilot_lane="${21}"; fault_injection_profile="${22}"; nvblox_mode="${23}"; step3_live_advisor="${24}"; step3_timeout_advisor="${25}"; screen_episode_key="${26}"
 [[ "$cpuset" =~ ^[0-9,-]+$ ]]
 case "$canary_timebase" in wall|sim) ;; *) exit 64 ;; esac
 if test "$canary_timebase" = sim; then test "$canary_sec" = 600; fi
@@ -2120,6 +2140,14 @@ else:
     assert len(keys)==execution_count
 assert all(re.fullmatch(r"[A-Za-z0-9_.-]+",key) for key in keys)
 PY
+if test -n "$screen_episode_key"; then
+  test "$screen_count" = 1
+  [[ "$screen_episode_key" =~ ^[A-Za-z0-9_.-]+$ ]]
+  case ",$frozen_episode_keys_csv," in
+    *",$screen_episode_key,"*) ;;
+    *) exit 64 ;;
+  esac
+fi
 case "$final_pilot_lane" in off) ;; a|b) test "$final_pilot_lane" = "$lane"; test "$execution_count" = 10 ;; *) exit 64 ;; esac
 case "$lane" in
   a) cpuset_env=INTERNVLA_T5_LANE_A_CPUSET ;;
@@ -2149,9 +2177,14 @@ if test "$screen_count" != 0; then
   mkdir -p "$screen_parent"
   screen_root="$screen_parent/$(basename "$result")"
   test ! -e "$screen_root"
+  screen_key_args=()
+  if test -n "$screen_episode_key"; then
+    screen_key_args=(--episode-key "$screen_episode_key")
+  fi
   python3 "$deployment/scripts/materialize_t5_screen_dataset.py" \
     --source-root "$dataset" --output-root "$screen_root" \
     --count "$screen_count" \
+    "${screen_key_args[@]}" \
     --expected-source-sha256 "$source_dataset_sha256" \
     --expected-episode-keys "$frozen_episode_keys_csv" \
     >"${screen_root}.materialize.json"
@@ -2198,7 +2231,7 @@ case "$profile" in
     ;;
   final10) final_pilot_lane="$lane" ;;
 esac
-x86_command="exec setsid --wait bash -c \"\$(printf '%s' '$x86_runtime_b64'|base64 -d)\" fast-x86 '$x86_root' '$lane' '$x86_run' '$dataset_root' '$resource_profile' '$ros_domain_id' '$gpu' '$x86_supervisor_ledger' '$engineering_canary_sec' '$engineering_canary_ack' '$rtf_ablation_profile' '$cpuset' '$screen_episode_count' '$dataset_sha256' '$episode_keys_csv' '$isaac_sensor_profile' '$strict_extension_profile' '$run_mode' '$engineering_canary_timebase' '$execution_episode_count' '$final_pilot_lane' '$fault_injection_profile' '$nvblox_mode' '$step3_live_advisor' '$step3_timeout_advisor'"
+x86_command="exec setsid --wait bash -c \"\$(printf '%s' '$x86_runtime_b64'|base64 -d)\" fast-x86 '$x86_root' '$lane' '$x86_run' '$dataset_root' '$resource_profile' '$ros_domain_id' '$gpu' '$x86_supervisor_ledger' '$engineering_canary_sec' '$engineering_canary_ack' '$rtf_ablation_profile' '$cpuset' '$screen_episode_count' '$dataset_sha256' '$episode_keys_csv' '$isaac_sensor_profile' '$strict_extension_profile' '$run_mode' '$engineering_canary_timebase' '$execution_episode_count' '$final_pilot_lane' '$fault_injection_profile' '$nvblox_mode' '$step3_live_advisor' '$step3_timeout_advisor' '$screen_episode_key'"
 x86_launch_attempted=1
 remote "$x86_target" "$x86_command" >"$result_dir/logs/x86_runtime_ssh.log" 2>&1 &
 x86_ssh_pid=$!

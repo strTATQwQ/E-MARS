@@ -88,3 +88,39 @@ def test_rejects_wrong_source_hash_without_creating_output(tmp_path: Path) -> No
     )
     assert completed.returncode != 0
     assert not output_root.exists()
+
+
+def test_materializes_one_exact_frozen_episode_key(tmp_path: Path) -> None:
+    source_root = tmp_path / "source"
+    source, source_sha, keys = write_source(source_root)
+    output_root = tmp_path / "screen-key"
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(SCRIPT),
+            "--source-root",
+            str(source_root),
+            "--output-root",
+            str(output_root),
+            "--count",
+            "1",
+            "--episode-key",
+            keys[3],
+            "--expected-source-sha256",
+            source_sha,
+            "--expected-episode-keys",
+            ",".join(keys),
+        ],
+        text=True,
+        capture_output=True,
+        check=True,
+    )
+    audit = json.loads(completed.stdout)
+    assert audit["selection"] == "frozen_episode_key"
+    assert audit["selected_episode_keys"] == [keys[3]]
+    assert audit["source_sha256"] == hashlib.sha256(source.read_bytes()).hexdigest()
+    with gzip.open(
+        output_root / "val_unseen/val_unseen.json.gz", "rt", encoding="utf-8"
+    ) as stream:
+        selected = json.load(stream)
+    assert [row["episode_id"] for row in selected["episodes"]] == [3]
