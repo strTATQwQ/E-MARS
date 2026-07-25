@@ -148,6 +148,7 @@ class T4OdometryClientNode(InternVLAClientNode):
     STEP3_ARRIVAL_MAX_CHECKS = 24
     STEP3_ARRIVAL_REQUIRED_CONFIRMATIONS = 2
     STEP3_ARRIVAL_MINIMUM_CONFIDENCE = 0.80
+    STEP3_MODEL_STOP_ESCAPE_MAX = 2
 
     def __init__(self) -> None:
         super().__init__()
@@ -260,6 +261,7 @@ class T4OdometryClientNode(InternVLAClientNode):
         self._step3_arrival_completed_actions = 0
         self._step3_arrival_checks = 0
         self._step3_last_completed_action: int | None = None
+        self._step3_model_stop_escapes = 0
         self._last_navigation_instruction = ""
         self.motion_gate_audit_path = (
             self.result_dir / "motion_observation_gate_records.jsonl"
@@ -1286,8 +1288,8 @@ class T4OdometryClientNode(InternVLAClientNode):
                 and advice.get("status") == "NOT_ARRIVED"
                 and isinstance(advice.get("advised_action"), int)
                 and not isinstance(advice.get("advised_action"), bool)
-                and self._step3_timeout_interventions
-                < self._step3_timeout_max_interventions
+                and self._step3_model_stop_escapes
+                < self.STEP3_MODEL_STOP_ESCAPE_MAX
             )
             if not timeout_advice and not model_stop_escape:
                 return
@@ -1336,7 +1338,10 @@ class T4OdometryClientNode(InternVLAClientNode):
         command.trajectory_source = 0
         command.trajectory_valid = False
         command.local_path.poses = []
-        self._step3_timeout_interventions += 1
+        if model_stop_escape:
+            self._step3_model_stop_escapes += 1
+        else:
+            self._step3_timeout_interventions += 1
         self._step3_timeout_override = {
             "episode_id": str(command.episode_id),
             "reset_generation": int(command.reset_generation),
@@ -1354,6 +1359,7 @@ class T4OdometryClientNode(InternVLAClientNode):
             "intervention_kind": (
                 "model_stop_escape" if model_stop_escape else "motion_timeout"
             ),
+            "model_stop_escape_count": self._step3_model_stop_escapes,
         }
         self._record_motion_gate_event(
             (
@@ -1378,7 +1384,9 @@ class T4OdometryClientNode(InternVLAClientNode):
         if not self._step3_timeout_enabled:
             return None
         arrival_followup: tuple[str, dict[str, Any], int] | None = None
-        arrival_terminal: tuple[dict[str, Any], dict[str, Any]] | None = None
+        arrival_terminal: tuple[
+            dict[str, Any], dict[str, Any], bool
+        ] | None = None
         arrival_fallback: tuple[dict[str, Any], dict[str, Any]] | None = None
         with self._step3_timeout_condition:
             pending = self._step3_timeout_pending
@@ -1407,8 +1415,8 @@ class T4OdometryClientNode(InternVLAClientNode):
                     and advice.get("status") == "NOT_ARRIVED"
                     and isinstance(advice.get("advised_action"), int)
                     and not isinstance(advice.get("advised_action"), bool)
-                    and self._step3_timeout_interventions
-                    < self._step3_timeout_max_interventions
+                    and self._step3_model_stop_escapes
+                    < self.STEP3_MODEL_STOP_ESCAPE_MAX
                 ):
                     return None
                 transition = arrival_transition(
@@ -1425,9 +1433,15 @@ class T4OdometryClientNode(InternVLAClientNode):
                         int(transition.snapshot_sim_stamp_ns or 0),
                     )
                 elif transition.action == TERMINATE_ASSISTED:
-                    arrival_terminal = (dict(pending), dict(advice))
+                    arrival_terminal = (dict(pending), dict(advice), True)
                 elif transition.action == CONTINUE_NAVIGATION:
-                    arrival_fallback = (dict(pending), dict(advice))
+                    if pending.get("model_stop_candidate") is True:
+                        # Step3 uncertainty is diagnostic, not proof that the
+                        # model's STOP is wrong.  Only a legal bounded escape
+                        # primitive vetoes it in the early return above.
+                        arrival_terminal = (dict(pending), dict(advice), False)
+                    else:
+                        arrival_fallback = (dict(pending), dict(advice))
                 self._step3_timeout_pending = None
                 self._step3_timeout_advice = None
             if arrival_terminal is None and arrival_fallback is None:
@@ -1472,20 +1486,26 @@ class T4OdometryClientNode(InternVLAClientNode):
             )
             return None
         if arrival_terminal is not None:
-            terminal_pending, terminal_advice = arrival_terminal
+            terminal_pending, terminal_advice, arrival_confirmed = arrival_terminal
             model_stop_candidate = bool(
                 terminal_pending.get("model_stop_candidate", False)
             )
-            termination_source = (
-                "internvla_model_stop_step3_arrival_confirmed"
-                if model_stop_candidate
-                else "step3_assisted_arrival"
-            )
+            if model_stop_candidate:
+                termination_source = (
+                    "internvla_model_stop_step3_arrival_confirmed"
+                    if arrival_confirmed
+                    else "internvla_model_stop_step3_unconfirmed"
+                )
+            else:
+                termination_source = "step3_assisted_arrival"
             terminal = {
                 "status_code": STATUS_OK,
                 "status_message": (
                     "Step3 arrival advisor confirmed destination on two "
                     "fresh safe-hold snapshots"
+                    if arrival_confirmed
+                    else "InternVLA STOP retained because Step3 supplied no "
+                    "confirmed arrival or actionable bounded veto"
                 ),
                 "episode_id": self.episode_id,
                 "reset_generation": self.reset_generation,
@@ -1504,19 +1524,25 @@ class T4OdometryClientNode(InternVLAClientNode):
                 ),
                 "stop": True,
                 "model_stop": model_stop_candidate,
-                "step3_assisted_stop": True,
-                "step3_arrival_confirmed": True,
-                "internvla_stop_candidate_confirmed": model_stop_candidate,
+                "step3_assisted_stop": arrival_confirmed,
+                "step3_arrival_confirmed": arrival_confirmed,
+                "internvla_stop_candidate_confirmed": (
+                    model_stop_candidate and arrival_confirmed
+                ),
                 "termination_source": termination_source,
-                "step3_arrival_confidence": float(terminal_advice["confidence"]),
+                "step3_arrival_confidence": float(
+                    terminal_advice.get("confidence", 0.0)
+                ),
                 "step3_arrival_confirmations": (
                     self.STEP3_ARRIVAL_REQUIRED_CONFIRMATIONS
+                    if arrival_confirmed
+                    else 0
                 ),
                 "step3_arrival_snapshot_id": str(
                     terminal_advice.get("snapshot_id", "")
                 ),
                 "control_mode": self.control_mode,
-                "action_source": 1,
+                "action_source": 1 if arrival_confirmed else 0,
                 "trajectory_source": 0,
                 "trajectory_valid": False,
                 "local_path": [],
@@ -1530,13 +1556,17 @@ class T4OdometryClientNode(InternVLAClientNode):
                 "navigation_odometry_serial": int(odom_serial),
             }
             self._record_motion_gate_event(
-                "step3_assisted_stop",
+                (
+                    "step3_assisted_stop"
+                    if arrival_confirmed
+                    else "internvla_model_stop_retained"
+                ),
                 str(terminal_pending.get("stop_token", "")),
                 {
                     "termination_source": terminal["termination_source"],
                     "model_stop": terminal["model_stop"],
                     "internvla_stop_candidate_confirmed": (
-                        model_stop_candidate
+                        terminal["internvla_stop_candidate_confirmed"]
                     ),
                     "confidence": terminal["step3_arrival_confidence"],
                     "confirmations": terminal["step3_arrival_confirmations"],
@@ -1900,6 +1930,7 @@ class T4OdometryClientNode(InternVLAClientNode):
             self._step3_arrival_completed_actions = 0
             self._step3_arrival_checks = 0
             self._step3_last_completed_action = None
+            self._step3_model_stop_escapes = 0
         sim_stamp_ns = _t5_semantic_now_ns(self)
         if sim_stamp_ns is None:
             self._safe_stop(STATUS_STALE, "simulation clock unavailable after reset")
@@ -1967,6 +1998,7 @@ class T4OdometryClientNode(InternVLAClientNode):
             self._step3_arrival_completed_actions = 0
             self._step3_arrival_checks = 0
             self._step3_last_completed_action = None
+            self._step3_model_stop_escapes = 0
         self._motion_gate_fault = None
         sim_stamp_ns = _t5_semantic_now_ns(self)
         if sim_stamp_ns is None:

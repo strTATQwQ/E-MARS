@@ -262,9 +262,11 @@ def test_advisor_has_no_direct_motion_or_terminal_stop_authority() -> None:
     assert '"status": "ADVISE"' not in advisor  # emitted through bounded fields
     assert 'command.action_source = 1' in client
     assert 'command.trajectory_valid = False' in client
-    assert '"step3_assisted_stop": True' in client
+    assert '"step3_assisted_stop": arrival_confirmed' in client
     assert '"step3_assisted_arrival"' in client
     assert '"internvla_model_stop_step3_arrival_confirmed"' in client
+    assert '"internvla_model_stop_step3_unconfirmed"' in client
+    assert '"internvla_model_stop_retained"' in client
     assert "_gate_internvla_model_stop(result)" in client
     assert 'result["internvla_stop_candidate"] = True' in client
     assert "step3_model_stop_rejected_with_bounded_escape" in advisor
@@ -283,6 +285,7 @@ def test_timeout_advisor_has_bounded_multi_escape_budget() -> None:
     ).read_text(encoding="utf-8")
     assert 'INTERNVLA_T5_STEP3_TIMEOUT_MAX_INTERVENTIONS", "6"' in client
     assert "1 <= self._step3_timeout_max_interventions <= 6" in client
+    assert "STEP3_MODEL_STOP_ESCAPE_MAX = 2" in client
     post_reset = client.split(
         "def _install_post_reset_sensor_barrier", maxsplit=1
     )[1].split("def _reset_motion_gate", maxsplit=1)[0]
@@ -290,6 +293,7 @@ def test_timeout_advisor_has_bounded_multi_escape_budget() -> None:
     assert "self._step3_arrival_completed_actions = 0" in post_reset
     assert "self._step3_arrival_checks = 0" in post_reset
     assert "self._step3_last_completed_action = None" in post_reset
+    assert "self._step3_model_stop_escapes = 0" in post_reset
 
 
 def test_x86_advisor_runs_inside_the_existing_ros_container() -> None:
