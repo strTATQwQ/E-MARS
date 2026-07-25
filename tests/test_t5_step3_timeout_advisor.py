@@ -13,6 +13,7 @@ from internvla_t4_sensors.internvla_t4_sensors.step3_arrival_gate import (
     TERMINATE_ASSISTED,
     arrival_transition,
     completed_motion_action,
+    is_unconfirmed_model_stop,
     pending_model_action,
 )
 from scripts.t5_step3_timeout_advisor_node import (
@@ -43,7 +44,9 @@ def valid_context() -> dict[str, object]:
     }
 
 
-def valid_arrival_context(*, advisor_round: int = 1) -> dict[str, object]:
+def valid_arrival_context(
+    *, advisor_round: int = 1, model_stop_candidate: bool = False
+) -> dict[str, object]:
     return {
         "schema_version": 1,
         "kind": "arrival_check_after_completed_motion",
@@ -59,6 +62,7 @@ def valid_arrival_context(*, advisor_round: int = 1) -> dict[str, object]:
         "minimum_snapshot_sim_stamp_ns": 0,
         "advisor_round": advisor_round,
         "required_confirmations": 2,
+        "model_stop_candidate": model_stop_candidate,
     }
 
 
@@ -123,6 +127,10 @@ def test_arrival_context_requires_two_identity_bound_rounds() -> None:
     invalid["minimum_snapshot_sim_stamp_ns"] = -1
     with pytest.raises(TimeoutAdvisorError):
         _context(invalid)
+    invalid = valid_arrival_context()
+    invalid["model_stop_candidate"] = 1
+    with pytest.raises(TimeoutAdvisorError):
+        _context(invalid)
 
 
 def test_safe_hold_attributes_timeout_and_arrival_contexts_without_key_error() -> None:
@@ -134,6 +142,35 @@ def test_safe_hold_attributes_timeout_and_arrival_contexts_without_key_error() -
     assert pending_model_action(
         {"kind": "motion_timeout_after_confirmed_safe_stop"}
     ) == 0
+    assert pending_model_action(
+        {
+            "kind": "arrival_check_after_completed_motion",
+            "completed_action": 3,
+            "model_stop_candidate": True,
+        }
+    ) == 0
+
+
+def test_model_stop_requires_independent_arrival_confirmation() -> None:
+    assert is_unconfirmed_model_stop(
+        {"stop": True, "model_discrete_action": 0}
+    )
+    assert not is_unconfirmed_model_stop(
+        {
+            "stop": True,
+            "model_discrete_action": 0,
+            "step3_arrival_confirmed": True,
+        }
+    )
+    assert not is_unconfirmed_model_stop(
+        {"stop": True, "model_discrete_action": 1}
+    )
+    assert not is_unconfirmed_model_stop(
+        {"stop": False, "model_discrete_action": 0}
+    )
+    assert not is_unconfirmed_model_stop(
+        {"stop": True, "model_discrete_action": True}
+    )
 
 
 @pytest.mark.parametrize(
@@ -226,7 +263,12 @@ def test_advisor_has_no_direct_motion_or_terminal_stop_authority() -> None:
     assert 'command.action_source = 1' in client
     assert 'command.trajectory_valid = False' in client
     assert '"step3_assisted_stop": True' in client
-    assert '"termination_source": "step3_assisted_arrival"' in client
+    assert '"step3_assisted_arrival"' in client
+    assert '"internvla_model_stop_step3_arrival_confirmed"' in client
+    assert "_gate_internvla_model_stop(result)" in client
+    assert 'result["internvla_stop_candidate"] = True' in client
+    assert "step3_model_stop_rejected_with_bounded_escape" in advisor
+    assert "InternVLA proposed STOP" in advisor
     assert "STEP3_ARRIVAL_REQUIRED_CONFIRMATIONS = 2" in client
     assert "_queued_arrival_confirmation" in advisor
     assert "identity[:4] == self._active_identity[:4]" in advisor
@@ -247,6 +289,7 @@ def test_timeout_advisor_has_bounded_multi_escape_budget() -> None:
     assert "self._step3_timeout_interventions = 0" in post_reset
     assert "self._step3_arrival_completed_actions = 0" in post_reset
     assert "self._step3_arrival_checks = 0" in post_reset
+    assert "self._step3_last_completed_action = None" in post_reset
 
 
 def test_x86_advisor_runs_inside_the_existing_ros_container() -> None:

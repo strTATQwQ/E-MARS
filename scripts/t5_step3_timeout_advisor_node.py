@@ -107,6 +107,7 @@ def _context(value: dict[str, Any]) -> dict[str, Any]:
             or isinstance(value.get("minimum_snapshot_sim_stamp_ns"), bool)
             or not isinstance(value.get("minimum_snapshot_sim_stamp_ns"), int)
             or value.get("minimum_snapshot_sim_stamp_ns") < 0
+            or not isinstance(value.get("model_stop_candidate", False), bool)
         ):
             raise TimeoutAdvisorError("invalid Lane-A arrival context")
     return value
@@ -209,16 +210,32 @@ def _planner_request(
         )
     else:
         candidates = tuple(PRIMITIVES.values())
-        instruction = (
-            f"{context['instruction']} The robot is physically safe-stopped after "
-            f"bounded action {context['completed_action']}. Decide only whether the "
-            "instruction's destination is visibly reached now. Return target_found "
-            "only when the current four-camera evidence clearly shows arrival; "
-            "otherwise abstain. Do not select a movement primitive."
-        )
+        if context.get("model_stop_candidate") is True:
+            instruction = (
+                f"{context['instruction']} InternVLA proposed STOP while the robot "
+                "is physically safe-stopped. Independently decide from the current "
+                "four-camera evidence whether the instruction's destination is "
+                "visibly reached. Return target_found only when arrival is clear; "
+                "otherwise select one listed short bounded primitive that best "
+                "continues navigation. Do not invent a goal."
+            )
+        else:
+            instruction = (
+                f"{context['instruction']} The robot is physically safe-stopped "
+                f"after bounded action {context['completed_action']}. Decide only "
+                "whether the instruction's destination is visibly reached now. "
+                "Return target_found only when the current four-camera evidence "
+                "clearly shows arrival; otherwise abstain. Do not select a movement "
+                "primitive."
+            )
         history = (
             f"arrival_confirmation_round={context['advisor_round']}",
             f"required_confirmations={context['required_confirmations']}",
+            (
+                "termination_candidate=internvla_model_stop"
+                if context.get("model_stop_candidate") is True
+                else "termination_candidate=periodic_arrival_probe"
+            ),
             f"snapshot_sim_stamp_ns={sidecar['sim_stamp_before_ns']}",
         )
     snapshot_id = (
@@ -348,6 +365,18 @@ class TimeoutAdvisorNode(Node):
                 status, reason = _arrival_outcome(
                     decision, self.args.arrival_minimum_confidence
                 )
+                escape_action: int | None = None
+                if (
+                    status == "NOT_ARRIVED"
+                    and context.get("model_stop_candidate") is True
+                    and decision.decision == "select_frontier"
+                    and decision.frontier_id
+                    in {item.frontier_id for item in request.candidate_frontiers}
+                    and float(decision.confidence) >= self.args.minimum_confidence
+                    and not decision.fallback_used
+                ):
+                    escape_action = int(decision.frontier_id)
+                    reason = "step3_model_stop_rejected_with_bounded_escape"
                 self._publish(
                     context,
                     status=status,
@@ -358,6 +387,11 @@ class TimeoutAdvisorNode(Node):
                     camera_count=len(request.ordered_images),
                     service_wall_latency_sec=time.monotonic() - started,
                     metrics=metrics.to_mapping(),
+                    **(
+                        {"advised_action": escape_action}
+                        if escape_action is not None
+                        else {}
+                    ),
                 )
             elif (
                 decision.decision != "select_frontier"

@@ -71,6 +71,7 @@ from .step3_arrival_gate import (
     TERMINATE_ASSISTED,
     arrival_transition,
     completed_motion_action,
+    is_unconfirmed_model_stop,
     pending_model_action,
 )
 
@@ -258,6 +259,7 @@ class T4OdometryClientNode(InternVLAClientNode):
             raise RuntimeError("Step3 timeout interventions must be in [1, 6]")
         self._step3_arrival_completed_actions = 0
         self._step3_arrival_checks = 0
+        self._step3_last_completed_action: int | None = None
         self._last_navigation_instruction = ""
         self.motion_gate_audit_path = (
             self.result_dir / "motion_observation_gate_records.jsonl"
@@ -455,6 +457,23 @@ class T4OdometryClientNode(InternVLAClientNode):
                         "Step3 arrival advice"
                     )
                     return
+                if (
+                    pending.get("model_stop_candidate") is True
+                    and status == "NOT_ARRIVED"
+                    and "advised_action" in value
+                ):
+                    action = value.get("advised_action")
+                    if (
+                        isinstance(action, bool)
+                        or not isinstance(action, int)
+                        or action
+                        not in {ACTION_FORWARD, ACTION_LEFT, ACTION_RIGHT}
+                        or confidence < 0.35
+                    ):
+                        self.get_logger().warning(
+                            "discarding illegal model-STOP escape advice"
+                        )
+                        return
             self._step3_timeout_advice = value
             self._step3_timeout_condition.notify_all()
 
@@ -542,6 +561,9 @@ class T4OdometryClientNode(InternVLAClientNode):
             "minimum_snapshot_sim_stamp_ns": int(minimum_snapshot_sim_stamp_ns),
             "advisor_round": advisor_round,
             "required_confirmations": self.STEP3_ARRIVAL_REQUIRED_CONFIRMATIONS,
+            "model_stop_candidate": bool(
+                pending.get("model_stop_candidate", False)
+            ),
         }
         with self._step3_timeout_condition:
             self._step3_timeout_pending = value
@@ -558,6 +580,9 @@ class T4OdometryClientNode(InternVLAClientNode):
     ) -> None:
         if not self._step3_timeout_enabled:
             return
+        action = completed_motion_action(pending)
+        if action is not None:
+            self._step3_last_completed_action = action
         self._step3_arrival_completed_actions += 1
         if (
             self._step3_arrival_completed_actions
@@ -570,6 +595,57 @@ class T4OdometryClientNode(InternVLAClientNode):
             pending=pending,
             advisor_round=1,
         )
+
+    def _gate_internvla_model_stop(self, result: dict[str, Any]) -> bool:
+        """Hold an InternVLA STOP until independent four-camera arrival evidence."""
+
+        if not self._step3_timeout_enabled or not is_unconfirmed_model_stop(result):
+            return False
+        completed_action = self._step3_last_completed_action
+        sequence_id = int(result.get("sequence_id", -1))
+        request_id = str(result.get("request_id", ""))
+        token = (
+            f"{self.episode_id}:{self.reset_generation}:model-stop:{sequence_id}"
+        )
+        pending = {
+            "sequence_id": sequence_id,
+            "request_id": request_id,
+            "action": completed_action,
+            "model_stop_candidate": True,
+        }
+        published = bool(
+            completed_action is not None
+            and sequence_id >= 0
+            and request_id
+            and self._publish_step3_arrival_context(
+                token=token,
+                pending=pending,
+                advisor_round=1,
+            )
+        )
+        result["stop"] = False
+        result["discrete_action"] = ACTION_STAND_STILL
+        result["model_stop"] = True
+        result["internvla_stop_candidate"] = True
+        result["step3_arrival_confirmation_pending"] = published
+        result["termination_source"] = "internvla_model_stop_candidate"
+        result["status_message"] = (
+            "InternVLA STOP held pending independent Step3 arrival confirmation"
+            if published
+            else "InternVLA STOP rejected without independent arrival evidence"
+        )
+        self._safe_stop(STATUS_OK, str(result["status_message"]))
+        self._record_motion_gate_event(
+            "internvla_model_stop_candidate",
+            token,
+            {
+                "sequence_id": sequence_id,
+                "request_id": request_id,
+                "completed_action": completed_action,
+                "arrival_request_published": published,
+            },
+        )
+        return True
 
     def _request_motion_stop_and_wait(self, decision: GateDecision) -> GateDecision:
         """Publish safe-stop, prove Nav2 cancellation, then arm sensor baselines.
@@ -1197,12 +1273,23 @@ class T4OdometryClientNode(InternVLAClientNode):
         with self._step3_timeout_condition:
             pending = self._step3_timeout_pending
             advice = self._step3_timeout_advice
-            if (
-                pending is None
-                or advice is None
-                or pending.get("kind")
-                != "motion_timeout_after_confirmed_safe_stop"
-            ):
+            if pending is None or advice is None:
+                return
+            kind = str(pending.get("kind", ""))
+            timeout_advice = (
+                kind == "motion_timeout_after_confirmed_safe_stop"
+                and advice.get("status") == "ADVISE"
+            )
+            model_stop_escape = (
+                kind == "arrival_check_after_completed_motion"
+                and pending.get("model_stop_candidate") is True
+                and advice.get("status") == "NOT_ARRIVED"
+                and isinstance(advice.get("advised_action"), int)
+                and not isinstance(advice.get("advised_action"), bool)
+                and self._step3_timeout_interventions
+                < self._step3_timeout_max_interventions
+            )
+            if not timeout_advice and not model_stop_escape:
                 return
             identity = (
                 str(command.episode_id),
@@ -1223,8 +1310,7 @@ class T4OdometryClientNode(InternVLAClientNode):
         )
         if (
             identity != expected
-            or advice.get("status") != "ADVISE"
-            or not model_motion
+            or (timeout_advice and not model_motion)
         ):
             self._record_motion_gate_event(
                 "step3_timeout_fallback",
@@ -1234,7 +1320,7 @@ class T4OdometryClientNode(InternVLAClientNode):
                         "sequence_identity_mismatch"
                         if identity != expected
                         else "internvla_terminal_or_hold_retained"
-                        if not model_motion
+                        if timeout_advice and not model_motion
                         else str(advice.get("reason", "advisor_fallback"))
                     ),
                     "expected_identity": list(expected),
@@ -1265,9 +1351,16 @@ class T4OdometryClientNode(InternVLAClientNode):
                 advice.get("service_wall_latency_sec", 0.0)
             ),
             "camera_count": int(advice.get("camera_count", 0)),
+            "intervention_kind": (
+                "model_stop_escape" if model_stop_escape else "motion_timeout"
+            ),
         }
         self._record_motion_gate_event(
-            "step3_timeout_advice_applied",
+            (
+                "step3_model_stop_escape_applied"
+                if model_stop_escape
+                else "step3_timeout_advice_applied"
+            ),
             str(pending.get("stop_token", "")),
             self._step3_timeout_override,
         )
@@ -1309,6 +1402,15 @@ class T4OdometryClientNode(InternVLAClientNode):
             if kind == "motion_timeout_after_confirmed_safe_stop" and advice is not None:
                 return None
             if kind == "arrival_check_after_completed_motion" and advice is not None:
+                if (
+                    pending.get("model_stop_candidate") is True
+                    and advice.get("status") == "NOT_ARRIVED"
+                    and isinstance(advice.get("advised_action"), int)
+                    and not isinstance(advice.get("advised_action"), bool)
+                    and self._step3_timeout_interventions
+                    < self._step3_timeout_max_interventions
+                ):
+                    return None
                 transition = arrival_transition(
                     pending,
                     advice,
@@ -1371,6 +1473,14 @@ class T4OdometryClientNode(InternVLAClientNode):
             return None
         if arrival_terminal is not None:
             terminal_pending, terminal_advice = arrival_terminal
+            model_stop_candidate = bool(
+                terminal_pending.get("model_stop_candidate", False)
+            )
+            termination_source = (
+                "internvla_model_stop_step3_arrival_confirmed"
+                if model_stop_candidate
+                else "step3_assisted_arrival"
+            )
             terminal = {
                 "status_code": STATUS_OK,
                 "status_message": (
@@ -1383,13 +1493,21 @@ class T4OdometryClientNode(InternVLAClientNode):
                 "request_id": str(terminal_pending["trigger_request_id"]),
                 "sim_stamp_ns": int(sim_stamp_ns),
                 "discrete_action": ACTION_STAND_STILL,
-                "model_discrete_action": int(
-                    terminal_pending.get("completed_action", ACTION_STAND_STILL)
+                "model_discrete_action": (
+                    ACTION_STAND_STILL
+                    if model_stop_candidate
+                    else int(
+                        terminal_pending.get(
+                            "completed_action", ACTION_STAND_STILL
+                        )
+                    )
                 ),
                 "stop": True,
-                "model_stop": False,
+                "model_stop": model_stop_candidate,
                 "step3_assisted_stop": True,
-                "termination_source": "step3_assisted_arrival",
+                "step3_arrival_confirmed": True,
+                "internvla_stop_candidate_confirmed": model_stop_candidate,
+                "termination_source": termination_source,
                 "step3_arrival_confidence": float(terminal_advice["confidence"]),
                 "step3_arrival_confirmations": (
                     self.STEP3_ARRIVAL_REQUIRED_CONFIRMATIONS
@@ -1416,7 +1534,10 @@ class T4OdometryClientNode(InternVLAClientNode):
                 str(terminal_pending.get("stop_token", "")),
                 {
                     "termination_source": terminal["termination_source"],
-                    "model_stop": False,
+                    "model_stop": terminal["model_stop"],
+                    "internvla_stop_candidate_confirmed": (
+                        model_stop_candidate
+                    ),
                     "confidence": terminal["step3_arrival_confidence"],
                     "confirmations": terminal["step3_arrival_confirmations"],
                 },
@@ -1778,6 +1899,7 @@ class T4OdometryClientNode(InternVLAClientNode):
             self._step3_timeout_interventions = 0
             self._step3_arrival_completed_actions = 0
             self._step3_arrival_checks = 0
+            self._step3_last_completed_action = None
         sim_stamp_ns = _t5_semantic_now_ns(self)
         if sim_stamp_ns is None:
             self._safe_stop(STATUS_STALE, "simulation clock unavailable after reset")
@@ -1844,6 +1966,7 @@ class T4OdometryClientNode(InternVLAClientNode):
             self._step3_timeout_interventions = 0
             self._step3_arrival_completed_actions = 0
             self._step3_arrival_checks = 0
+            self._step3_last_completed_action = None
         self._motion_gate_fault = None
         sim_stamp_ns = _t5_semantic_now_ns(self)
         if sim_stamp_ns is None:
@@ -2217,6 +2340,7 @@ class T4OdometryClientNode(InternVLAClientNode):
             )
             result["step3_timeout_advisor_used"] = True
             result["step3_timeout_advisor"] = step3_override
+        self._gate_internvla_model_stop(result)
         resolved_goal_sent = bool(result.get("nav2_goal_sent", False))
         try:
             result["observation_pose_source"] = "navigation_odometry"

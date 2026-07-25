@@ -28,10 +28,24 @@ def completed_motion_action(pending: Mapping[str, Any]) -> int | None:
     return value if value in BOUNDED_MOTION_ACTIONS else None
 
 
+def is_unconfirmed_model_stop(result: Mapping[str, Any]) -> bool:
+    """Identify an InternVLA STOP that still lacks independent arrival evidence."""
+
+    action = result.get("model_discrete_action")
+    return (
+        result.get("stop") is True
+        and not isinstance(action, bool)
+        and action == 0
+        and result.get("step3_arrival_confirmed") is not True
+    )
+
+
 def pending_model_action(pending: Mapping[str, Any]) -> int:
     """Attribute a safe hold without assuming timeout-only context fields."""
 
-    if pending.get("kind") == "arrival_check_after_completed_motion":
+    if pending.get("model_stop_candidate") is True:
+        value = 0
+    elif pending.get("kind") == "arrival_check_after_completed_motion":
         value = completed_motion_action(pending)
     else:
         value = pending.get("excluded_action")
