@@ -30,12 +30,15 @@ from internvla_ros2.protocol import (
     STATUS_TIMEOUT,
 )
 from internvla_ros2.recovery_contract import (
+    OP_CLEAR_MODEL_CACHE,
     OP_REQUEST_REPLAN,
     STATUS_CONFLICT,
     STATUS_INTERNAL,
     RecoveryContractError,
     goal_identity,
     initialize_response,
+    operation_identity,
+    recovery_deadline_ns,
     reject_response,
     response_snapshot,
     restore_response,
@@ -66,12 +69,14 @@ from .motion_observation_gate import (
     resolved_motion_bounds,
 )
 from .step3_arrival_gate import (
+    APPLY_BOUNDED_ESCAPE,
     CONTINUE_NAVIGATION,
     REQUEST_CONFIRMATION,
     TERMINATE_ASSISTED,
     arrival_transition,
     completed_motion_action,
     is_unconfirmed_model_stop,
+    model_stop_escape_transition,
     pending_model_action,
 )
 
@@ -144,11 +149,16 @@ class T4OdometryClientNode(InternVLAClientNode):
     RECOVERY_BOUNDED_FALLBACK = (
         "recovery latch bounded fallback requires fresh trajectory"
     )
+    # WP-01 keeps the semantic clause state closed-loop with every measured
+    # action boundary.  SV-05 showed that a two-action interval still allowed
+    # stale queued actions to undo a useful four-camera correction.
+    STEP3_TASK_STATE_ACTION_INTERVAL = 1
     STEP3_ARRIVAL_ACTION_INTERVAL = 8
     STEP3_ARRIVAL_MAX_CHECKS = 24
     STEP3_ARRIVAL_REQUIRED_CONFIRMATIONS = 2
     STEP3_ARRIVAL_MINIMUM_CONFIDENCE = 0.80
-    STEP3_MODEL_STOP_ESCAPE_MAX = 2
+    STEP3_MODEL_STOP_ESCAPE_MAX = 6
+    STEP3_TASK_STATE_MAX_MODEL_HOLD_DEFERRALS = 1
 
     def __init__(self) -> None:
         super().__init__()
@@ -227,12 +237,18 @@ class T4OdometryClientNode(InternVLAClientNode):
         self._motion_stop_counter = 0
         self._stop_ack_condition = threading.Condition()
         self._stop_ack_by_token: dict[str, dict[str, Any]] = {}
+        lane = os.environ.get("INTERNNAV_T5_LANE", "")
+        lane_namespace = os.environ.get("INTERNNAV_T5_LANE_NAMESPACE", "")
+        expected_lane_namespace = {
+            "a": "/t5/lane_a",
+            "b": "/t5/lane_b",
+        }.get(lane)
         self._step3_timeout_enabled = bool(
             os.environ.get("INTERNVLA_T5_STEP3_TIMEOUT_ADVISOR", "0") == "1"
             and os.environ.get("INTERNNAV_RUNTIME_POLICY", "") == "completion_sim"
             and os.environ.get("INTERNNAV_SIMULATION_TARGET", "") == "isaac"
-            and os.environ.get("INTERNNAV_T5_LANE", "") == "a"
-            and os.environ.get("INTERNNAV_T5_LANE_NAMESPACE", "") == "/t5/lane_a"
+            and expected_lane_namespace is not None
+            and lane_namespace == expected_lane_namespace
             and self.system2_replan_policy == "observation_bound"
         )
         if os.environ.get("INTERNVLA_T5_STEP3_TIMEOUT_ADVISOR", "0") not in {
@@ -245,23 +261,38 @@ class T4OdometryClientNode(InternVLAClientNode):
             and not self._step3_timeout_enabled
         ):
             raise RuntimeError(
-                "Step3 timeout advisor requires Lane-A Isaac completion_sim "
+                "Step3 timeout advisor requires one isolated T5 Lane in Isaac "
+                "completion_sim "
                 "with observation_bound System2 replans"
             )
         self._step3_timeout_condition = threading.Condition()
         self._step3_timeout_pending: dict[str, Any] | None = None
         self._step3_timeout_advice: dict[str, Any] | None = None
         self._step3_timeout_override: dict[str, Any] | None = None
+        self._step3_model_refresh_pending: dict[str, Any] | None = None
+        self._step3_model_refresh_count = 0
         self._step3_timeout_interventions = 0
         self._step3_timeout_max_interventions = int(
-            os.environ.get("INTERNVLA_T5_STEP3_TIMEOUT_MAX_INTERVENTIONS", "6")
+            os.environ.get("INTERNVLA_T5_STEP3_TIMEOUT_MAX_INTERVENTIONS", "12")
         )
-        if not 1 <= self._step3_timeout_max_interventions <= 6:
-            raise RuntimeError("Step3 timeout interventions must be in [1, 6]")
+        if not 1 <= self._step3_timeout_max_interventions <= 12:
+            raise RuntimeError("Step3 timeout interventions must be in [1, 12]")
         self._step3_arrival_completed_actions = 0
         self._step3_arrival_checks = 0
         self._step3_last_completed_action: int | None = None
         self._step3_model_stop_escapes = 0
+        self._step3_model_stop_escape_motion: dict[str, Any] | None = None
+        self._oracle_terminal_shadow_result: dict[str, Any] | None = None
+        self._termination_mode = os.environ.get(
+            "INTERNVLA_T4_TERMINATION_MODE", "model_stop"
+        )
+        if self._termination_mode not in {"model_stop", "oracle_termination"}:
+            raise RuntimeError("invalid completion_sim termination mode")
+        if (
+            self._termination_mode == "oracle_termination"
+            and os.environ.get("INTERNNAV_RUNTIME_POLICY", "") != "completion_sim"
+        ):
+            raise RuntimeError("oracle termination is completion_sim-only")
         self._last_navigation_instruction = ""
         self.motion_gate_audit_path = (
             self.result_dir / "motion_observation_gate_records.jsonl"
@@ -277,6 +308,8 @@ class T4OdometryClientNode(InternVLAClientNode):
         self.step3_timeout_context_publisher = None
         self._motion_stop_ack_callback_group = None
         self._t4_odometry_callback_group = None
+        self._step3_model_recovery_callback_group = None
+        self._step3_model_recovery_client = None
         if self._motion_gate_enabled:
             # An odometry callback can synchronously request a fail-closed stop.
             # Keep the acknowledgement in a distinct callback group so the
@@ -298,6 +331,14 @@ class T4OdometryClientNode(InternVLAClientNode):
                 callback_group=self._motion_stop_ack_callback_group,
             )
             if self._step3_timeout_enabled:
+                self._step3_model_recovery_callback_group = (
+                    MutuallyExclusiveCallbackGroup()
+                )
+                self._step3_model_recovery_client = self.create_client(
+                    RecoveryControl,
+                    "/internvla/t4_recovery_model",
+                    callback_group=self._step3_model_recovery_callback_group,
+                )
                 self.step3_timeout_context_publisher = self.create_publisher(
                     String, "/internvla/t5_step3_timeout_context", 10
                 )
@@ -399,7 +440,10 @@ class T4OdometryClientNode(InternVLAClientNode):
                 return
             pending_kind = str(pending.get("kind", ""))
             status = str(value.get("status", ""))
-            if pending_kind == "motion_timeout_after_confirmed_safe_stop":
+            if pending_kind in {
+                "motion_timeout_after_confirmed_safe_stop",
+                "task_state_checkpoint_after_completed_motion",
+            }:
                 allowed_statuses = {"ADVISE", "FALLBACK"}
             elif pending_kind == "arrival_check_after_completed_motion":
                 allowed_statuses = {"ARRIVED", "NOT_ARRIVED", "FALLBACK"}
@@ -426,13 +470,24 @@ class T4OdometryClientNode(InternVLAClientNode):
             if observed_identity != expected_identity:
                 self.get_logger().warning("discarding stale/cross-reset Step3 advice")
                 return
-            if pending_kind == "motion_timeout_after_confirmed_safe_stop" and status == "ADVISE":
+            if (
+                pending_kind
+                in {
+                    "motion_timeout_after_confirmed_safe_stop",
+                    "task_state_checkpoint_after_completed_motion",
+                }
+                and status == "ADVISE"
+            ):
                 action = value.get("advised_action")
                 if (
                     isinstance(action, bool)
                     or not isinstance(action, int)
                     or action not in {ACTION_FORWARD, ACTION_LEFT, ACTION_RIGHT}
-                    or action == pending["excluded_action"]
+                    or (
+                        pending_kind
+                        == "motion_timeout_after_confirmed_safe_stop"
+                        and action == pending["excluded_action"]
+                    )
                     or confidence < 0.35
                 ):
                     self.get_logger().warning(
@@ -470,6 +525,7 @@ class T4OdometryClientNode(InternVLAClientNode):
                         or not isinstance(action, int)
                         or action
                         not in {ACTION_FORWARD, ACTION_LEFT, ACTION_RIGHT}
+                        or action == pending.get("excluded_action")
                         or confidence < 0.35
                     ):
                         self.get_logger().warning(
@@ -521,6 +577,58 @@ class T4OdometryClientNode(InternVLAClientNode):
         self.step3_timeout_context_publisher.publish(message)
         self._record_motion_gate_event("step3_timeout_requested", token, value)
 
+    def _publish_step3_task_state_context(
+        self,
+        *,
+        token: str,
+        pending: dict[str, Any],
+    ) -> bool:
+        """Check semantic clause progress after completed bounded motion."""
+
+        if (
+            not self._step3_timeout_enabled
+            or self.step3_timeout_context_publisher is None
+            or self._step3_timeout_interventions
+            >= self._step3_timeout_max_interventions
+        ):
+            return False
+        action = completed_motion_action(pending)
+        if action is None:
+            return False
+        with self._t4_pose_lock:
+            camera_stamp_ns = int(self._camera_sensor_stamp_ns)
+        value = {
+            "schema_version": 1,
+            "kind": "task_state_checkpoint_after_completed_motion",
+            "episode_id": self.episode_id,
+            "reset_generation": self.reset_generation,
+            "trigger_sequence_id": int(
+                pending.get("sequence_id", self.last_committed_sequence)
+            ),
+            "trigger_request_id": str(pending.get("request_id", "")),
+            "expected_sequence_id": int(self.next_sequence_id),
+            "completed_action": action,
+            "instruction": self._last_navigation_instruction,
+            "stop_token": token,
+            "wall_deadline_monotonic_ns": time.monotonic_ns()
+            + 12_000_000_000,
+            "camera_order": ["front_left", "front", "front_right", "rear"],
+            "camera_sensor_stamp_ns": camera_stamp_ns,
+            "advisor_round": 0,
+        }
+        with self._step3_timeout_condition:
+            if self._step3_timeout_pending is not None:
+                return False
+            self._step3_timeout_pending = value
+            self._step3_timeout_advice = None
+        message = String()
+        message.data = json.dumps(value, sort_keys=True, separators=(",", ":"))
+        self.step3_timeout_context_publisher.publish(message)
+        self._record_motion_gate_event(
+            "step3_task_state_checkpoint_requested", token, value
+        )
+        return True
+
     def _publish_step3_arrival_context(
         self,
         *,
@@ -551,7 +659,9 @@ class T4OdometryClientNode(InternVLAClientNode):
             "trigger_sequence_id": int(
                 pending.get("sequence_id", self.last_committed_sequence)
             ),
-            "trigger_request_id": str(pending.get("request_id", "")),
+            "trigger_request_id": str(
+                pending.get("trigger_request_id", pending.get("request_id", ""))
+            ),
             "expected_sequence_id": int(self.next_sequence_id),
             "completed_action": action,
             "instruction": self._last_navigation_instruction,
@@ -566,7 +676,31 @@ class T4OdometryClientNode(InternVLAClientNode):
             "model_stop_candidate": bool(
                 pending.get("model_stop_candidate", False)
             ),
+            "oracle_terminal_shadow": bool(
+                pending.get("oracle_terminal_shadow", False)
+            ),
         }
+        first_advised_action = pending.get("first_advised_action")
+        if (
+            isinstance(first_advised_action, int)
+            and not isinstance(first_advised_action, bool)
+            and first_advised_action
+            in {ACTION_FORWARD, ACTION_LEFT, ACTION_RIGHT}
+        ):
+            value["first_advised_action"] = first_advised_action
+        excluded_action = pending.get("excluded_action")
+        recent_timeout_sequence_id = pending.get("recent_timeout_sequence_id")
+        if (
+            value["model_stop_candidate"] is True
+            and isinstance(excluded_action, int)
+            and not isinstance(excluded_action, bool)
+            and excluded_action in {ACTION_FORWARD, ACTION_LEFT, ACTION_RIGHT}
+            and isinstance(recent_timeout_sequence_id, int)
+            and not isinstance(recent_timeout_sequence_id, bool)
+            and recent_timeout_sequence_id >= 0
+        ):
+            value["excluded_action"] = excluded_action
+            value["recent_timeout_sequence_id"] = recent_timeout_sequence_id
         with self._step3_timeout_condition:
             self._step3_timeout_pending = value
             self._step3_timeout_advice = None
@@ -589,23 +723,38 @@ class T4OdometryClientNode(InternVLAClientNode):
         if (
             self._step3_arrival_completed_actions
             % self.STEP3_ARRIVAL_ACTION_INTERVAL
+            == 0
+        ):
+            self._publish_step3_arrival_context(
+                token=token,
+                pending=pending,
+                advisor_round=1,
+            )
+            return
+        if (
+            self._step3_arrival_completed_actions
+            % self.STEP3_TASK_STATE_ACTION_INTERVAL
             != 0
         ):
             return
-        self._publish_step3_arrival_context(
+        self._publish_step3_task_state_context(
             token=token,
             pending=pending,
-            advisor_round=1,
         )
 
-    def _gate_internvla_model_stop(self, result: dict[str, Any]) -> bool:
+    def _gate_internvla_model_stop(
+        self, result: dict[str, Any], *, oracle_rejected: bool = False
+    ) -> bool:
         """Hold an InternVLA STOP until independent four-camera arrival evidence."""
 
-        if not self._step3_timeout_enabled or not is_unconfirmed_model_stop(result):
+        if not self._step3_timeout_enabled or not is_unconfirmed_model_stop(
+            result, oracle_rejected=oracle_rejected
+        ):
             return False
         completed_action = self._step3_last_completed_action
         sequence_id = int(result.get("sequence_id", -1))
         request_id = str(result.get("request_id", ""))
+        recent_timeout = self._consume_step3_model_stop_timeout(sequence_id)
         token = (
             f"{self.episode_id}:{self.reset_generation}:model-stop:{sequence_id}"
         )
@@ -614,7 +763,15 @@ class T4OdometryClientNode(InternVLAClientNode):
             "request_id": request_id,
             "action": completed_action,
             "model_stop_candidate": True,
+            "model_discrete_action": int(
+                result.get("model_discrete_action", ACTION_STAND_STILL)
+            ),
         }
+        if recent_timeout is not None:
+            pending["excluded_action"] = int(recent_timeout["action"])
+            pending["recent_timeout_sequence_id"] = int(
+                recent_timeout["sequence_id"]
+            )
         published = bool(
             completed_action is not None
             and sequence_id >= 0
@@ -645,9 +802,194 @@ class T4OdometryClientNode(InternVLAClientNode):
                 "request_id": request_id,
                 "completed_action": completed_action,
                 "arrival_request_published": published,
+                "excluded_action": pending.get("excluded_action"),
+                "recent_timeout_sequence_id": pending.get(
+                    "recent_timeout_sequence_id"
+                ),
             },
         )
         return True
+
+    def _consume_step3_model_stop_timeout(
+        self, sequence_id: int
+    ) -> dict[str, Any] | None:
+        """Consume an escape timeout at the next later model STOP."""
+
+        with self._step3_timeout_condition:
+            state = self._step3_model_stop_escape_motion
+            if state is None or state.get("timed_out") is not True:
+                return None
+            minimum_sequence_id = int(state["minimum_stop_sequence_id"])
+            identity_matches = (
+                str(state["episode_id"]) == self.episode_id
+                and int(state["reset_generation"]) == self.reset_generation
+            )
+            if identity_matches and sequence_id < minimum_sequence_id:
+                return None
+            self._step3_model_stop_escape_motion = None
+            if not identity_matches:
+                return None
+            return dict(state)
+
+    def _settle_step3_model_stop_escape_motion(
+        self, decision: GateDecision, pending: dict[str, Any]
+    ) -> None:
+        """Remember only an identity-bound timeout of an applied STOP escape."""
+
+        event: tuple[str, dict[str, Any]] | None = None
+        with self._step3_timeout_condition:
+            state = self._step3_model_stop_escape_motion
+            if state is None or state.get("timed_out") is True:
+                return
+            expected = (
+                str(state["episode_id"]),
+                int(state["reset_generation"]),
+                int(state["sequence_id"]),
+                str(state["request_id"]),
+                int(state["action"]),
+            )
+            observed = (
+                self.episode_id,
+                self.reset_generation,
+                int(pending.get("sequence_id", -1)),
+                str(pending.get("request_id", "")),
+                int(pending.get("action", ACTION_STAND_STILL)),
+            )
+            if observed != expected:
+                return
+            if decision.kind == DECISION_SAFE_STOP_TIMEOUT:
+                state = dict(state)
+                state["timed_out"] = True
+                state["minimum_stop_sequence_id"] = int(state["sequence_id"]) + 1
+                self._step3_model_stop_escape_motion = state
+                event = ("step3_model_stop_escape_timed_out", dict(state))
+            else:
+                self._step3_model_stop_escape_motion = None
+                event = (
+                    "step3_model_stop_escape_settled",
+                    {
+                        "sequence_id": int(state["sequence_id"]),
+                        "request_id": str(state["request_id"]),
+                        "action": int(state["action"]),
+                        "decision": str(decision.kind),
+                    },
+                )
+        if event is not None:
+            self._record_motion_gate_event(event[0], "", event[1])
+
+    def _begin_oracle_terminal_shadow(
+        self,
+        result: dict[str, Any],
+        *,
+        sim_stamp_ns: int,
+        odom_stamp_ns: int,
+        odom_serial: int,
+        age: float,
+    ) -> dict[str, Any] | None:
+        """Classify the exact oracle terminal view without giving Step3 control."""
+
+        if not self._step3_timeout_enabled or not bool(result.get("stop", False)):
+            return None
+        completed_action = self._step3_last_completed_action
+        sequence_id = int(result.get("sequence_id", -1))
+        request_id = str(result.get("request_id", ""))
+        token = (
+            f"{self.episode_id}:{self.reset_generation}:"
+            f"oracle-terminal-shadow:{sequence_id}"
+        )
+        pending = {
+            "sequence_id": sequence_id,
+            "request_id": request_id,
+            "action": completed_action,
+            "model_stop_candidate": False,
+            "oracle_terminal_shadow": True,
+        }
+        published = bool(
+            completed_action is not None
+            and sequence_id >= 0
+            and request_id
+            and self._publish_step3_arrival_context(
+                token=token,
+                pending=pending,
+                advisor_round=1,
+            )
+        )
+        if not published:
+            self._record_motion_gate_event(
+                "step3_oracle_terminal_shadow_unavailable",
+                token,
+                {
+                    "sequence_id": sequence_id,
+                    "request_id": request_id,
+                    "completed_action": completed_action,
+                },
+            )
+            return None
+        self._oracle_terminal_shadow_result = dict(result)
+        self._safe_stop(
+            STATUS_OK,
+            "oracle terminal held for non-authoritative Step3 shadow classification",
+        )
+        self._record_motion_gate_event(
+            "step3_oracle_terminal_shadow_started",
+            token,
+            {
+                "sequence_id": sequence_id,
+                "request_id": request_id,
+                "completed_action": completed_action,
+            },
+        )
+        return self._step3_timeout_wait_response(
+            sim_stamp_ns=sim_stamp_ns,
+            odom_stamp_ns=odom_stamp_ns,
+            odom_serial=odom_serial,
+            age=age,
+        )
+
+    def _finish_oracle_terminal_shadow(
+        self, shadow_response: dict[str, Any] | None
+    ) -> dict[str, Any]:
+        """Return the saved oracle terminal result with audit-only shadow fields."""
+
+        result = self._oracle_terminal_shadow_result
+        if result is None:
+            raise ClientFailure(
+                STATUS_STALE, "oracle terminal shadow result is unavailable"
+            )
+        self._oracle_terminal_shadow_result = None
+        confirmed = bool(
+            shadow_response is not None
+            and shadow_response.get("step3_arrival_confirmed", False)
+        )
+        result["step3_oracle_terminal_shadow"] = True
+        result["step3_oracle_terminal_shadow_confirmed"] = confirmed
+        result["semantic_arrival_confirmed"] = confirmed
+        if confirmed and shadow_response is not None:
+            result["step3_arrival_confidence"] = float(
+                shadow_response.get("step3_arrival_confidence", 0.0)
+            )
+            result["step3_arrival_snapshot_id"] = str(
+                shadow_response.get("step3_arrival_snapshot_id", "")
+            )
+        token = (
+            f"{self.episode_id}:{self.reset_generation}:oracle-terminal-shadow:"
+            f"{int(result.get('sequence_id', -1))}"
+        )
+        self._record_motion_gate_event(
+            "step3_oracle_terminal_shadow_completed",
+            token,
+            {
+                "confirmed": confirmed,
+                "oracle_termination_preserved": True,
+                "step3_arrival_confidence": result.get(
+                    "step3_arrival_confidence"
+                ),
+                "step3_arrival_snapshot_id": result.get(
+                    "step3_arrival_snapshot_id"
+                ),
+            },
+        )
+        return result
 
     def _request_motion_stop_and_wait(self, decision: GateDecision) -> GateDecision:
         """Publish safe-stop, prove Nav2 cancellation, then arm sensor baselines.
@@ -762,6 +1104,7 @@ class T4OdometryClientNode(InternVLAClientNode):
             )
         except BaseException as exc:
             audit_errors.append(f"cancel barrier audit failed: {exc}")
+        self._settle_step3_model_stop_escape_motion(decision, pending)
         if decision.kind == DECISION_SAFE_STOP_TIMEOUT:
             self._publish_step3_timeout_context(token=token, pending=pending)
         elif decision.kind == DECISION_SAFE_STOP_COMPLETE:
@@ -1272,26 +1615,32 @@ class T4OdometryClientNode(InternVLAClientNode):
 
         if not getattr(self, "_step3_timeout_enabled", False):
             return
+        deferred_over_model_hold: dict[str, Any] | None = None
         with self._step3_timeout_condition:
             pending = self._step3_timeout_pending
             advice = self._step3_timeout_advice
             if pending is None or advice is None:
                 return
             kind = str(pending.get("kind", ""))
-            timeout_advice = (
-                kind == "motion_timeout_after_confirmed_safe_stop"
+            task_state_advice = (
+                kind
+                in {
+                    "motion_timeout_after_confirmed_safe_stop",
+                    "task_state_checkpoint_after_completed_motion",
+                }
                 and advice.get("status") == "ADVISE"
             )
             model_stop_escape = (
                 kind == "arrival_check_after_completed_motion"
-                and pending.get("model_stop_candidate") is True
-                and advice.get("status") == "NOT_ARRIVED"
-                and isinstance(advice.get("advised_action"), int)
-                and not isinstance(advice.get("advised_action"), bool)
-                and self._step3_model_stop_escapes
-                < self.STEP3_MODEL_STOP_ESCAPE_MAX
+                and model_stop_escape_transition(
+                    pending,
+                    advice,
+                    escape_count=self._step3_model_stop_escapes,
+                    escape_limit=self.STEP3_MODEL_STOP_ESCAPE_MAX,
+                ).action
+                == APPLY_BOUNDED_ESCAPE
             )
-            if not timeout_advice and not model_stop_escape:
+            if not task_state_advice and not model_stop_escape:
                 return
             identity = (
                 str(command.episode_id),
@@ -1303,16 +1652,50 @@ class T4OdometryClientNode(InternVLAClientNode):
                 pending["reset_generation"],
                 pending["expected_sequence_id"],
             )
-            self._step3_timeout_pending = None
-            self._step3_timeout_advice = None
-        model_motion = bool(
-            not bool(command.stop)
-            and int(command.discrete_action)
-            in {ACTION_FORWARD, ACTION_LEFT, ACTION_RIGHT}
-        )
+            model_motion = bool(
+                not bool(command.stop)
+                and int(command.discrete_action)
+                in {ACTION_FORWARD, ACTION_LEFT, ACTION_RIGHT}
+            )
+            model_hold_deferrals = int(pending.get("model_hold_deferrals", 0))
+            if (
+                kind == "task_state_checkpoint_after_completed_motion"
+                and task_state_advice
+                and identity == expected
+                and not bool(command.stop)
+                and int(command.discrete_action) == ACTION_STAND_STILL
+                and model_hold_deferrals
+                < self.STEP3_TASK_STATE_MAX_MODEL_HOLD_DEFERRALS
+            ):
+                pending["model_hold_deferrals"] = model_hold_deferrals + 1
+                pending["expected_sequence_id"] = int(command.sequence_id) + 1
+                deferred_over_model_hold = {
+                    "reason": "single_transient_internvla_standstill",
+                    "expected_identity_before": list(expected),
+                    "observed_identity": list(identity),
+                    "expected_identity_after": [
+                        str(command.episode_id),
+                        int(command.reset_generation),
+                        int(command.sequence_id) + 1,
+                    ],
+                    "model_hold_deferrals": model_hold_deferrals + 1,
+                    "maximum_model_hold_deferrals": (
+                        self.STEP3_TASK_STATE_MAX_MODEL_HOLD_DEFERRALS
+                    ),
+                }
+            else:
+                self._step3_timeout_pending = None
+                self._step3_timeout_advice = None
+        if deferred_over_model_hold is not None:
+            self._record_motion_gate_event(
+                "step3_task_state_advice_deferred_over_model_hold",
+                str(pending.get("stop_token", "")),
+                deferred_over_model_hold,
+            )
+            return
         if (
             identity != expected
-            or (timeout_advice and not model_motion)
+            or (task_state_advice and not model_motion)
         ):
             self._record_motion_gate_event(
                 "step3_timeout_fallback",
@@ -1322,7 +1705,7 @@ class T4OdometryClientNode(InternVLAClientNode):
                         "sequence_identity_mismatch"
                         if identity != expected
                         else "internvla_terminal_or_hold_retained"
-                        if timeout_advice and not model_motion
+                        if task_state_advice and not model_motion
                         else str(advice.get("reason", "advisor_fallback"))
                     ),
                     "expected_identity": list(expected),
@@ -1340,6 +1723,14 @@ class T4OdometryClientNode(InternVLAClientNode):
         command.local_path.poses = []
         if model_stop_escape:
             self._step3_model_stop_escapes += 1
+            self._step3_model_stop_escape_motion = {
+                "episode_id": str(command.episode_id),
+                "reset_generation": int(command.reset_generation),
+                "sequence_id": int(command.sequence_id),
+                "request_id": str(command.request_id),
+                "action": advised_action,
+                "timed_out": False,
+            }
         else:
             self._step3_timeout_interventions += 1
         self._step3_timeout_override = {
@@ -1357,18 +1748,151 @@ class T4OdometryClientNode(InternVLAClientNode):
             ),
             "camera_count": int(advice.get("camera_count", 0)),
             "intervention_kind": (
-                "model_stop_escape" if model_stop_escape else "motion_timeout"
+                "model_stop_escape"
+                if model_stop_escape
+                else (
+                    "task_state_checkpoint"
+                    if kind == "task_state_checkpoint_after_completed_motion"
+                    else "motion_timeout"
+                )
             ),
             "model_stop_escape_count": self._step3_model_stop_escapes,
         }
+        # A timed-out primitive proves that its queued continuation is based on
+        # an observation/action transition which did not occur, so refresh it
+        # after the advised action completes.  A periodic task-state correction
+        # does not prove that: the successful SV-03 trace relied on retaining
+        # the queued turns after its sequence-6 checkpoint correction.
+        if kind == "motion_timeout_after_confirmed_safe_stop":
+            self._step3_model_refresh_pending = {
+                "episode_id": str(command.episode_id),
+                "reset_generation": int(command.reset_generation),
+                "sequence_id": int(command.sequence_id),
+                "stop_token": str(pending.get("stop_token", "")),
+            }
         self._record_motion_gate_event(
             (
                 "step3_model_stop_escape_applied"
                 if model_stop_escape
-                else "step3_timeout_advice_applied"
+                else (
+                    "step3_task_state_checkpoint_applied"
+                    if kind == "task_state_checkpoint_after_completed_motion"
+                    else "step3_timeout_advice_applied"
+                )
             ),
             str(pending.get("stop_token", "")),
             self._step3_timeout_override,
+        )
+
+    def _refresh_model_after_step3_override(self) -> None:
+        """Discard the overridden action queue before the next observation."""
+
+        pending = self._step3_model_refresh_pending
+        if pending is None:
+            return
+        expected_identity = (
+            str(pending["episode_id"]),
+            int(pending["reset_generation"]),
+            int(pending["sequence_id"]),
+        )
+        active_identity = (
+            self.episode_id,
+            self.reset_generation,
+            self.last_committed_sequence,
+        )
+        if active_identity != expected_identity:
+            self._safe_stop(
+                STATUS_STALE,
+                "Step3 model refresh identity changed before queue invalidation",
+            )
+            raise ClientFailure(
+                STATUS_STALE,
+                "Step3 model refresh identity changed before queue invalidation",
+            )
+        client = self._step3_model_recovery_client
+        if client is None or not client.wait_for_service(timeout_sec=2.0):
+            self._safe_stop(
+                STATUS_TIMEOUT, "model recovery service unavailable for Step3 refresh"
+            )
+            raise ClientFailure(
+                STATUS_TIMEOUT, "model recovery service unavailable for Step3 refresh"
+            )
+        request = RecoveryControl.Request()
+        request.episode_id = self.episode_id
+        request.reset_generation = self.reset_generation
+        request.goal_id = goal_identity(*active_identity)
+        request.recovery_id = f"step3-refresh:{request.goal_id.split(':', 1)[1]}"
+        request.operation = OP_CLEAR_MODEL_CACHE
+        request.operation_id = operation_identity(
+            request.recovery_id, request.operation
+        )
+        deadline_ns = recovery_deadline_ns(_contract_now_ns(self), 8.0)
+        request.deadline.sec = deadline_ns // 1_000_000_000
+        request.deadline.nanosec = deadline_ns % 1_000_000_000
+        future = client.call_async(request)
+        wall_deadline = time.monotonic() + 6.0
+        while rclpy.ok() and not future.done():
+            if time.monotonic() >= wall_deadline:
+                future.cancel()
+                self._safe_stop(
+                    STATUS_TIMEOUT, "model recovery service timed out for Step3 refresh"
+                )
+                raise ClientFailure(
+                    STATUS_TIMEOUT,
+                    "model recovery service timed out for Step3 refresh",
+                )
+            time.sleep(0.01)
+        try:
+            response = future.result()
+        except BaseException as exc:
+            self._safe_stop(
+                STATUS_INTERNAL_ERROR, "model recovery service failed for Step3 refresh"
+            )
+            raise ClientFailure(
+                STATUS_INTERNAL_ERROR,
+                f"model recovery service failed for Step3 refresh: {exc!r}",
+            ) from exc
+        observed_identity = (
+            str(response.episode_id),
+            int(response.reset_generation),
+            str(response.goal_id),
+            str(response.recovery_id),
+            str(response.operation_id),
+            int(response.operation),
+        )
+        request_identity = (
+            str(request.episode_id),
+            int(request.reset_generation),
+            str(request.goal_id),
+            str(request.recovery_id),
+            str(request.operation_id),
+            int(request.operation),
+        )
+        if (
+            not bool(response.success)
+            or int(response.status_code) != STATUS_OK
+            or int(response.cache_epoch) <= 0
+            or observed_identity != request_identity
+        ):
+            self._safe_stop(
+                STATUS_STALE, "model recovery response rejected for Step3 refresh"
+            )
+            raise ClientFailure(
+                STATUS_STALE,
+                "model recovery response rejected for Step3 refresh: "
+                f"{response.status_message}",
+            )
+        self._step3_model_refresh_pending = None
+        self._step3_model_refresh_count += 1
+        self._record_motion_gate_event(
+            "step3_model_queue_invalidated",
+            str(pending.get("stop_token", "")),
+            {
+                "trigger_identity": list(expected_identity),
+                "cache_epoch": int(response.cache_epoch),
+                "refresh_count": self._step3_model_refresh_count,
+                "next_sequence_id": int(self.next_sequence_id),
+            },
         )
 
     def _step3_timeout_wait_response(
@@ -1384,10 +1908,9 @@ class T4OdometryClientNode(InternVLAClientNode):
         if not self._step3_timeout_enabled:
             return None
         arrival_followup: tuple[str, dict[str, Any], int] | None = None
-        arrival_terminal: tuple[
-            dict[str, Any], dict[str, Any], bool
-        ] | None = None
+        arrival_terminal: tuple[dict[str, Any], dict[str, Any]] | None = None
         arrival_fallback: tuple[dict[str, Any], dict[str, Any]] | None = None
+        task_state_fallback: tuple[dict[str, Any], dict[str, Any]] | None = None
         with self._step3_timeout_condition:
             pending = self._step3_timeout_pending
             advice = self._step3_timeout_advice
@@ -1407,40 +1930,78 @@ class T4OdometryClientNode(InternVLAClientNode):
                 }
                 self._step3_timeout_advice = advice
             kind = str(pending.get("kind", ""))
-            if kind == "motion_timeout_after_confirmed_safe_stop" and advice is not None:
-                return None
-            if kind == "arrival_check_after_completed_motion" and advice is not None:
-                if (
-                    pending.get("model_stop_candidate") is True
-                    and advice.get("status") == "NOT_ARRIVED"
-                    and isinstance(advice.get("advised_action"), int)
-                    and not isinstance(advice.get("advised_action"), bool)
-                    and self._step3_model_stop_escapes
-                    < self.STEP3_MODEL_STOP_ESCAPE_MAX
-                ):
+            if (
+                kind
+                in {
+                    "motion_timeout_after_confirmed_safe_stop",
+                    "task_state_checkpoint_after_completed_motion",
+                }
+                and advice is not None
+            ):
+                if advice.get("status") == "ADVISE":
                     return None
-                transition = arrival_transition(
+                task_state_fallback = (dict(pending), dict(advice))
+                self._step3_timeout_pending = None
+                self._step3_timeout_advice = None
+            if kind == "arrival_check_after_completed_motion" and advice is not None:
+                escape_transition = model_stop_escape_transition(
                     pending,
                     advice,
-                    required_confirmations=(
-                        self.STEP3_ARRIVAL_REQUIRED_CONFIRMATIONS
-                    ),
+                    escape_count=self._step3_model_stop_escapes,
+                    escape_limit=self.STEP3_MODEL_STOP_ESCAPE_MAX,
                 )
-                if transition.action == REQUEST_CONFIRMATION:
+                if escape_transition.action == APPLY_BOUNDED_ESCAPE:
+                    return None
+                if escape_transition.action == REQUEST_CONFIRMATION:
+                    confirmation_pending = dict(pending)
+                    confirmation_pending["first_advised_action"] = int(
+                        escape_transition.advised_action
+                    )
                     arrival_followup = (
                         str(pending.get("stop_token", "")),
-                        dict(pending),
-                        int(transition.snapshot_sim_stamp_ns or 0),
+                        confirmation_pending,
+                        int(escape_transition.snapshot_sim_stamp_ns or 0),
                     )
-                elif transition.action == TERMINATE_ASSISTED:
-                    arrival_terminal = (dict(pending), dict(advice), True)
-                elif transition.action == CONTINUE_NAVIGATION:
-                    if pending.get("model_stop_candidate") is True:
-                        # Step3 uncertainty is diagnostic, not proof that the
-                        # model's STOP is wrong.  Only a legal bounded escape
-                        # primitive vetoes it in the early return above.
-                        arrival_terminal = (dict(pending), dict(advice), False)
-                    else:
+                else:
+                    transition = arrival_transition(
+                        pending,
+                        advice,
+                        required_confirmations=(
+                            self.STEP3_ARRIVAL_REQUIRED_CONFIRMATIONS
+                        ),
+                    )
+                    if transition.action == REQUEST_CONFIRMATION:
+                        if self._termination_mode == "oracle_termination":
+                            self._record_motion_gate_event(
+                                "stop_shadow_step3_arrival_single",
+                                str(pending.get("stop_token", "")),
+                                {
+                                    "trigger_sequence_id": pending.get(
+                                        "trigger_sequence_id"
+                                    ),
+                                    "trigger_request_id": pending.get(
+                                        "trigger_request_id"
+                                    ),
+                                    "confidence": advice.get("confidence"),
+                                    "snapshot_sim_stamp_ns": (
+                                        transition.snapshot_sim_stamp_ns
+                                    ),
+                                    "model_stop_candidate": pending.get(
+                                        "model_stop_candidate", False
+                                    ),
+                                    "oracle_terminal_shadow": pending.get(
+                                        "oracle_terminal_shadow", False
+                                    ),
+                                },
+                            )
+                        arrival_followup = (
+                            str(pending.get("stop_token", "")),
+                            dict(pending),
+                            int(transition.snapshot_sim_stamp_ns or 0),
+                        )
+                    elif transition.action == TERMINATE_ASSISTED:
+                        arrival_terminal = (dict(pending), dict(advice))
+                    elif transition.action == CONTINUE_NAVIGATION:
                         arrival_fallback = (dict(pending), dict(advice))
                 self._step3_timeout_pending = None
                 self._step3_timeout_advice = None
@@ -1469,9 +2030,47 @@ class T4OdometryClientNode(InternVLAClientNode):
                     token,
                     {"reason": "arrival_confirmation_budget_exhausted"},
                 )
-                return None
-            pending = self._step3_timeout_pending or previous
-            remaining = 12.0
+                arrival_fallback = (
+                    previous,
+                    {
+                        "status": "FALLBACK",
+                        "confidence": 0.0,
+                        "reason": "arrival_confirmation_budget_exhausted",
+                    },
+                )
+            else:
+                pending = self._step3_timeout_pending or previous
+                remaining = 12.0
+        if task_state_fallback is not None:
+            fallback_pending, fallback_advice = task_state_fallback
+            if (
+                self._termination_mode == "oracle_termination"
+                and fallback_advice.get("reason")
+                == "step3_task_final_arrival_candidate_requires_existing_gate"
+            ):
+                self._record_motion_gate_event(
+                    "stop_shadow_step3_task_state_target_found",
+                    str(fallback_pending.get("stop_token", "")),
+                    {
+                        "trigger_sequence_id": fallback_pending.get(
+                            "trigger_sequence_id"
+                        ),
+                        "trigger_request_id": fallback_pending.get(
+                            "trigger_request_id"
+                        ),
+                        "confidence": fallback_advice.get("confidence"),
+                    },
+                )
+            self._record_motion_gate_event(
+                "step3_task_state_fallback",
+                str(fallback_pending.get("stop_token", "")),
+                {
+                    "kind": fallback_pending.get("kind"),
+                    "reason": fallback_advice.get("reason"),
+                    "confidence": fallback_advice.get("confidence"),
+                },
+            )
+            return None
         if arrival_fallback is not None:
             fallback_pending, fallback_advice = arrival_fallback
             self._record_motion_gate_event(
@@ -1486,26 +2085,45 @@ class T4OdometryClientNode(InternVLAClientNode):
             )
             return None
         if arrival_terminal is not None:
-            terminal_pending, terminal_advice, arrival_confirmed = arrival_terminal
+            terminal_pending, terminal_advice = arrival_terminal
             model_stop_candidate = bool(
                 terminal_pending.get("model_stop_candidate", False)
             )
+            oracle_terminal_shadow = bool(
+                terminal_pending.get("oracle_terminal_shadow", False)
+            )
             if model_stop_candidate:
-                termination_source = (
-                    "internvla_model_stop_step3_arrival_confirmed"
-                    if arrival_confirmed
-                    else "internvla_model_stop_step3_unconfirmed"
-                )
+                termination_source = "internvla_model_stop_step3_arrival_confirmed"
+            elif oracle_terminal_shadow:
+                termination_source = "oracle_terminal_shadow_confirmed"
             else:
                 termination_source = "step3_assisted_arrival"
+            if (
+                self._termination_mode == "oracle_termination"
+                and not oracle_terminal_shadow
+            ):
+                self._record_motion_gate_event(
+                    "stop_shadow_step3_arrival_confirmed",
+                    str(terminal_pending.get("stop_token", "")),
+                    {
+                        "trigger_sequence_id": terminal_pending.get(
+                            "trigger_sequence_id"
+                        ),
+                        "trigger_request_id": terminal_pending.get(
+                            "trigger_request_id"
+                        ),
+                        "confidence": terminal_advice.get("confidence"),
+                        "snapshot_id": terminal_advice.get("snapshot_id"),
+                        "model_stop_candidate": model_stop_candidate,
+                        "oracle_termination_preserved": True,
+                    },
+                )
+                return None
             terminal = {
                 "status_code": STATUS_OK,
                 "status_message": (
                     "Step3 arrival advisor confirmed destination on two "
                     "fresh safe-hold snapshots"
-                    if arrival_confirmed
-                    else "InternVLA STOP retained because Step3 supplied no "
-                    "confirmed arrival or actionable bounded veto"
                 ),
                 "episode_id": self.episode_id,
                 "reset_generation": self.reset_generation,
@@ -1514,7 +2132,11 @@ class T4OdometryClientNode(InternVLAClientNode):
                 "sim_stamp_ns": int(sim_stamp_ns),
                 "discrete_action": ACTION_STAND_STILL,
                 "model_discrete_action": (
-                    ACTION_STAND_STILL
+                    int(
+                        terminal_pending.get(
+                            "model_discrete_action", ACTION_STAND_STILL
+                        )
+                    )
                     if model_stop_candidate
                     else int(
                         terminal_pending.get(
@@ -1524,31 +2146,29 @@ class T4OdometryClientNode(InternVLAClientNode):
                 ),
                 "stop": True,
                 "model_stop": model_stop_candidate,
-                "step3_assisted_stop": arrival_confirmed,
-                "step3_arrival_confirmed": arrival_confirmed,
-                "internvla_stop_candidate_confirmed": (
-                    model_stop_candidate and arrival_confirmed
-                ),
+                "step3_assisted_stop": True,
+                "step3_arrival_confirmed": True,
+                "step3_oracle_terminal_shadow": oracle_terminal_shadow,
+                "internvla_stop_candidate_confirmed": model_stop_candidate,
                 "termination_source": termination_source,
                 "step3_arrival_confidence": float(
                     terminal_advice.get("confidence", 0.0)
                 ),
                 "step3_arrival_confirmations": (
                     self.STEP3_ARRIVAL_REQUIRED_CONFIRMATIONS
-                    if arrival_confirmed
-                    else 0
                 ),
                 "step3_arrival_snapshot_id": str(
                     terminal_advice.get("snapshot_id", "")
                 ),
                 "control_mode": self.control_mode,
-                "action_source": 1 if arrival_confirmed else 0,
+                "action_source": 1,
                 "trajectory_source": 0,
                 "trajectory_valid": False,
                 "local_path": [],
                 "nav2_goal_sent": False,
                 "nav2_plan_valid": False,
                 "motion_observation_gate_only": False,
+                "step3_arrival_gate_only": True,
                 "observation_pose_source": "navigation_odometry",
                 "evaluator_ground_truth_pose_discarded": True,
                 "navigation_odometry_age_sec": age,
@@ -1557,13 +2177,14 @@ class T4OdometryClientNode(InternVLAClientNode):
             }
             self._record_motion_gate_event(
                 (
-                    "step3_assisted_stop"
-                    if arrival_confirmed
-                    else "internvla_model_stop_retained"
+                    "step3_oracle_terminal_shadow_confirmed"
+                    if oracle_terminal_shadow
+                    else "step3_assisted_stop"
                 ),
                 str(terminal_pending.get("stop_token", "")),
                 {
                     "termination_source": terminal["termination_source"],
+                    "oracle_terminal_shadow": oracle_terminal_shadow,
                     "model_stop": terminal["model_stop"],
                     "internvla_stop_candidate_confirmed": (
                         terminal["internvla_stop_candidate_confirmed"]
@@ -1931,6 +2552,10 @@ class T4OdometryClientNode(InternVLAClientNode):
             self._step3_arrival_checks = 0
             self._step3_last_completed_action = None
             self._step3_model_stop_escapes = 0
+            self._step3_model_stop_escape_motion = None
+            self._oracle_terminal_shadow_result = None
+            self._step3_model_refresh_pending = None
+            self._step3_model_refresh_count = 0
         sim_stamp_ns = _t5_semantic_now_ns(self)
         if sim_stamp_ns is None:
             self._safe_stop(STATUS_STALE, "simulation clock unavailable after reset")
@@ -1999,6 +2624,10 @@ class T4OdometryClientNode(InternVLAClientNode):
             self._step3_arrival_checks = 0
             self._step3_last_completed_action = None
             self._step3_model_stop_escapes = 0
+            self._step3_model_stop_escape_motion = None
+            self._oracle_terminal_shadow_result = None
+            self._step3_model_refresh_pending = None
+            self._step3_model_refresh_count = 0
         self._motion_gate_fault = None
         sim_stamp_ns = _t5_semantic_now_ns(self)
         if sim_stamp_ns is None:
@@ -2326,26 +2955,66 @@ class T4OdometryClientNode(InternVLAClientNode):
                     odom_serial=odom_serial,
                     age=age,
                 )
-            step3_wait = self._step3_timeout_wait_response(
-                sim_stamp_ns=sim_stamp_ns,
-                odom_stamp_ns=odom_stamp_ns,
-                odom_serial=odom_serial,
-                age=age,
+            if self._oracle_terminal_shadow_result is not None:
+                stored = self._oracle_terminal_shadow_result
+                if (
+                    str(stored.get("episode_id", "")) != self.episode_id
+                    or int(stored.get("reset_generation", -1))
+                    != self.reset_generation
+                ):
+                    self._oracle_terminal_shadow_result = None
+                    raise ClientFailure(
+                        STATUS_STALE, "oracle terminal shadow crossed reset identity"
+                    )
+                step3_wait = self._step3_timeout_wait_response(
+                    sim_stamp_ns=sim_stamp_ns,
+                    odom_stamp_ns=odom_stamp_ns,
+                    odom_serial=odom_serial,
+                    age=age,
+                )
+                with self._step3_timeout_condition:
+                    shadow_pending = self._step3_timeout_pending is not None
+                if shadow_pending:
+                    if step3_wait is None:
+                        raise ClientFailure(
+                            STATUS_STALE,
+                            "oracle terminal shadow lost its bounded hold response",
+                        )
+                    return step3_wait
+                result = self._finish_oracle_terminal_shadow(step3_wait)
+                replan_requested = False
+                replan_index = self._replan_request_index
+            else:
+                step3_wait = self._step3_timeout_wait_response(
+                    sim_stamp_ns=sim_stamp_ns,
+                    odom_stamp_ns=odom_stamp_ns,
+                    odom_serial=odom_serial,
+                    age=age,
+                )
+                if step3_wait is not None:
+                    return step3_wait
+                result = None
+        else:
+            result = None
+        if result is None:
+            # A Step3 override may invalidate its source queue only after the
+            # advised primitive has completed and the stop/sensor barrier admits a
+            # new observation. This is that boundary.
+            self._refresh_model_after_step3_override()
+            with self._t4_pose_lock:
+                replan_requested = self._replan_requested
+                replan_index = self._replan_request_index
+                if replan_requested:
+                    self._replan_requested = False
+            result = super().step_arrays(
+                global_gps=gps,
+                global_rotation=rotation,
+                **kwargs,
             )
-            if step3_wait is not None:
-                return step3_wait
-        with self._t4_pose_lock:
-            replan_requested = self._replan_requested
-            replan_index = self._replan_request_index
-            if replan_requested:
-                self._replan_requested = False
-        result = super().step_arrays(
-            global_gps=gps,
-            global_rotation=rotation,
-            **kwargs,
-        )
         step3_override = self._step3_timeout_override
-        if step3_override is not None:
+        if step3_override is not None and not bool(
+            result.get("step3_oracle_terminal_shadow", False)
+        ):
             observed_identity = (
                 str(result.get("episode_id", "")),
                 int(result.get("reset_generation", -1)),
@@ -2372,7 +3041,77 @@ class T4OdometryClientNode(InternVLAClientNode):
             )
             result["step3_timeout_advisor_used"] = True
             result["step3_timeout_advisor"] = step3_override
-        self._gate_internvla_model_stop(result)
+        if self._termination_mode != "oracle_termination":
+            self._gate_internvla_model_stop(result)
+        else:
+            geometric_success = bool(result.get("stop", False))
+            model_stop_success = bool(
+                geometric_success and result.get("model_stop", False)
+            )
+            result["termination_mode"] = "oracle_termination"
+            result["geometric_success"] = geometric_success
+            result["model_stop_success"] = model_stop_success
+            result["semantic_arrival_confirmed"] = False
+            current_model_stop_escape = bool(
+                step3_override is not None
+                and step3_override.get("intervention_kind")
+                == "model_stop_escape"
+            )
+            if (
+                bool(result.get("model_stop", False))
+                and not geometric_success
+                and not current_model_stop_escape
+            ):
+                self._gate_internvla_model_stop(result, oracle_rejected=True)
+            if bool(result.get("model_stop", False)):
+                self._record_motion_gate_event(
+                    "stop_shadow_internvla_model_stop",
+                    (
+                        f"{self.episode_id}:{self.reset_generation}:"
+                        f"model-stop-shadow:{int(result.get('sequence_id', -1))}"
+                    ),
+                    {
+                        "sequence_id": result.get("sequence_id"),
+                        "request_id": result.get("request_id"),
+                        "geometric_success": geometric_success,
+                        "oracle_termination_preserved": True,
+                    },
+                )
+            if geometric_success:
+                self._record_motion_gate_event(
+                    "stop_shadow_oracle_reference",
+                    (
+                        f"{self.episode_id}:{self.reset_generation}:"
+                        f"oracle-reference:{int(result.get('sequence_id', -1))}"
+                    ),
+                    {
+                        "sequence_id": result.get("sequence_id"),
+                        "request_id": result.get("request_id"),
+                        "internvla_model_stop": result.get("model_stop", False),
+                    },
+                )
+            if geometric_success:
+                result["termination_source"] = (
+                    "oracle_termination_model_stop_aligned"
+                    if model_stop_success
+                    else "oracle_termination_geometric_success"
+                )
+            elif bool(result.get("model_stop", False)):
+                result["termination_source"] = (
+                    "internvla_model_stop_outside_oracle_radius"
+                )
+            if geometric_success and not bool(
+                result.get("step3_oracle_terminal_shadow", False)
+            ):
+                shadow_hold = self._begin_oracle_terminal_shadow(
+                    result,
+                    sim_stamp_ns=sim_stamp_ns,
+                    odom_stamp_ns=odom_stamp_ns,
+                    odom_serial=odom_serial,
+                    age=age,
+                )
+                if shadow_hold is not None:
+                    return shadow_hold
         resolved_goal_sent = bool(result.get("nav2_goal_sent", False))
         try:
             result["observation_pose_source"] = "navigation_odometry"
@@ -2568,7 +3307,10 @@ class T4OdometryClientNode(InternVLAClientNode):
         }
 
     def record_step(self, result: dict[str, Any]) -> None:
-        if not bool(result.get("motion_observation_gate_only", False)):
+        if not (
+            bool(result.get("motion_observation_gate_only", False))
+            or bool(result.get("step3_arrival_gate_only", False))
+        ):
             super().record_step(result)
             return
         if self.records_path is None:

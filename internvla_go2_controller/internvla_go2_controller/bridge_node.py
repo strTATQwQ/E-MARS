@@ -118,6 +118,22 @@ def _command_is_fresh(
     )
 
 
+def _runtime_state_hazard(
+    *,
+    t5_completion_sim: bool,
+    nan_detected: bool,
+    fallen: bool,
+    physical_collision: bool,
+) -> bool:
+    """Keep collisions metric-only only in the isolated navigation simulator."""
+
+    return bool(
+        nan_detected
+        or fallen
+        or (physical_collision and not t5_completion_sim)
+    )
+
+
 def _state_update_is_current(
     *,
     t5_sim_time_semantics: bool,
@@ -859,7 +875,12 @@ class Go2ControllerBridge(Node):
             if request_collision and not self._physical_collision_active:
                 self.physical_collision_count += 1
             self._physical_collision_active = request_collision
-            state_hazard = request_nan or request_fall or request_collision
+            state_hazard = _runtime_state_hazard(
+                t5_completion_sim=self._t5_sim_time_semantics,
+                nan_detected=request_nan,
+                fallen=request_fall,
+                physical_collision=request_collision,
+            )
             if state_only:
                 emergency = state_hazard
                 timed_out = False
@@ -965,6 +986,9 @@ class Go2ControllerBridge(Node):
             "fallen": request_fall,
             "nan_detected": request_nan,
             "physical_collision": request_collision,
+            "physical_collision_warn_only": bool(
+                request_collision and self._t5_sim_time_semantics
+            ),
             "obstacle_scenario": str(request.get("obstacle_scenario", "")),
             "maximum_collision_force": collision_force,
             "collision_pairs": request.get("collision_pairs", []),

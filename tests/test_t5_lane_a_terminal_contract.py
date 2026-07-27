@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from types import SimpleNamespace
 import sys
@@ -95,7 +96,323 @@ def _bare_client() -> T4OdometryClientNode:
     client._reset_sim_barrier_ns = 100
     client._sensor_future_tolerance_ns = 100
     client.navigation_odometry_timeout = 0.5
+    client.last_committed_sequence = -1
+    client._step3_timeout_condition = threading.Condition()
+    client._step3_model_stop_escape_motion = None
     return client
+
+
+def _task_state_advice_client(
+    *,
+    deferrals: int = 0,
+    kind: str = "task_state_checkpoint_after_completed_motion",
+) -> T4OdometryClientNode:
+    client = _bare_client()
+    client._step3_timeout_enabled = True
+    client._step3_timeout_condition = threading.Condition()
+    client._step3_timeout_pending = {
+        "kind": kind,
+        "episode_id": "a::259",
+        "reset_generation": 1,
+        "expected_sequence_id": 17,
+        "trigger_sequence_id": 16,
+        "trigger_request_id": "a::259:1:16",
+        "stop_token": "step3-task-state:test",
+        "model_hold_deferrals": deferrals,
+    }
+    client._step3_timeout_advice = {
+        "status": "ADVISE",
+        "advised_action": 2,
+        "confidence": 0.8,
+        "snapshot_id": "a::259::1::16",
+        "service_wall_latency_sec": 0.1,
+        "camera_count": 4,
+    }
+    client._step3_timeout_interventions = 0
+    client._step3_model_stop_escapes = 0
+    client._step3_timeout_override = None
+    client._step3_model_refresh_pending = None
+    return client
+
+
+def test_oracle_rejected_model_stop_enters_existing_bounded_escape_gate() -> None:
+    client = _bare_client()
+    client._step3_timeout_enabled = True
+    client._step3_last_completed_action = 2
+    published: list[dict[str, object]] = []
+    stopped: list[str] = []
+    events: list[tuple[str, dict[str, object]]] = []
+
+    def publish_arrival(**kwargs: object) -> bool:
+        published.append(dict(kwargs))
+        return True
+
+    client._publish_step3_arrival_context = publish_arrival  # type: ignore[method-assign]
+    client._safe_stop = (  # type: ignore[method-assign]
+        lambda _status, message: stopped.append(message)
+    )
+    client._record_motion_gate_event = (  # type: ignore[method-assign]
+        lambda event, _token, payload: events.append((event, payload))
+    )
+    result: dict[str, object] = {
+        "episode_id": "a::259",
+        "reset_generation": 1,
+        "sequence_id": 44,
+        "request_id": "a::259:1:44",
+        "stop": False,
+        "model_stop": True,
+        "model_discrete_action": 0,
+        "geometric_success": False,
+    }
+
+    assert client._gate_internvla_model_stop(result, oracle_rejected=True)
+
+    assert result["stop"] is False
+    assert result["model_stop"] is True
+    assert result["internvla_stop_candidate"] is True
+    assert result["step3_arrival_confirmation_pending"] is True
+    assert len(published) == 1
+    assert published[0]["advisor_round"] == 1
+    assert published[0]["pending"] == {
+        "sequence_id": 44,
+        "request_id": "a::259:1:44",
+        "action": 2,
+        "model_stop_candidate": True,
+        "model_discrete_action": 0,
+    }
+    assert len(stopped) == 1
+    assert events[0][0] == "internvla_model_stop_candidate"
+
+
+def test_failed_model_stop_escape_is_excluded_after_intervening_sequences() -> None:
+    client = _bare_client()
+    client._step3_timeout_enabled = True
+    client._step3_last_completed_action = 3
+    client._step3_model_stop_escape_motion = {
+        "episode_id": "a::259",
+        "reset_generation": 1,
+        "sequence_id": 41,
+        "request_id": "a::259:1:41",
+        "action": 1,
+        "timed_out": False,
+    }
+    events: list[tuple[str, dict[str, object]]] = []
+    published: list[dict[str, object]] = []
+    client._record_motion_gate_event = (  # type: ignore[method-assign]
+        lambda event, _token, payload: events.append((event, payload))
+    )
+    client._safe_stop = lambda *_args: None  # type: ignore[method-assign]
+    client._publish_step3_arrival_context = (  # type: ignore[method-assign]
+        lambda **kwargs: published.append(dict(kwargs)) or True
+    )
+    timeout = t4_client_module.GateDecision(
+        kind=t4_client_module.DECISION_SAFE_STOP_TIMEOUT,
+        reason="measured motion missed the sim-time deadline",
+        permits_model_step=False,
+        requires_safe_stop=True,
+        keep_safe_stop=True,
+    )
+
+    client._settle_step3_model_stop_escape_motion(
+        timeout,
+        {
+            "sequence_id": 41,
+            "request_id": "a::259:1:41",
+            "action": 1,
+        },
+    )
+
+    assert client._step3_model_stop_escape_motion == {
+        "episode_id": "a::259",
+        "reset_generation": 1,
+        "sequence_id": 41,
+        "request_id": "a::259:1:41",
+        "action": 1,
+        "timed_out": True,
+        "minimum_stop_sequence_id": 42,
+    }
+    result: dict[str, object] = {
+        "episode_id": "a::259",
+        "reset_generation": 1,
+        "sequence_id": 45,
+        "request_id": "a::259:1:45",
+        "stop": False,
+        "model_stop": True,
+        "model_discrete_action": 0,
+        "geometric_success": False,
+    }
+
+    assert client._gate_internvla_model_stop(result, oracle_rejected=True)
+    assert published[0]["pending"] == {
+        "sequence_id": 45,
+        "request_id": "a::259:1:45",
+        "action": 3,
+        "model_stop_candidate": True,
+        "model_discrete_action": 0,
+        "excluded_action": 1,
+        "recent_timeout_sequence_id": 41,
+    }
+    assert client._step3_model_stop_escape_motion is None
+    assert [event for event, _payload in events] == [
+        "step3_model_stop_escape_timed_out",
+        "internvla_model_stop_candidate",
+    ]
+
+
+def test_model_stop_escape_exclusion_waits_for_next_qualifying_stop() -> None:
+    client = _bare_client()
+    timed_out = {
+        "episode_id": "a::259",
+        "reset_generation": 1,
+        "sequence_id": 41,
+        "request_id": "a::259:1:41",
+        "action": 1,
+        "timed_out": True,
+        "minimum_stop_sequence_id": 42,
+    }
+    client._step3_model_stop_escape_motion = dict(timed_out)
+    assert client._consume_step3_model_stop_timeout(41) is None
+    assert client._step3_model_stop_escape_motion == timed_out
+    assert client._consume_step3_model_stop_timeout(45) == timed_out
+    assert client._step3_model_stop_escape_motion is None
+
+    client._step3_model_stop_escape_motion = {
+        key: value
+        for key, value in timed_out.items()
+        if key not in {"timed_out", "minimum_stop_sequence_id"}
+    }
+    client._step3_model_stop_escape_motion["timed_out"] = False
+    client._record_motion_gate_event = lambda *_args: None  # type: ignore[method-assign]
+    complete = t4_client_module.GateDecision(
+        kind=t4_client_module.DECISION_SAFE_STOP_COMPLETE,
+        reason="measured motion completed",
+        permits_model_step=True,
+        requires_safe_stop=True,
+        keep_safe_stop=True,
+    )
+    client._settle_step3_model_stop_escape_motion(
+        complete,
+        {
+            "sequence_id": 41,
+            "request_id": "a::259:1:41",
+            "action": 1,
+        },
+    )
+    assert client._step3_model_stop_escape_motion is None
+
+
+def test_model_stop_confirmation_preserves_exclusion_across_two_rounds() -> None:
+    client = _bare_client()
+    client._step3_timeout_enabled = True
+    client._step3_arrival_checks = 0
+    client._camera_sensor_stamp_ns = 7_000_000_000
+    client._last_navigation_instruction = "walk to the doorway"
+    client.next_sequence_id = 42
+    published: list[dict[str, object]] = []
+    client.step3_timeout_context_publisher = SimpleNamespace(
+        publish=lambda message: published.append(json.loads(message.data))
+    )
+    client._record_motion_gate_event = lambda *_args: None  # type: ignore[method-assign]
+    pending: dict[str, object] = {
+        "sequence_id": 41,
+        "request_id": "a::259:1:41",
+        "action": 3,
+        "model_stop_candidate": True,
+        "model_discrete_action": 0,
+        "excluded_action": 1,
+        "recent_timeout_sequence_id": 40,
+    }
+
+    assert client._publish_step3_arrival_context(
+        token="a::259:1:model-stop:41",
+        pending=pending,
+        advisor_round=1,
+    )
+    round_one = dict(client._step3_timeout_pending or {})
+    round_one["first_advised_action"] = 2
+    assert client._publish_step3_arrival_context(
+        token="a::259:1:model-stop:41",
+        pending=round_one,
+        advisor_round=2,
+        minimum_snapshot_sim_stamp_ns=7_000_000_100,
+    )
+
+    assert [row["excluded_action"] for row in published] == [1, 1]
+    assert [row["recent_timeout_sequence_id"] for row in published] == [40, 40]
+    assert published[1]["first_advised_action"] == 2
+
+
+def test_task_state_advice_crosses_exactly_one_transient_model_standstill() -> None:
+    client = _task_state_advice_client()
+    events: list[tuple[str, dict[str, object]]] = []
+    client._record_motion_gate_event = (  # type: ignore[method-assign]
+        lambda event, _token, payload: events.append((event, payload))
+    )
+    hold = _command(sequence=17, action=-1)
+
+    client._apply_step3_timeout_advice(hold)
+
+    assert hold.discrete_action == -1
+    assert client._step3_timeout_pending is not None
+    assert client._step3_timeout_pending["expected_sequence_id"] == 18
+    assert client._step3_timeout_pending["model_hold_deferrals"] == 1
+    assert client._step3_timeout_advice is not None
+    assert events[0][0] == "step3_task_state_advice_deferred_over_model_hold"
+
+    motion = _command(sequence=18, action=1)
+    client._apply_step3_timeout_advice(motion)
+
+    assert motion.discrete_action == 2
+    assert client._step3_timeout_pending is None
+    assert client._step3_timeout_advice is None
+    assert client._step3_timeout_interventions == 1
+    assert client._step3_model_refresh_pending is None
+    assert [event for event, _payload in events] == [
+        "step3_task_state_advice_deferred_over_model_hold",
+        "step3_task_state_checkpoint_applied",
+    ]
+
+
+def test_motion_timeout_advice_invalidates_only_its_stale_action_queue() -> None:
+    client = _task_state_advice_client(
+        kind="motion_timeout_after_confirmed_safe_stop"
+    )
+    client._record_motion_gate_event = lambda *_args: None  # type: ignore[method-assign]
+    motion = _command(sequence=17, action=1)
+
+    client._apply_step3_timeout_advice(motion)
+
+    assert motion.discrete_action == 2
+    assert client._step3_model_refresh_pending == {
+        "episode_id": "a::259",
+        "reset_generation": 1,
+        "sequence_id": 17,
+        "stop_token": "step3-task-state:test",
+    }
+
+
+def test_task_state_advice_does_not_cross_a_second_model_standstill() -> None:
+    client = _task_state_advice_client(deferrals=1)
+    events: list[tuple[str, dict[str, object]]] = []
+    client._record_motion_gate_event = (  # type: ignore[method-assign]
+        lambda event, _token, payload: events.append((event, payload))
+    )
+
+    client._apply_step3_timeout_advice(_command(sequence=17, action=-1))
+
+    assert client._step3_timeout_pending is None
+    assert client._step3_timeout_advice is None
+    assert client._step3_model_refresh_pending is None
+    assert events == [
+        (
+            "step3_timeout_fallback",
+            {
+                "reason": "internvla_terminal_or_hold_retained",
+                "expected_identity": ["a::259", 1, 17],
+                "observed_identity": ["a::259", 1, 17],
+            },
+        )
+    ]
 
 
 def _primitive(
@@ -714,6 +1031,114 @@ def test_missing_queue_safe_hold_is_bounded_at_registered_trajectory_limit(
 
 def _pose(x: float, y: float) -> SimpleNamespace:
     return SimpleNamespace(pose=SimpleNamespace(position=SimpleNamespace(x=x, y=y)))
+
+
+def test_t5_oracle_termination_compares_global_odom_to_world_reference(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    adapter = T4RecoveryAdapter.__new__(T4RecoveryAdapter)
+    adapter.factors = {"termination_mode": "oracle_termination"}
+    adapter.ablation_episodes = [
+        {
+            "episode_id": "259",
+            "start_position": [6.4, 3.6, -9.2],
+            "start_rotation": [0.0, 0.0, 0.0, 1.0],
+            "reference_path": [
+                [6.4, 3.6, -9.2],
+                [5.14005, 3.6, -4.26937],
+            ],
+        }
+    ]
+    adapter.odom_lock = threading.Lock()
+    adapter.latest_odom = (5.8637, 6.2630, 0.0)
+    monkeypatch.setenv("INTERNNAV_T5_LANE", "a")
+
+    reference = adapter._episode_reference("a::259", 0)
+    _, goal_distance = adapter._oracle_local_path("a::259", 0)
+
+    assert reference == [(6.4, 9.2), (5.14005, 4.26937)]
+    assert goal_distance == pytest.approx(2.1209, abs=1e-3)
+    assert goal_distance <= 2.5
+
+
+def test_t5_oracle_episode_lookup_follows_runtime_order_and_binds_generation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    adapter = T4RecoveryAdapter.__new__(T4RecoveryAdapter)
+    adapter.factors = {"termination_mode": "oracle_termination"}
+    adapter.ablation_episodes = [
+        {
+            "episode_id": "121",
+            "reference_path": [[4.0, 0.0, 1.0]],
+        },
+        {
+            "episode_id": "628",
+            "reference_path": [[9.0, 0.0, 2.0]],
+        },
+    ]
+    adapter._t5_ablation_generation_episode_ids = {}
+    monkeypatch.setenv("INTERNNAV_T5_LANE", "a")
+
+    assert adapter._episode_reference("a::628", 0) == [(9.0, -2.0)]
+    assert adapter._t5_ablation_generation_episode_ids == {0: "a::628"}
+    with pytest.raises(TimeoutError, match="already bound"):
+        adapter._episode_reference("a::121", 0)
+
+
+def test_oracle_termination_does_not_cache_stand_as_last_motion() -> None:
+    adapter = T4RecoveryAdapter.__new__(T4RecoveryAdapter)
+    adapter.factors = {
+        "system_mode": "full_system1_system2",
+        "trajectory_mode": "full_trajectory",
+        "termination_mode": "oracle_termination",
+    }
+    adapter.latest_system2_action = None
+    adapter.latest_non_stop_system2_action = None
+    adapter.activation_counts = {"system": 0, "trajectory": 0, "termination": 0}
+    adapter.ablation_variant_id = "none"
+    adapter._oracle_local_path = (  # type: ignore[method-assign]
+        lambda _episode, _generation: ([(0.0, 0.0), (1.0, 0.0)], 4.0)
+    )
+
+    turn = _command(source=1, action=2)
+    adapter._apply_ablation(SimpleNamespace(command=turn))
+    assert adapter.latest_non_stop_system2_action == 2
+
+    hold = _command(sequence=18, source=1, action=-1)
+    adapter._apply_ablation(SimpleNamespace(command=hold))
+    assert adapter.latest_non_stop_system2_action == 2
+
+    false_stop = _command(sequence=19, source=1, action=0)
+    adapter._apply_ablation(SimpleNamespace(command=false_stop))
+
+    assert false_stop.stop is False
+    assert false_stop.discrete_action == 2
+
+
+def test_frozen_t4_episode_lookup_still_uses_generation_order(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    adapter = T4RecoveryAdapter.__new__(T4RecoveryAdapter)
+    adapter.factors = {"termination_mode": "oracle_termination"}
+    adapter.ablation_episodes = [
+        {
+            "episode_id": "121",
+            "start_position": [4.0, 0.0, 1.0],
+            "start_rotation": [0.0, 0.0, 0.0, 1.0],
+            "reference_path": [[4.0, 0.0, 1.0]],
+        },
+        {
+            "episode_id": "628",
+            "start_position": [9.0, 0.0, 2.0],
+            "start_rotation": [0.0, 0.0, 0.0, 1.0],
+            "reference_path": [[9.0, 0.0, 2.0]],
+        },
+    ]
+    monkeypatch.delenv("INTERNNAV_T5_LANE", raising=False)
+
+    assert adapter._episode_reference("628", 1) == [(0.0, 0.0)]
+    with pytest.raises(TimeoutError, match="does not match"):
+        adapter._episode_reference("121", 1)
 
 
 def test_excluded_system2_recovery_path_has_bounded_safe_fallback() -> None:

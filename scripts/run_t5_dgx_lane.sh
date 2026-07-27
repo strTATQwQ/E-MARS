@@ -63,6 +63,24 @@ case "$system2_replan_policy" in
   strict|observation_bound|raw_wire_warn) ;;
   *) echo "invalid System2 replan policy: $system2_replan_policy" >&2; exit 64 ;;
 esac
+system2_queue_horizon="${INTERNVLA_T5_SYSTEM2_QUEUE_HORIZON:-0}"
+case "$system2_queue_horizon" in 0|1) ;;
+  *) echo "invalid System2 queue horizon: $system2_queue_horizon" >&2; exit 64 ;;
+esac
+system1_queue_horizon="${INTERNVLA_T5_SYSTEM1_QUEUE_HORIZON:-0}"
+case "$system1_queue_horizon" in 0|1) ;;
+  *) echo "invalid System1 queue horizon: $system1_queue_horizon" >&2; exit 64 ;;
+esac
+if test "$system2_queue_horizon" = 1; then
+  test "$lane" = a
+  test "$mode" = model
+  test "$candidate_profile" = recovery_a
+fi
+if test "$system1_queue_horizon" = 1; then
+  test "$lane" = a
+  test "$mode" = model
+  test "$candidate_profile" = recovery_a
+fi
 
 root="${INTERNNAV_T1_CONTROL_ROOT:-$HOME/internnav-t1-t2}"
 ros_ws="${INTERNVLA_ROS_WS:-$root/ros_ws}"
@@ -91,6 +109,22 @@ case "$fault_injection_profile" in
   *) echo "unsupported T5 fault injection profile: $fault_injection_profile" >&2; exit 64 ;;
 esac
 export INTERNNAV_T5_FAULT_INJECTION_PROFILE="$fault_injection_profile"
+termination_mode="${INTERNVLA_T5_TERMINATION_MODE:-model_stop}"
+case "$termination_mode" in model_stop|oracle_termination) ;; *) usage ;; esac
+termination_overlay="$root/configs/internnav_t5/completion_sim_geometric_termination.json"
+termination_dataset="${INTERNVLA_T5_ORACLE_DATASET_FILE:-}"
+termination_variant_id=none
+termination_variant_sha256=none
+if test "$termination_mode" = oracle_termination; then
+  test "$mode" = model
+  test -f "$termination_overlay"
+  test -f "$termination_dataset"
+  termination_variant_id=t5_completion_sim_geometric_termination
+  termination_variant_sha256="$(sha256sum "$termination_overlay"|cut -d' ' -f1)"
+  [[ "$termination_variant_sha256" =~ ^[0-9a-f]{64}$ ]]
+else
+  test -z "$termination_dataset"
+fi
 step3_live_advisor="${INTERNNAV_T5_STEP3_LIVE_ADVISOR:-0}"
 case "$step3_live_advisor" in 0|1) ;; *) usage ;; esac
 step3_timeout_advisor="${INTERNVLA_T5_STEP3_TIMEOUT_ADVISOR:-0}"
@@ -109,7 +143,6 @@ if test "$step3_live_advisor" = 1; then
   test "$fault_injection_profile" = off
 fi
 if test "$step3_timeout_advisor" = 1; then
-  test "$lane" = a
   test "$mode" = model
   test "$candidate_profile" = recovery_a
   test "$strict_extension_profile" = off
@@ -159,6 +192,11 @@ if test "$step3_live_advisor" = 1; then
   test -f "$root/scripts/run_t5_step3_live_services.sh"
   test -d "${INTERNNAV_T5_STEP3_MODEL_PATH:-/home/rail/ai-stack/models/Step3-VL-10B}"
   test -f "${INTERNNAV_T5_STEP3_VENV:-/home/rail/ai-stack/venvs/step3-vl-10b-tf4.57.6}/T5_STEP3_RUNTIME_READY.json"
+fi
+if test "$step3_timeout_advisor" = 1; then
+  test -f "$root/scripts/run_t5_step3_timeout_service.sh"
+  test -d "${INTERNNAV_T5_STEP3_MODEL_PATH:-$HOME/ai-stack/models/Step3-VL-10B}"
+  test -f "${INTERNNAV_T5_STEP3_VENV:-$HOME/ai-stack/venvs/step3-vl-10b-tf4.57.6}/T5_STEP3_RUNTIME_READY.json"
 fi
 if test "$cuvslam_mode" = shadow; then
   test -f "$root/configs/internnav_t5/cuvslam_shadow.yaml"
@@ -234,6 +272,8 @@ if test "$step3_live_advisor" = 1; then
   for port in 8200 8300; do
     ((port >= 1024 && port <= 65535))
   done
+elif test "$step3_timeout_advisor" = 1; then
+  ((8200 >= 1024 && 8200 <= 65535))
 fi
 test "$controller_port" != "$model_client_port"
 test "$controller_port" != "$oracle_port"
@@ -464,6 +504,11 @@ if test "$step3_live_advisor" = 1; then
       exit 73
     fi
   done
+elif test "$step3_timeout_advisor" = 1; then
+  if ! port_is_free 8200; then
+    echo "Lane $lane Step3 timeout service port is already in use: 8200" >&2
+    exit 73
+  fi
 fi
 
 if pgrep -af '[i]saac-sim|[k]it/kit' >"$result_dir/forbidden_isaac_prestart.txt"; then
@@ -556,6 +601,7 @@ model_pid=""
 internvla_service_pid=""
 onboard_pid=""
 step3_pid=""
+step3_log_path="$result_dir/logs/step3_services.log"
 client_pid=""
 nvblox_pid=""
 cuvslam_pid=""
@@ -657,6 +703,20 @@ stop_group() {
         kill -TERM -- "-$pid" 2>/dev/null || true
       fi
       for _ in $(seq 1 700); do
+        group_has_runnable_member "$pid" || break
+        sleep 0.1
+      done
+    fi
+  elif test "$component" = step3; then
+    # The timeout-advisor wrapper owns a nested setsid model service.  Enter
+    # its TERM trap directly; an asynchronous bash may ignore INT, which
+    # would otherwise consume the whole outer minute before the child is
+    # killed and allow it to be reparented outside the wrapper PGID.
+    if group_has_runnable_member "$pid"; then
+      if test "$graceful_already_sent" != 1; then
+        kill -TERM -- "-$pid" 2>/dev/null || true
+      fi
+      for _ in $(seq 1 200); do
         group_has_runnable_member "$pid" || break
         sleep 0.1
       done
@@ -817,7 +877,7 @@ cleanup() {
   fi
   stop_group onboard "$onboard_pid" "$onboard_log_path" 1 || residual=$((residual + 1))
   stop_group evaluator "$client_pid" "$result_dir/logs/evaluator.log" 1 || residual=$((residual + 1))
-  stop_group step3 "$step3_pid" "$result_dir/logs/step3_services.log" || residual=$((residual + 1))
+  stop_group step3 "$step3_pid" "$step3_log_path" || residual=$((residual + 1))
   stop_group model "$model_pid" "$model_log_path" || residual=$((residual + 1))
   if test -n "$onboard_pid"; then
     python3 - "$onboard_result_dir/onboard_status.json" <<'PY'
@@ -844,6 +904,8 @@ PY
     for port in 8200 8300; do
       port_is_free "$port" || residual=$((residual + 1))
     done
+  elif test "$step3_timeout_advisor" = 1; then
+    port_is_free 8200 || residual=$((residual + 1))
   fi
   pgrep -af '[i]saac-sim|[k]it/kit' >"$result_dir/forbidden_isaac_poststop.txt"
   test $? = 1 || residual=$((residual + 1))
@@ -870,7 +932,9 @@ python3 - "$result_dir/lane_contract.json" "$lane" "$mode" "$ros_domain_id" \
   "$params" "$nav2_params" "$candidate_profile" "$effective_candidate_profile" \
   "$result_dir/candidate_resolution.json" "$recovery_runtime_manifest" \
   "$candidate_config" "$nvblox_mode" "$nvblox_contract" \
-  "$live_frontier_capture" "$system2_replan_policy" <<'PY'
+  "$live_frontier_capture" "$system2_replan_policy" "$termination_mode" \
+  "$termination_overlay" "$termination_dataset" \
+  "$system2_queue_horizon" "$system1_queue_horizon" <<'PY'
 import hashlib, json, os, sys, time
 from pathlib import Path
 
@@ -945,6 +1009,8 @@ Path(sys.argv[1]).write_text(json.dumps({
         "candidate_config": evidence(sys.argv[19]) if sys.argv[19] else None,
         "system2_replan_policy": sys.argv[23],
         "raw_wire_warn_only": sys.argv[23] == "raw_wire_warn",
+        "system2_queue_horizon": int(sys.argv[27]),
+        "system1_queue_horizon": int(sys.argv[28]),
     },
     "nvblox": {
         "mode": sys.argv[20],
@@ -957,6 +1023,15 @@ Path(sys.argv[1]).write_text(json.dumps({
         "status_path": "live_frontier/status.json",
         "snapshot_path": "live_frontier/current.json",
         "authority": "none",
+    },
+    "termination": {
+        "mode": sys.argv[24],
+        "geometric_success_only": sys.argv[24] == "oracle_termination",
+        "credits_model_stop": False if sys.argv[24] == "oracle_termination" else None,
+        "overlay": evidence(sys.argv[25])
+            if sys.argv[24] == "oracle_termination" else None,
+        "dataset": evidence(sys.argv[26])
+            if sys.argv[24] == "oracle_termination" else None,
     },
     "started_unix": time.time(),
 }, indent=2, sort_keys=True) + "\n", encoding="utf-8")
@@ -986,6 +1061,12 @@ common_env=(
   INTERNVLA_T5_STEP3_TIMEOUT_ADVISOR="$step3_timeout_advisor"
   INTERNNAV_T5_LIVE_FRONTIER_CAPTURE="$live_frontier_capture"
   INTERNVLA_T5_SYSTEM2_REPLAN_POLICY="$system2_replan_policy"
+  INTERNVLA_T5_SYSTEM2_QUEUE_HORIZON="$system2_queue_horizon"
+  INTERNVLA_T5_SYSTEM1_QUEUE_HORIZON="$system1_queue_horizon"
+  INTERNVLA_T4_TERMINATION_MODE="$termination_mode"
+  INTERNVLA_T4_VARIANT_ID="$termination_variant_id"
+  INTERNVLA_T4_VARIANT_CONFIG_SHA256="$termination_variant_sha256"
+  INTERNVLA_T4_ABLATION_DATASET_FILE="$termination_dataset"
   INTERNNAV_T5_STEP3_ENDPOINT=tcp://127.0.0.1:8200
   T5_LANE_B_LIVE_FRONTIER_PATH="$result_dir/live_frontier/current.json"
   T5_LANE_B_RESULTS="$result_dir"
@@ -1206,6 +1287,24 @@ PY
     sleep 0.2
   done
   test -f "$result_dir/step3/services_ready.json"
+  leader_is_alive "$step3_pid"
+elif test "$step3_timeout_advisor" = 1; then
+  step3_model_path="${INTERNNAV_T5_STEP3_MODEL_PATH:-$HOME/ai-stack/models/Step3-VL-10B}"
+  step3_venv="${INTERNNAV_T5_STEP3_VENV:-$HOME/ai-stack/venvs/step3-vl-10b-tf4.57.6}"
+  step3_log_path="$result_dir/logs/step3_timeout_service.log"
+  setsid env "${common_env[@]}" \
+    INTERNNAV_T5_RESOURCE_LEASE_ACK="$expected_lease" \
+    bash "$root/scripts/run_t5_step3_timeout_service.sh" \
+      "$result_dir/step3_timeout_service" "$step3_model_path" "$step3_venv" \
+      >"$step3_log_path" 2>&1 </dev/null &
+  step3_pid=$!
+  record_pid_event step3 "$step3_pid" started "$step3_log_path"
+  for _ in $(seq 1 4800); do
+    leader_is_alive "$step3_pid" || { shutdown_reason=step3_startup_exit; exit 1; }
+    test -f "$result_dir/step3_timeout_service/health.json" && break
+    sleep 0.2
+  done
+  test -f "$result_dir/step3_timeout_service/health.json"
   leader_is_alive "$step3_pid"
 fi
 

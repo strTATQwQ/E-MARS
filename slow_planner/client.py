@@ -17,6 +17,7 @@ from .mission import (
     CanonicalMission,
     MissionNormalizationRequest,
 )
+from .step3_task_state import TaskStatePlannerDecision
 
 
 class SlowPlannerClient:
@@ -48,11 +49,12 @@ class SlowPlannerClient:
             raise RuntimeError(str(response.get("error") or "slow planner request failed"))
         row = dict(response["decision"])
         target = row.get("target_relative_xz")
-        decision_class = (
-            StructuredPlannerDecision
-            if "scene_summary" in row
-            else PlannerDecision
-        )
+        if "task_clauses" in row:
+            decision_class = TaskStatePlannerDecision
+        elif "scene_summary" in row:
+            decision_class = StructuredPlannerDecision
+        else:
+            decision_class = PlannerDecision
         structured = (
             {
                 "scene_summary": str(row.get("scene_summary") or ""),
@@ -69,6 +71,25 @@ class SlowPlannerClient:
             if decision_class is StructuredPlannerDecision
             else {}
         )
+        task_state = (
+            {
+                "task_clauses": tuple(
+                    str(value) for value in (row.get("task_clauses") or [])
+                ),
+                "active_clause_id": row.get("active_clause_id"),
+                "clause_transition": str(
+                    row.get("clause_transition") or ""
+                ),
+                "recommended_frontier": row.get("recommended_frontier"),
+                "evidence": tuple(
+                    str(value) for value in (row.get("evidence") or [])
+                ),
+                "target_found": row.get("target_found"),
+                "abstain": row.get("abstain"),
+            }
+            if decision_class is TaskStatePlannerDecision
+            else {}
+        )
         decision = decision_class(
             episode_id=str(row["episode_id"]),
             snapshot_id=str(row["snapshot_id"]),
@@ -82,6 +103,7 @@ class SlowPlannerClient:
             fallback_reason=str(row.get("fallback_reason") or ""),
             protocol_version=int(row.get("protocol_version", 1)),
             **structured,
+            **task_state,
         )
         if decision.episode_id != request.episode_id or decision.snapshot_id != request.snapshot_id:
             raise SlowPlannerProtocolError("stale or mismatched slow-planner response")

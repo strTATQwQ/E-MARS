@@ -152,9 +152,12 @@ isaac_sensor_profile="${INTERNNAV_T5_ISAAC_SENSOR_PROFILE:-baseline}"
 step3_live_advisor="${INTERNNAV_T5_STEP3_LIVE_ADVISOR:-0}"
 step3_direct_high_level="${INTERNNAV_T5_STEP3_DIRECT_HIGH_LEVEL:-0}"
 step3_timeout_advisor="${INTERNVLA_T5_STEP3_TIMEOUT_ADVISOR:-0}"
+full_rgb_capture="${INTERNVLA_T5_FULL_RGB_CAPTURE:-0}"
 case "$step3_live_advisor" in 0|1) ;; *) exit 64 ;; esac
 case "$step3_direct_high_level" in 0|1) ;; *) exit 64 ;; esac
 case "$step3_timeout_advisor" in 0|1) ;; *) exit 64 ;; esac
+case "$full_rgb_capture" in 0|1) ;; *) exit 64 ;; esac
+test "$full_rgb_capture" != 1 || test "$lane" = a
 case "$isaac_sensor_profile" in
   baseline)
     test "$step3_live_advisor" = 0
@@ -212,10 +215,26 @@ case "$isaac_sensor_profile" in
     test "$fault_injection_profile" = off
     export INTERNVLA_T5_REVC_ENABLE=1
     ;;
+  dual_lane_wp03_stop_shadow)
+    test "$step3_live_advisor" = 0
+    test "$step3_direct_high_level" = 0
+    test "$step3_timeout_advisor" = 1
+    test "$mode" = model
+    test "$execution_profile" = fixed_dataset
+    test "$fault_injection_profile" = off
+    export INTERNVLA_T5_REVC_ENABLE=1
+    ;;
   *) echo "unsupported T5 Isaac sensor profile: $isaac_sensor_profile" >&2; exit 64 ;;
 esac
 export INTERNNAV_T5_ISAAC_SENSOR_PROFILE="$isaac_sensor_profile"
 export INTERNVLA_T5_STEP3_TIMEOUT_ADVISOR="$step3_timeout_advisor"
+export INTERNVLA_T5_FULL_RGB_CAPTURE="$full_rgb_capture"
+if test "$full_rgb_capture" = 1; then
+  export INTERNVLA_T5_FULL_RGB_CAPTURE_ROOT="$result_root/evaluator/full_rgb_5hz"
+  test ! -e "$INTERNVLA_T5_FULL_RGB_CAPTURE_ROOT"
+else
+  unset INTERNVLA_T5_FULL_RGB_CAPTURE_ROOT
+fi
 # The promoted navigation-fast profile is usable for functional evidence.
 # Other named profiles remain diagnostic-only single-Lane ablations.
 rtf_ablation_profile="${INTERNNAV_T5_RTF_ABLATION_PROFILE:-navigation_fast}"
@@ -370,8 +389,10 @@ if test "$final_pilot_lane" != off; then
   test "$final_pilot_lane" = "$lane"
   test "$mode" = model
   test "$execution_profile" = fixed_dataset
-  test "$dataset_episode_count" = 10
-  test "$isaac_sensor_profile" = baseline
+  case "$dataset_episode_count" in 1|10) ;; *) exit 64 ;; esac
+  if test "$isaac_sensor_profile" != baseline; then
+    test "$isaac_sensor_profile" = dual_lane_wp03_stop_shadow
+  fi
   test "$strict_extension_profile" = off
   test "$rtf_ablation_profile" = navigation_fast
 fi
@@ -396,6 +417,9 @@ if test "$isaac_sensor_profile" = lane_a_step3_timeout_advisor; then
       && test "$dataset_episode_count" != 3 && test "$dataset_episode_count" != 5; then
     exit 64
   fi
+fi
+if test "$isaac_sensor_profile" = dual_lane_wp03_stop_shadow; then
+  case "$dataset_episode_count" in 1|10) ;; *) exit 64 ;; esac
 fi
 if test "$nvblox_mode" = active_local_gt; then
   test "$dataset_episode_count" = 3
@@ -1339,6 +1363,7 @@ wait_revc_snapshot_probe() {
   test "$isaac_sensor_profile" != lane_b_step3_live_canary || return 0
   test "$isaac_sensor_profile" != lane_b_step3_direct_fixed5 || return 0
   test "$isaac_sensor_profile" != lane_a_step3_timeout_advisor || return 0
+  test "$isaac_sensor_profile" != dual_lane_wp03_stop_shadow || return 0
   test -n "$revc_probe_pid"
   if test "$revc_probe_reaped" = 0; then
     revc_probe_rc=0
@@ -2187,7 +2212,8 @@ elif test "$isaac_sensor_profile" = lane_b_revc_fixed5_capture; then
   revc_probe_pid=$!
   record_pid_event revc_snapshot_probe "$revc_probe_pid" started \
     "$revc_probe_log"
-elif test "$isaac_sensor_profile" = lane_a_step3_timeout_advisor; then
+elif test "$isaac_sensor_profile" = lane_a_step3_timeout_advisor || \
+    test "$isaac_sensor_profile" = dual_lane_wp03_stop_shadow; then
   test ! -e "$INTERNVLA_T5_REVC_SNAPSHOT_REQUEST_PATH"
   test ! -e "$INTERNVLA_T5_REVC_SNAPSHOT_ACK_PATH"
   test "$INTERNVLA_T4_RESULT_ROOT" = "$result_root/evaluator"
@@ -2219,7 +2245,7 @@ elif test "$isaac_sensor_profile" = lane_a_step3_timeout_advisor; then
         --endpoint "$2" --result-root "$3" --contract "$4" \
         --request "$5" --ack "$6" --output "$7" --deadline-sec 12
     ' bash "$root" \
-    "${INTERNVLA_T5_STEP3_TIMEOUT_ENDPOINT:-tcp://10.100.120.122:8200}" \
+    "${INTERNVLA_T5_STEP3_TIMEOUT_ENDPOINT:-tcp://$edge_ip:8200}" \
     "$INTERNVLA_T4_RESULT_ROOT" "$INTERNVLA_T5_REVC_CAMERA_CONFIG" \
     "$INTERNVLA_T5_REVC_SNAPSHOT_REQUEST_PATH" \
     "$INTERNVLA_T5_REVC_SNAPSHOT_ACK_PATH" \

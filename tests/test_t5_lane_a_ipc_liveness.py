@@ -22,7 +22,9 @@ from internvla_ros2.client_node import (  # noqa: E402
     T5_STEP_RESULT_PRIMARY_LIVENESS_SEC,
     T5_STEP_RESULT_REFETCH_LIVENESS_SEC,
 )
+from internvla_ros2.model_node import InternVLAModelNode  # noqa: E402
 from internvla_ros2.protocol import (  # noqa: E402
+    RequestIdentity,
     STATUS_OBSERVATION_MISSING,
     STATUS_OK,
     STATUS_RESET_MISMATCH,
@@ -504,6 +506,13 @@ def test_action_server_retains_results_beyond_both_liveness_windows() -> None:
 class _Agent:
     def __init__(self) -> None:
         self.reset_calls: list[list[int]] = []
+        self.s2_output = SimpleNamespace(
+            output_action=[3, 3],
+            output_latent=object(),
+            output_pixel=object(),
+        )
+        self.s2_output_lock = threading.Lock()
+        self.policy_history = ["kitchen", "left-exit"]
 
     def reset(self, value: list[int]) -> None:
         self.reset_calls.append(value)
@@ -561,6 +570,95 @@ def test_legacy_and_non_t5_history_clear_still_clear_observation_cache() -> None
     assert node._test_audit[-1]["observation_tuple_preserved"] is False
 
 
+def test_step3_refresh_invalidates_only_action_queue_and_preserves_history() -> None:
+    node = _bare_recovery_model()
+    latent = node._agent.s2_output.output_latent
+    pixel = node._agent.s2_output.output_pixel
+    history = list(node._agent.policy_history)
+
+    epoch = node._invalidate_step3_action_queue_locked(
+        "step3-refresh:goal-digest",
+        "operation:step3-refresh",
+    )
+
+    assert epoch == 1
+    assert node._agent.reset_calls == []
+    assert node._agent.s2_output.output_action is None
+    assert node._agent.s2_output.output_latent is latent
+    assert node._agent.s2_output.output_pixel is pixel
+    assert node._agent.policy_history == history
+    assert node._system1_queue_remaining == 0
+    assert node._results == {}
+    assert node._test_clear_observations == []
+    assert node._test_audit[-1]["event"] == "step3_action_queue_invalidated"
+    assert node._test_audit[-1]["policy_history_preserved"] is True
+    assert node._test_audit[-1]["system2_latent_preserved"] is True
+
+
+def test_system2_receding_horizon_discards_only_remaining_actions() -> None:
+    node = InternVLAModelNode.__new__(InternVLAModelNode)
+    node._agent = _Agent()
+    node._system1_queue_remaining = 3
+    messages: list[str] = []
+    node.get_logger = lambda: SimpleNamespace(info=messages.append)  # type: ignore[method-assign]
+    latent = node._agent.s2_output.output_latent
+    pixel = node._agent.s2_output.output_pixel
+    history = list(node._agent.policy_history)
+
+    node._discard_stale_system2_action_queue(
+        RequestIdentity("a::1720", 0, 27, "a::1720:0:27")
+    )
+
+    assert node._agent.s2_output.output_action is None
+    assert node._agent.s2_output.output_latent is latent
+    assert node._agent.s2_output.output_pixel is pixel
+    assert node._agent.policy_history == history
+    assert node._system1_queue_remaining == 0
+    assert "sequence=27 discarded=2" in messages[-1]
+
+
+def test_system1_receding_horizon_discards_only_remaining_actions() -> None:
+    node = InternVLAModelNode.__new__(InternVLAModelNode)
+    node._agent = _Agent()
+    node._system1_queue_remaining = 2
+    messages: list[str] = []
+    node.get_logger = lambda: SimpleNamespace(info=messages.append)  # type: ignore[method-assign]
+    latent = node._agent.s2_output.output_latent
+    pixel = node._agent.s2_output.output_pixel
+    history = list(node._agent.policy_history)
+
+    node._discard_stale_system1_action_queue(
+        RequestIdentity("a::1720", 0, 66, "a::1720:0:66")
+    )
+
+    assert node._agent.s2_output.output_action is None
+    assert node._agent.s2_output.output_latent is latent
+    assert node._agent.s2_output.output_pixel is pixel
+    assert node._agent.policy_history == history
+    assert node._system1_queue_remaining == 0
+    assert "sequence=66 discarded=2" in messages[-1]
+
+
+def test_system1_receding_horizon_is_wired_through_exact_t5_lane_contract() -> None:
+    model_source = (
+        ROOT / "internvla_ros2/internvla_ros2/model_node.py"
+    ).read_text(encoding="utf-8")
+    fast_source = (
+        ROOT / "coordination/run_t5_fast_lane_online.sh"
+    ).read_text(encoding="utf-8")
+    lane_source = (ROOT / "scripts/run_t5_dgx_lane.sh").read_text(
+        encoding="utf-8"
+    )
+
+    env_name = "INTERNVLA_T5_SYSTEM1_QUEUE_HORIZON"
+    assert env_name in model_source
+    assert "ACTION_SOURCE_SYSTEM1_NEW" in model_source
+    assert env_name in fast_source
+    assert 'test "$lane" = a || usage' in fast_source
+    assert env_name in lane_source
+    assert '"system1_queue_horizon": int(sys.argv[28])' in lane_source
+
+
 def test_typed_preservation_is_exact_t5_and_reset_abort_still_clear() -> None:
     recovery_source = (
         ROOT / "internvla_t4_recovery/internvla_t4_recovery/model_node.py"
@@ -571,6 +669,8 @@ def test_typed_preservation_is_exact_t5_and_reset_abort_still_clear() -> None:
 
     assert "preserve_observation_tuple=self._recovery_uses_sim_time" in recovery_source
     assert "self._recovery_uses_sim_time = t5_completion_sim_enabled()" in recovery_source
+    assert 'identity.recovery_id.startswith("step3-refresh:")' in recovery_source
+    assert "_invalidate_step3_action_queue_locked" in recovery_source
     reset_body = base_source.split("    def _on_reset(", 1)[1].split(
         "    def _on_shutdown(", 1
     )[0]

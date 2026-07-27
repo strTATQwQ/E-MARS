@@ -25,7 +25,7 @@ case "$prepare_scope" in
     ;;
   *) usage ;;
 esac
-ssh_options=(-T -o BatchMode=yes -o ConnectTimeout=8 -o ServerAliveInterval=5 -o ServerAliveCountMax=2)
+ssh_options=(-T -i "${INTERNNAV_T5_SSH_IDENTITY_FILE:-$HOME/.ssh/id_ed25519_internnav_runtime}" -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=8 -o ServerAliveInterval=5 -o ServerAliveCountMax=2)
 dgx_a_target=railgun@10.100.100.128
 dgx_b_target=rail@10.100.120.122
 x86_ip="${ISAAC_HOST:-10.100.120.123}"

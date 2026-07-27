@@ -31,6 +31,7 @@ from internvla_ros2.recovery_contract import (
     trajectory_signature,
     validate_request,
 )
+from internvla_ros2.protocol import ACTION_FORWARD, ACTION_LEFT, ACTION_RIGHT
 from internvla_ros2_msgs.srv import RecoveryControl, ResolveCommand
 from rclpy.executors import MultiThreadedExecutor
 from std_srvs.srv import Trigger
@@ -133,6 +134,7 @@ class T4RecoveryAdapter(ActiveNav2Adapter):
             raise RuntimeError("ablation_config_sha256 must identify the generated config")
         dataset_value = str(self.get_parameter("ablation_dataset_file").value)
         self.ablation_episodes: list[dict[str, object]] = []
+        self._t5_ablation_generation_episode_ids: dict[int, str] = {}
         oracle_required = (
             self.factors["system_mode"] != "full_system1_system2"
             or self.factors["termination_mode"] == "oracle_termination"
@@ -202,9 +204,55 @@ class T4RecoveryAdapter(ActiveNav2Adapter):
             raise TimeoutError(
                 "ablation generation is outside the frozen episode order"
             )
-        episode = self.ablation_episodes[generation]
-        if str(episode.get("episode_id", "")) != str(episode_id):
+        observed_episode_id = str(episode_id)
+        lane = os.environ.get("INTERNNAV_T5_LANE", "")
+        t5_oracle_identity = bool(
+            self.factors["termination_mode"] == "oracle_termination"
+            and lane in {"a", "b"}
+            and observed_episode_id.startswith(f"{lane}::")
+        )
+        if t5_oracle_identity:
+            frozen_episode_id = observed_episode_id.split("::", 1)[1]
+            matches = [
+                value
+                for value in self.ablation_episodes
+                if str(value.get("episode_id", "")) == frozen_episode_id
+            ]
+            if len(matches) != 1:
+                raise TimeoutError(
+                    "T5 oracle episode identity is missing or ambiguous"
+                )
+            bindings = getattr(
+                self, "_t5_ablation_generation_episode_ids", None
+            )
+            if bindings is None:
+                bindings = {}
+                self._t5_ablation_generation_episode_ids = bindings
+            bound_episode_id = bindings.setdefault(generation, observed_episode_id)
+            if bound_episode_id != observed_episode_id:
+                raise TimeoutError(
+                    "T5 oracle generation was already bound to another episode"
+                )
+            episode = matches[0]
+        else:
+            episode = self.ablation_episodes[generation]
+            frozen_episode_id = str(episode.get("episode_id", ""))
+        t5_identity_match = bool(
+            t5_oracle_identity
+            and observed_episode_id == f"{lane}::{frozen_episode_id}"
+        )
+        if frozen_episode_id != observed_episode_id and not t5_identity_match:
             raise TimeoutError("ablation episode identity does not match reset generation")
+        if t5_identity_match:
+            # Lane-A/B ground-truth odometry is already expressed in the Isaac
+            # world/map frame.  Keep the frozen Habitat path in that same frame
+            # (with the established Habitat z -> ROS -y conversion) so the
+            # geometric termination distance does not mix global odometry with
+            # a start-relative T4 ablation path.
+            return [
+                (float(point[0]), -float(point[2]))
+                for point in episode["reference_path"]
+            ]
         start = [float(value) for value in episode["start_position"]]
         rotation = [float(value) for value in episode["start_rotation"]]
         habitat_yaw = 2.0 * math.atan2(rotation[1], rotation[3])
@@ -310,7 +358,14 @@ class T4RecoveryAdapter(ActiveNav2Adapter):
         original_action_source = int(command.action_source)
         if int(command.action_source) == 1:
             self.latest_system2_action = int(command.discrete_action)
-            if int(command.discrete_action) != 0:
+            # ACTION_STAND_STILL (-1) is a bounded hold, not a continuation
+            # primitive.  Caching it here made oracle_termination replay the
+            # hold after a false model STOP and left navigation with no goal.
+            if int(command.discrete_action) in {
+                ACTION_FORWARD,
+                ACTION_LEFT,
+                ACTION_RIGHT,
+            }:
                 self.latest_non_stop_system2_action = int(command.discrete_action)
 
         oracle_distance: float | None = None

@@ -57,9 +57,19 @@ def _build_planner(config: dict[str, Any]):
             **common,
         )
     if variant == "step3_vl_10b_bf16":
-        from .step3_vl_10b import Step3VLSlowPlanner
+        planner_mode = str(config.get("planner_mode", "bounded_advisor_v1"))
+        if planner_mode == "task_state_v1":
+            from .step3_task_state import Step3TaskStateSlowPlanner
 
-        return Step3VLSlowPlanner.from_pretrained(
+            planner_class = Step3TaskStateSlowPlanner
+        elif planner_mode == "bounded_advisor_v1":
+            from .step3_vl_10b import Step3VLSlowPlanner
+
+            planner_class = Step3VLSlowPlanner
+        else:
+            raise ValueError(f"unsupported Step3 planner_mode={planner_mode!r}")
+
+        return planner_class.from_pretrained(
             _expand(config["model_path"]),
             fix_mistral_regex=bool(config.get("fix_mistral_regex", True)),
             expected_transformers_version=str(config.get("transformers_version", "4.57.6")),
@@ -94,7 +104,7 @@ class SlowPlannerServer:
         self.context = zmq.Context.instance()
         self.socket = self.context.socket(zmq.REP)
         self.socket.setsockopt(zmq.LINGER, 0)
-        self.socket.bind(str(config.get("bind", "tcp://0.0.0.0:8200")))
+        self.socket.bind(_expand(config.get("bind", "tcp://0.0.0.0:8200")))
         configured_precision = str(config.get("precision_mode", planner.precision_mode))
         if configured_precision != planner.precision_mode:
             raise ValueError(
@@ -115,6 +125,12 @@ class SlowPlannerServer:
                 "generation_wall_budget": planner.generation_wall_budget_s == 10.5,
                 "generation_join_grace": planner.generation_join_grace_s == 0.5,
                 "redact_raw_text": self.redact_raw_text is True,
+                "planner_mode": str(
+                    config.get("planner_mode", "bounded_advisor_v1")
+                )
+                == str(
+                    getattr(planner, "planner_mode", "bounded_advisor_v1")
+                ),
             }
             if not all(required.values()):
                 raise ValueError(f"Step3 deadline/redaction contract mismatch: {required}")

@@ -29,6 +29,7 @@ from slow_planner.step3_vl_10b import (
     STEP3_CHAT_GENERATION_SUFFIX,
     STEP3_NO_THINKING_PREFILL,
     Step3VLSlowPlanner,
+    _interleaved_labeled_images,
 )
 
 
@@ -82,6 +83,49 @@ def test_step3_closes_forced_thinking_block_before_json_generation() -> None:
     assert health["max_new_tokens"] == 96
     assert health["generation_wall_budget_s"] == 10.5
     assert health["generation_join_grace_s"] == 0.5
+
+
+def test_step3_interleaves_each_image_with_its_exact_view_label() -> None:
+    images = [object()] * 4
+    prompt = (
+        'INPUT={"views":[{"i":0,"id":"front_left"},'
+        '{"i":1,"id":"front"},{"i":2,"id":"front_right"},'
+        '{"i":3,"id":"rear"}],"history":'
+        '["termination_candidate=periodic_arrival_probe"]}\nRules: JSON only'
+    )
+
+    content = _interleaved_labeled_images(images, prompt)
+
+    assert [item["type"] for item in content] == [
+        "text",
+        "image",
+        "text",
+        "image",
+        "text",
+        "image",
+        "text",
+        "image",
+    ]
+    assert [content[index]["text"] for index in range(0, 8, 2)] == [
+        "IMAGE_INDEX=0; VIEW_ID=front_left\n",
+        "IMAGE_INDEX=1; VIEW_ID=front\n",
+        "IMAGE_INDEX=2; VIEW_ID=front_right\n",
+        "IMAGE_INDEX=3; VIEW_ID=rear\n",
+    ]
+    assert [content[index]["image"] for index in range(1, 8, 2)] == images
+
+
+def test_step3_keeps_frozen_image_only_layout_for_navigation_requests() -> None:
+    images = [object()] * 4
+    prompt = (
+        'INPUT={"views":[{"i":0,"id":"front_left"},'
+        '{"i":1,"id":"front"},{"i":2,"id":"front_right"},'
+        '{"i":3,"id":"rear"}],"history":["task_state_v1={}"]}'
+    )
+
+    content = _interleaved_labeled_images(images, prompt)
+
+    assert content == [{"type": "image", "image": image} for image in images]
 
 
 def test_step3_refuses_unknown_chat_template_instead_of_leaking_reasoning() -> None:

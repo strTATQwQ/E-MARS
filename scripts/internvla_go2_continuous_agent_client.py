@@ -18,6 +18,7 @@ from internvla_go2_controller.runtime import (
 )
 from internvla_ipc_agent_client import ROS2IPCAgentClient
 from internvla_nav2_oracle_agent_client import Nav2OracleAgentClient
+from t5_rgb_frame_recorder import T5RGBFrameRecorder
 
 
 CONTINUOUS_TRIGGER = [{"action": [[0.0, 0.0, 0.0]], "ideal_flag": False}]
@@ -79,6 +80,7 @@ def _scenario_manifest() -> tuple[dict[str, str], dict[str, str]]:
 class ContinuousROS2IPCAgentClient(ROS2IPCAgentClient):
     def __init__(self, config: Any):
         super().__init__(config)
+        self.full_rgb_recorder = T5RGBFrameRecorder.from_environment()
         _, self.scenario_by_instruction_digest = _scenario_manifest()
         episode_id = str(self.handshake_response["episode_id"])
         reset_generation = int(self.handshake_response["reset_generation"])
@@ -86,6 +88,8 @@ class ContinuousROS2IPCAgentClient(ROS2IPCAgentClient):
         reset_obstacle_scenario(reset_generation)
 
     def step(self, obs: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        if self.full_rgb_recorder is not None:
+            self.full_rgb_recorder.record_without_affecting_control(obs[0])
         result = super().step(obs)
         response = self.last_result
         if response is None or result == SAFE_STOP:

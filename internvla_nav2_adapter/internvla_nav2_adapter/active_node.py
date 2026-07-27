@@ -406,7 +406,7 @@ class ActiveNav2Adapter(Node):
             with self.operation_lock:
                 if self.execution_mode == "continuous":
                     self._publish_motion(False)
-                preserve_system1_target = bool(
+                preserve_candidate = bool(
                     self.execution_mode == "continuous"
                     and episode_id == self.active_episode
                     and reset_generation == self.active_generation
@@ -414,16 +414,64 @@ class ActiveNav2Adapter(Node):
                     and str(value.get("reason", ""))
                     == "measured motion reached the preregistered completion threshold"
                 )
-                if preserve_system1_target:
+                remaining_distance = None
+                preserve_system1_target = False
+                if preserve_candidate and self.frozen_system1_target is not None:
+                    with self.odom_lock:
+                        current_odom = self.latest_odom
+                    if current_odom is not None:
+                        remaining_distance = (
+                            self.frozen_system1_target.remaining_xy_distance(
+                                current_odom[0], current_odom[1]
+                            )
+                        )
+                        # A queued command is judged as another bounded forward
+                        # primitive by the client gate.  Do not reissue an old
+                        # absolute goal when less than one such primitive remains:
+                        # Nav2 will decelerate inside its goal tolerance and the
+                        # fresh-primitive gate could otherwise never reach 0.20 m.
+                        preserve_system1_target = (
+                            self.frozen_system1_target.permits_bounded_reissue(
+                                current_odom[0],
+                                current_odom[1],
+                                self.flash_forward_step,
+                            )
+                        )
+                cancel_warning = ""
+                try:
+                    if preserve_system1_target:
+                        cancelled = self._cancel_active(
+                            wait=True, preserve_system1_target=True
+                        )
+                    else:
+                        cancelled = self._cancel_active(wait=True)
+                except TimeoutError:
+                    # completion_sim has already disabled command forwarding above.
+                    # A late Nav2 cancel acknowledgement must not abort the entire
+                    # episode: leave a second best-effort cancel in flight, clear the
+                    # local active handle, and admit only the next identity-bound
+                    # primitive.  Empty/negative acknowledgements remain fatal, and
+                    # this callback is not enabled by the real-Go2 configuration.
                     cancelled = self._cancel_active(
-                        wait=True, preserve_system1_target=True
+                        wait=False,
+                        preserve_system1_target=preserve_system1_target,
                     )
-                else:
-                    cancelled = self._cancel_active(wait=True)
+                    if cancelled:
+                        cancel_warning = (
+                            "WARN completion_sim Nav2 cancel acknowledgement exceeded "
+                            "1.0 wall-s; motion disabled and best-effort cancel issued"
+                        )
+                        self.get_logger().warning(cancel_warning)
                 if not cancelled:
                     raise RuntimeError("Nav2 cancellation was not confirmed")
             status = "ok"
-            detail = "Nav2 goal absent or cancellation confirmed"
+            detail = cancel_warning or "Nav2 goal absent or cancellation confirmed"
+            if preserve_candidate and remaining_distance is not None:
+                detail += (
+                    "; frozen System1 target "
+                    + ("preserved" if preserve_system1_target else "cleared")
+                    + f" with {remaining_distance:.6f} m remaining"
+                )
         except BaseException as exc:
             status = "error"
             detail = repr(exc)[:512]

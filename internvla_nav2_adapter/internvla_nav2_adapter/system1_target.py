@@ -76,3 +76,30 @@ class FrozenSystem1Target:
             raise ValueError("System 1 queue target sequence did not advance")
         if now_ns <= 0 or now_ns > self.valid_until_ns:
             raise ValueError("System 1 queue target expired; fresh trajectory required")
+
+    def remaining_xy_distance(self, current_x: float, current_y: float) -> float:
+        """Return bounded-plan distance remaining in the target's absolute frame."""
+
+        values = (float(current_x), float(current_y))
+        if not all(math.isfinite(value) for value in values):
+            raise ValueError("current System 1 target pose contains NaN/Inf")
+        return math.hypot(
+            self.position_xyz[0] - values[0],
+            self.position_xyz[1] - values[1],
+        )
+
+    def permits_bounded_reissue(
+        self,
+        current_x: float,
+        current_y: float,
+        minimum_remaining_m: float,
+    ) -> bool:
+        """Reject a reissue that cannot contain one more bounded motion step."""
+
+        minimum_remaining_m = float(minimum_remaining_m)
+        if not math.isfinite(minimum_remaining_m) or minimum_remaining_m <= 0.0:
+            raise ValueError("bounded System 1 reissue distance is invalid")
+        return (
+            self.remaining_xy_distance(current_x, current_y) + 1e-6
+            >= minimum_remaining_m
+        )

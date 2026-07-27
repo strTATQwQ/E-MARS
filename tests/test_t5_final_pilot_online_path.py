@@ -8,6 +8,8 @@ import shutil
 import sys
 import tarfile
 
+import pytest
+
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -67,6 +69,34 @@ def _candidate(path: Path) -> Path:
         "provenance": {
             "fixed_episode_count": 5,
             "fixed_episode_keys": [f"dev_{index}" for index in range(5)],
+        },
+    }
+    value["resolution_sha256"] = hashlib.sha256(
+        json.dumps(
+            value,
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=False,
+            allow_nan=False,
+        ).encode("utf-8")
+    ).hexdigest()
+    return _write(path, value)
+
+
+def _recovery_candidate(path: Path) -> Path:
+    value = {
+        "schema_version": 2,
+        "status": "PASS",
+        "candidate_selector": "recovery_a",
+        "selector_kind": "legacy",
+        "canonical_binding": {
+            "candidate_selector": "recovery_a",
+            "effective_candidate_profile": "recovery_a",
+            "fixed_episode_count": None,
+        },
+        "provenance": {
+            "fixed_episode_count": None,
+            "fixed_episode_keys": None,
         },
     }
     value["resolution_sha256"] = hashlib.sha256(
@@ -296,6 +326,82 @@ def test_prepare_receipt_and_final10_binding_are_portable(tmp_path, monkeypatch)
     assert outputs["a"]["static_map_manifest_sha256"] == outputs["b"]["static_map_manifest_sha256"]
 
 
+def test_wp03_stop_shadow_reuses_only_frozen_a10_b10_assets(tmp_path, monkeypatch):
+    _common, pilot, receipt = _fixture(tmp_path, monkeypatch)
+    candidate = _recovery_candidate(tmp_path / "recovery-candidate.json")
+    outputs = {}
+    for lane in ("a", "b"):
+        output = tmp_path / f"shadow-binding-{lane}.json"
+        outputs[lane] = binding_resolver.resolve_binding(
+            prepare_root=pilot,
+            lane=lane,
+            code_sha=CODE_SHA,
+            candidate_resolution_path=candidate,
+            runtime_profile=dict(binding_resolver.WP03_STOP_SHADOW_PROFILE),
+            output=output,
+        )
+        assert outputs[lane]["status"] == "PASS"
+        assert outputs[lane]["wp03_stop_shadow_overlay"] is True
+        assert outputs[lane]["source_final_profile"] == receipt["final_profile"]
+        assert outputs[lane]["execution_episode_count"] == 10
+    assert set(outputs["a"]["execution_episode_keys"]).isdisjoint(
+        outputs["b"]["execution_episode_keys"]
+    )
+
+
+def test_pilot_screen1_selects_one_frozen_lane_episode_without_rebinding_source(
+    tmp_path, monkeypatch
+):
+    _common, pilot, receipt = _fixture(tmp_path, monkeypatch)
+    candidate = _recovery_candidate(tmp_path / "screen-candidate.json")
+    selected = LANE_KEYS["a"][4]
+    payload = binding_resolver.resolve_binding(
+        prepare_root=pilot,
+        lane="a",
+        code_sha=CODE_SHA,
+        candidate_resolution_path=candidate,
+        runtime_profile=dict(binding_resolver.WP03_STOP_SHADOW_PROFILE),
+        output=tmp_path / "pilot-screen1-binding.json",
+        execution_profile="pilot-screen1",
+        episode_key=selected,
+    )
+    lane_receipt = receipt["split"]["lanes"]["a"]
+    assert payload["status"] == "PASS"
+    assert payload["source_execution_profile"] == "final10"
+    assert payload["execution_profile"] == "pilot-screen1"
+    assert payload["execution_episode_count"] == 1
+    assert payload["execution_episode_keys"] == [selected]
+    assert payload["screen_episode_key"] == selected
+    assert payload["episode_count"] == 10
+    assert payload["episode_keys"] == LANE_KEYS["a"]
+    assert payload["dataset_sha256"] == lane_receipt["dataset_sha256"]
+    assert payload["split_audit_sha256"] == receipt["split"]["audit_sha256"]
+
+
+@pytest.mark.parametrize(
+    "episode_key",
+    [None, LANE_KEYS["b"][0], "external_episode", "../ta0_ea0"],
+)
+def test_pilot_screen1_rejects_missing_cross_lane_or_external_episode(
+    tmp_path, monkeypatch, episode_key
+):
+    _common, pilot, _receipt = _fixture(tmp_path, monkeypatch)
+    candidate = _recovery_candidate(tmp_path / "reject-candidate.json")
+    output = tmp_path / "rejected-pilot-screen1-binding.json"
+    with pytest.raises(ValueError, match="pilot-screen1"):
+        binding_resolver.resolve_binding(
+            prepare_root=pilot,
+            lane="a",
+            code_sha=CODE_SHA,
+            candidate_resolution_path=candidate,
+            runtime_profile=dict(binding_resolver.WP03_STOP_SHADOW_PROFILE),
+            output=output,
+            execution_profile="pilot-screen1",
+            episode_key=episode_key,
+        )
+    assert not output.exists()
+
+
 def test_lane_a_prepare_receipt_omits_b_and_resolver_rejects_b(tmp_path, monkeypatch):
     _common, pilot, receipt = _fixture(tmp_path, monkeypatch, lane_a_only=True)
     candidate = _candidate(tmp_path / "candidate-a-only.json")
@@ -386,14 +492,16 @@ def test_online_entrypoints_keep_disjoint_leases_and_explicit_final10():
     dual = (ROOT / "coordination" / "run_t5_final_pilot_dual_online.sh").read_text(encoding="utf-8")
     prepare = (ROOT / "coordination" / "run_t5_final_pilot_prepare_online.sh").read_text(encoding="utf-8")
     distributed = (ROOT / "scripts" / "run_t5_distributed_isaac.sh").read_text(encoding="utf-8")
-    assert "fixed5 | final10" in fast
-    assert 'profile" = final10' in fast
+    assert "fixed5 | pilot-screen1 | final10" in fast
+    assert 'pilot-screen1|final10' in fast
+    assert '--execution-profile "$profile"' in fast
+    assert '--episode-key "$screen_episode_key"' in fast
     assert "INTERNNAV_T5_FINAL_PILOT_LANE" in fast
     assert "run_t5_fast_lane_online.sh" in dual
     assert "with_resource_lease.sh\" all-lanes" not in dual
     assert "INTERNNAV_T5_CANDIDATE_PROFILE=a1+b1+c1" in dual
     assert "INTERNNAV_T5_FINAL_PILOT_LANE" in distributed
-    assert 'test "$dataset_episode_count" = 10' in distributed
+    assert 'case "$dataset_episode_count" in 1|10)' in distributed
     assert "flock -x -w 1800 /tmp/internnav_t5_isaac_shared_assets.lock" in prepare
     assert 'allowed_root_keys=required_root_keys|{"x86_prepare"}' in prepare
     assert "set(roots).issubset(allowed_root_keys)" in prepare
@@ -408,7 +516,7 @@ def test_online_entrypoints_keep_disjoint_leases_and_explicit_final10():
 
 def test_final10_model_phase_routes_to_pilot_instead_of_usage_exit():
     distributed = (ROOT / "scripts" / "run_t5_distributed_isaac.sh").read_text(encoding="utf-8")
-    phase_case = distributed.split('case "$dataset_episode_count" in', 1)[1].split("esac", 1)[0]
+    phase_case = distributed.rsplit('case "$dataset_episode_count" in', 1)[1].split("esac", 1)[0]
     final_pilot_branch = phase_case.split("10|20)", 1)[1].split(";;", 1)[0]
     reject_branch = phase_case.split("*)", 1)[1]
 
