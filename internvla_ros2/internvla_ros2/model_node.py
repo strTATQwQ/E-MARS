@@ -282,6 +282,32 @@ class InternVLAModelNode(Node):
             self.get_parameter("use_sim_time").value
         ):
             raise RuntimeError("T5 completion_sim requires use_sim_time=true")
+        system2_queue_horizon = os.environ.get(
+            "INTERNVLA_T5_SYSTEM2_QUEUE_HORIZON", "0"
+        )
+        if system2_queue_horizon not in {"0", "1"}:
+            raise RuntimeError(
+                "INTERNVLA_T5_SYSTEM2_QUEUE_HORIZON must be 0 or 1"
+            )
+        self._system2_queue_horizon = int(system2_queue_horizon)
+        if self._system2_queue_horizon and not self.t5_sim_time_only:
+            raise RuntimeError(
+                "System2 receding horizon is restricted to exact T5 Isaac "
+                "completion_sim"
+            )
+        system1_queue_horizon = os.environ.get(
+            "INTERNVLA_T5_SYSTEM1_QUEUE_HORIZON", "0"
+        )
+        if system1_queue_horizon not in {"0", "1"}:
+            raise RuntimeError(
+                "INTERNVLA_T5_SYSTEM1_QUEUE_HORIZON must be 0 or 1"
+            )
+        self._system1_queue_horizon = int(system1_queue_horizon)
+        if self._system1_queue_horizon and not self.t5_sim_time_only:
+            raise RuntimeError(
+                "System1 receding horizon is restricted to exact T5 Isaac "
+                "completion_sim"
+            )
         rerank_flag = os.environ.get("INTERNVLA_T5_TRAJECTORY_RERANK", "0")
         if rerank_flag not in {"0", "1"}:
             raise RuntimeError("INTERNVLA_T5_TRAJECTORY_RERANK must be 0 or 1")
@@ -975,6 +1001,16 @@ class InternVLAModelNode(Node):
                 latency = float(time.perf_counter() - inference_started)
                 action = _extract_action(raw_action)
                 action_source = self._classify_action_source(trajectory)
+                if (
+                    self._system1_queue_horizon == 1
+                    and action_source == Step.Result.ACTION_SOURCE_SYSTEM1_NEW
+                ):
+                    self._discard_stale_system1_action_queue(identity)
+                if (
+                    self._system2_queue_horizon == 1
+                    and action_source == Step.Result.ACTION_SOURCE_SYSTEM2
+                ):
+                    self._discard_stale_system2_action_queue(identity)
                 now_ns = self.get_clock().now().nanoseconds
                 now_monotonic_ns = (
                     0 if self.t5_sim_time_only else time.monotonic_ns()
@@ -1406,6 +1442,63 @@ class InternVLAModelNode(Node):
             self._system1_queue_remaining -= 1
             return Step.Result.ACTION_SOURCE_SYSTEM1_QUEUE
         return Step.Result.ACTION_SOURCE_SYSTEM2
+
+    def _discard_stale_system2_action_queue(
+        self, identity: RequestIdentity
+    ) -> None:
+        """Keep only the just-returned System2 primitive in completion_sim.
+
+        The current action has already been copied out of the upstream agent.
+        Remaining queued primitives were planned from the old observation, so
+        horizon=1 drops only that consumable queue while preserving the latent
+        state and policy history for the next fresh-observation replan.
+        """
+
+        output = getattr(self._agent, "s2_output", None)
+        output_lock = getattr(self._agent, "s2_output_lock", None)
+        if output is None or output_lock is None:
+            raise RuntimeError(
+                "System2 receding horizon requires the upstream action queue"
+            )
+        with output_lock:
+            queued = getattr(output, "output_action", None)
+            discarded = len(queued) if isinstance(queued, (list, tuple)) else 0
+            output.output_action = None
+        self._system1_queue_remaining = 0
+        self.get_logger().info(
+            "T5 System2 receding horizon: "
+            f"episode={identity.episode_id} reset={identity.reset_generation} "
+            f"sequence={identity.sequence_id} discarded={discarded}"
+        )
+
+    def _discard_stale_system1_action_queue(
+        self, identity: RequestIdentity
+    ) -> None:
+        """Keep only the first primitive from a new System1 trajectory.
+
+        The current primitive has already been copied out of the upstream
+        agent.  Remaining primitives were discretized before that motion was
+        measured, so horizon=1 drops only the consumable queue.  The System1
+        latent, pixel state, and policy history remain available for a fresh
+        observation replan.
+        """
+
+        output = getattr(self._agent, "s2_output", None)
+        output_lock = getattr(self._agent, "s2_output_lock", None)
+        if output is None or output_lock is None:
+            raise RuntimeError(
+                "System1 receding horizon requires the upstream action queue"
+            )
+        with output_lock:
+            queued = getattr(output, "output_action", None)
+            discarded = len(queued) if isinstance(queued, (list, tuple)) else 0
+            output.output_action = None
+        self._system1_queue_remaining = 0
+        self.get_logger().info(
+            "T5 System1 receding horizon: "
+            f"episode={identity.episode_id} reset={identity.reset_generation} "
+            f"sequence={identity.sequence_id} discarded={discarded}"
+        )
 
     @staticmethod
     def _trajectory_path(trajectory: np.ndarray | None, stamp: Any) -> NavPath:

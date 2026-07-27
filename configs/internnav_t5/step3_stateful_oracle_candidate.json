@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "candidate_id": "t5_step3_stateful_oracle_v2",
+  "runtime_policy": "completion_sim",
+  "simulation_target": "isaac",
+  "lane": "a",
+  "promotion_status": "REJECTED_SCREEN_433_121",
+  "resources": {
+    "dgx": "railgun@10.100.100.128",
+    "isaac": "song@10.100.120.123",
+    "cuda_visible_devices": "0",
+    "isaac_cpu_list": "0,2,4,6,8,10,12,14,16"
+  },
+  "baseline": {
+    "campaign_closeout_sha": "51491191737fa4f50fdbdfe30e5282c79f27783c",
+    "measured_navigation_candidate_sha": "a61f09a4a10515ea6ca8a33db64e4dafcc57cb37",
+    "screen_episode": "433_121",
+    "promotion_episodes": [
+      "2617_628",
+      "1036_259",
+      "5203_1339",
+      "2776_676",
+      "433_121"
+    ]
+  },
+  "runtime": {
+    "candidate_profile": "recovery_a",
+    "isaac_sensor_profile": "lane_a_step3_timeout_advisor",
+    "rtf_profile": "navigation_fast",
+    "system2_replan_policy": "observation_bound",
+    "step3_timeout_advisor": true,
+    "termination_mode": "oracle_termination"
+  },
+  "components": {
+    "task_state_advice": {
+      "source": "SV09",
+      "maximum_nonterminal_model_hold_deferrals": 1
+    },
+    "post_override_queue_refresh": {
+      "source": "SV06+SV07",
+      "invalidate_action_queue": true,
+      "trigger": "motion_timeout_after_confirmed_safe_stop_only",
+      "task_state_checkpoint_preserves_queue": true,
+      "preserve_system2_latent": true,
+      "preserve_policy_history": true,
+      "ordinary_recovery_a_full_reset_unchanged": true
+    },
+    "termination": {
+      "overlay": "configs/internnav_t5/completion_sim_geometric_termination.json",
+      "navigation_success_authority": "frozen_evaluator_ground_truth_radius",
+      "success_radius_m": 2.5,
+      "model_stop_success_reported_separately": true,
+      "step3_arrival_reported_separately": true
+    }
+  },
+  "safety_invariants": [
+    "bounded_velocity_and_acceleration",
+    "physical_collision_metric_only_in_completion_sim",
+    "safe_stop_before_fresh_observation",
+    "episode_reset_sequence_isolation",
+    "stale_command_rejection",
+    "unique_lane_a_and_gpu0_leases",
+    "zero_residual_cleanup"
+  ],
+  "claims": {
+    "proves_navigation_reach": false,
+    "credits_internvla_stop": false,
+    "credits_step3_arrival": false,
+    "proves_go2_dynamics": false,
+    "mechanism_only": true
+  },
+  "real_go2_allowed": false
+}

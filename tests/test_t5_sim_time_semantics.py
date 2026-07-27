@@ -93,6 +93,32 @@ def test_same_sim_stamp_requires_a_post_barrier_command_receipt() -> None:
     assert fresh(safe_cmd_serial=8, barrier_cmd_serial=7, **common)
 
 
+def test_completion_sim_collision_is_metric_only_but_other_hazards_remain_fatal() -> None:
+    hazard = _load_pure_function(CONTROLLER, "_runtime_state_hazard")
+
+    assert not hazard(
+        t5_completion_sim=True,
+        nan_detected=False,
+        fallen=False,
+        physical_collision=True,
+    )
+    assert hazard(
+        t5_completion_sim=False,
+        nan_detected=False,
+        fallen=False,
+        physical_collision=True,
+    )
+    for name in ("nan_detected", "fallen"):
+        values = {
+            "t5_completion_sim": True,
+            "nan_detected": False,
+            "fallen": False,
+            "physical_collision": False,
+        }
+        values[name] = True
+        assert hazard(**values)
+
+
 def test_controller_rejects_state_update_after_reset_epoch_changes() -> None:
     current = _load_pure_function(CONTROLLER, "_state_update_is_current")
     common = {

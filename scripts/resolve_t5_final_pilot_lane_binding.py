@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Resolve one fail-closed final10 lane input from a portable asset receipt."""
+"""Resolve a fail-closed final-pilot lane input from a portable asset receipt."""
 
 from __future__ import annotations
 
@@ -20,6 +20,14 @@ EXPECTED_PROFILE = {
     "candidate_profile": "a1+b1+c1",
     "rtf_ablation_profile": "navigation_fast",
     "isaac_sensor_profile": "baseline",
+    "strict_extension_profile": "off",
+    "nvblox_mode": "off",
+    "run_mode": "model",
+}
+WP03_STOP_SHADOW_PROFILE = {
+    "candidate_profile": "recovery_a",
+    "rtf_ablation_profile": "navigation_fast",
+    "isaac_sensor_profile": "dual_lane_wp03_stop_shadow",
     "strict_extension_profile": "off",
     "nvblox_mode": "off",
     "run_mode": "model",
@@ -97,6 +105,8 @@ def resolve_binding(
     candidate_resolution_path: Path,
     runtime_profile: dict[str, str],
     output: Path,
+    execution_profile: str = "final10",
+    episode_key: str | None = None,
 ) -> dict[str, Any]:
     if lane not in {"a", "b"}:
         raise ValueError("lane must be a or b")
@@ -114,6 +124,23 @@ def resolve_binding(
     split = receipt.get("split") if isinstance(receipt.get("split"), dict) else {}
     lanes = split.get("lanes") if isinstance(split.get("lanes"), dict) else {}
     lane_receipt = lanes.get(lane) if isinstance(lanes.get(lane), dict) else {}
+    lane_episode_keys = lane_receipt.get("episode_keys")
+    if execution_profile == "final10":
+        if episode_key is not None:
+            raise ValueError("final10 does not accept an episode key")
+        execution_episode_keys = lane_episode_keys
+    elif execution_profile == "pilot-screen1":
+        if not isinstance(episode_key, str) or re.fullmatch(
+            r"[A-Za-z0-9_.-]+", episode_key
+        ) is None:
+            raise ValueError("pilot-screen1 requires one safe episode key")
+        if not isinstance(lane_episode_keys, list) or episode_key not in lane_episode_keys:
+            raise ValueError(
+                "pilot-screen1 episode key is not in the frozen lane manifest"
+            )
+        execution_episode_keys = [episode_key]
+    else:
+        raise ValueError("execution profile must be final10 or pilot-screen1")
     roots = receipt.get("deployment_roots")
     roots = roots if isinstance(roots, dict) else {}
     maps = receipt.get("static_maps")
@@ -133,6 +160,7 @@ def resolve_binding(
     candidate_binding = candidate.get("canonical_binding")
     provenance = candidate.get("provenance")
     provenance = provenance if isinstance(provenance, dict) else {}
+    is_wp03_stop_shadow = runtime_profile == WP03_STOP_SHADOW_PROFILE
     expected_dgx_key = "dgx_a" if lane == "a" else "dgx_b"
     expected_x86_key = "x86_a" if lane == "a" else "x86_b"
     expected_root_keys = {
@@ -173,12 +201,18 @@ def resolve_binding(
         "prepare_scope_exact": prepare_scope in {"dual", "lane-a"}
         and lane in prepared_lanes,
         "prepare_exact_code": receipt.get("code_ref_sha") == code_sha,
-        "runtime_profile_exact": runtime_profile == EXPECTED_PROFILE
+        # The preparation receipt freezes the disjoint A10/B10 assets.  The
+        # WP-03 shadow run intentionally reuses only those assets while keeping
+        # its navigation/termination overlay explicit in this derived binding.
+        "runtime_profile_exact": (
+            runtime_profile == EXPECTED_PROFILE
+            or runtime_profile == WP03_STOP_SHADOW_PROFILE
+        )
         and receipt.get("final_profile") == EXPECTED_PROFILE,
         "candidate_resolution_pass": candidate.get("schema_version") == 2
         and candidate.get("status") == "PASS"
         and candidate.get("candidate_selector")
-        == EXPECTED_PROFILE["candidate_profile"],
+        == runtime_profile["candidate_profile"],
         "candidate_resolution_self_hash": SHA256.fullmatch(
             str(declared_resolution_sha or "")
         )
@@ -186,22 +220,45 @@ def resolve_binding(
         and declared_resolution_sha == _canonical_sha256(unsigned_candidate),
         "candidate_binding_present": isinstance(candidate_binding, dict)
         and candidate_binding.get("candidate_selector")
-        == EXPECTED_PROFILE["candidate_profile"]
-        and candidate_binding.get("fixed_episode_count") == 5,
-        "candidate_selection_evidence_stays_fixed5": provenance.get(
-            "fixed_episode_count"
-        )
-        == 5
-        and isinstance(provenance.get("fixed_episode_keys"), list)
-        and len(provenance["fixed_episode_keys"]) == 5,
+        == runtime_profile["candidate_profile"]
+        and (
+            candidate_binding.get("fixed_episode_count") == 5
+            or (
+                is_wp03_stop_shadow
+                and candidate.get("selector_kind") == "legacy"
+                and candidate_binding.get("effective_candidate_profile")
+                    == "recovery_a"
+                and candidate_binding.get("fixed_episode_count") is None
+            )
+        ),
+        "candidate_selection_evidence_stays_fixed5": (
+            provenance.get("fixed_episode_count") == 5
+            and isinstance(provenance.get("fixed_episode_keys"), list)
+            and len(provenance["fixed_episode_keys"]) == 5
+        ) or (
+            is_wp03_stop_shadow
+            and candidate.get("selector_kind") == "legacy"
+            and provenance.get("fixed_episode_count") is None
+            and provenance.get("fixed_episode_keys") is None
+        ),
         "split_audit_sha_binding": _sha256(split_audit_path)
         == split.get("audit_sha256"),
         "lane_dataset_file_binding": _sha256(lane_dataset_path)
         == lane_receipt.get("dataset_sha256")
         and lane_receipt.get("episode_count") == 10
-        and isinstance(lane_receipt.get("episode_keys"), list)
-        and len(lane_receipt["episode_keys"]) == 10
-        and len(set(lane_receipt["episode_keys"])) == 10,
+        and isinstance(lane_episode_keys, list)
+        and len(lane_episode_keys) == 10
+        and len(set(lane_episode_keys)) == 10,
+        "execution_selection_exact": (
+            execution_profile == "final10"
+            and episode_key is None
+            and execution_episode_keys == lane_episode_keys
+        ) or (
+            execution_profile == "pilot-screen1"
+            and isinstance(lane_episode_keys, list)
+            and episode_key in lane_episode_keys
+            and execution_episode_keys == [episode_key]
+        ),
         "static_map_file_binding": _sha256(map_manifest_path)
         == maps.get("manifest_sha256")
         and maps.get("episode_count") == 20
@@ -234,14 +291,18 @@ def resolve_binding(
         "candidate_resolution_sha256": declared_resolution_sha,
         "candidate_resolution_file_sha256": _sha256(candidate_resolution_path),
         "candidate_binding": candidate_binding,
+        "source_final_profile": receipt.get("final_profile"),
+        "wp03_stop_shadow_overlay": is_wp03_stop_shadow,
         "rtf_ablation_profile": runtime_profile["rtf_ablation_profile"],
         "isaac_sensor_profile": runtime_profile["isaac_sensor_profile"],
         "strict_extension_profile": runtime_profile["strict_extension_profile"],
         "nvblox_mode": runtime_profile["nvblox_mode"],
         "run_mode": runtime_profile["run_mode"],
-        "execution_profile": "final10",
-        "execution_episode_count": 10,
-        "execution_episode_keys": lane_receipt.get("episode_keys"),
+        "source_execution_profile": "final10",
+        "execution_profile": execution_profile,
+        "execution_episode_count": len(execution_episode_keys or []),
+        "execution_episode_keys": execution_episode_keys,
+        "screen_episode_key": episode_key,
         "deployment_roots": {
             "dgx": roots.get(expected_dgx_key),
             "x86": roots.get(expected_x86_key),
@@ -251,7 +312,7 @@ def resolve_binding(
         "static_map_manifest_sha256": maps.get("manifest_sha256"),
         "static_map_manifest_path": expected_remote_map,
         "episode_count": lane_receipt.get("episode_count"),
-        "episode_keys": lane_receipt.get("episode_keys"),
+        "episode_keys": lane_episode_keys,
         "split_audit_sha256": split.get("audit_sha256"),
         "source_receipts": source_receipts,
         "path_contract": {
@@ -281,7 +342,7 @@ def resolve_binding(
             pass
     if payload["status"] != "PASS":
         failed = sorted(name for name, passed in checks.items() if not passed)
-        raise ValueError(f"final10 lane binding failed: {failed}")
+        raise ValueError(f"final-pilot lane binding failed: {failed}")
     return payload
 
 
@@ -297,6 +358,12 @@ def main() -> int:
     parser.add_argument("--strict-extension-profile", required=True)
     parser.add_argument("--nvblox-mode", required=True)
     parser.add_argument("--run-mode", required=True)
+    parser.add_argument(
+        "--execution-profile",
+        choices=("final10", "pilot-screen1"),
+        default="final10",
+    )
+    parser.add_argument("--episode-key")
     parser.add_argument("--output", required=True, type=Path)
     arguments = parser.parse_args()
     runtime_profile = {
@@ -315,9 +382,11 @@ def main() -> int:
             candidate_resolution_path=arguments.candidate_resolution,
             runtime_profile=runtime_profile,
             output=arguments.output,
+            execution_profile=arguments.execution_profile,
+            episode_key=arguments.episode_key,
         )
     except (OSError, ValueError) as error:
-        print(f"final10 lane binding failed: {error}")
+        print(f"final-pilot lane binding failed: {error}")
         return 2
     print(json.dumps(payload, sort_keys=True, allow_nan=False))
     return 0

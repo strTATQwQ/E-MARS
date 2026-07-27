@@ -53,6 +53,45 @@ STEP3_SYSTEM_PROMPT = (
 )
 
 
+def _interleaved_labeled_images(
+    images: list[Any], prompt: str
+) -> list[dict[str, Any]]:
+    """Bind image labels only for terminal/arrival classification requests."""
+
+    view_ids = [f"image_{index}" for index in range(len(images))]
+    arrival_request = False
+    first_line = prompt.splitlines()[0] if prompt else ""
+    if first_line.startswith("INPUT="):
+        try:
+            payload = json.loads(first_line[len("INPUT=") :])
+            views = payload.get("views", [])
+            arrival_request = any(
+                str(item).startswith("termination_candidate=")
+                for item in payload.get("history", [])
+            )
+            parsed = [
+                str(item["id"])
+                for index, item in enumerate(views)
+                if isinstance(item, dict) and item.get("i") == index
+            ]
+            if len(parsed) == len(images) and len(set(parsed)) == len(parsed):
+                view_ids = parsed
+        except (json.JSONDecodeError, KeyError, TypeError, ValueError):
+            pass
+    if not arrival_request:
+        return [{"type": "image", "image": image} for image in images]
+    content: list[dict[str, Any]] = []
+    for index, (image, view_id) in enumerate(zip(images, view_ids, strict=True)):
+        content.append(
+            {
+                "type": "text",
+                "text": f"IMAGE_INDEX={index}; VIEW_ID={view_id}\n",
+            }
+        )
+        content.append({"type": "image", "image": image})
+    return content
+
+
 def _step3_json_object(raw_text: str) -> dict[str, Any]:
     """Decode one exact seven-field object with only inert wrapper tokens allowed."""
 
@@ -367,7 +406,7 @@ class Step3VLSlowPlanner(StepVisionLanguagePlanner):
     def prepare_inputs(self, *, images: list[Any], prompt: str) -> tuple[Any, float, float]:
         """Close Step3's forced thinking block before deterministic JSON generation."""
 
-        content = [{"type": "image", "image": image} for image in images]
+        content = _interleaved_labeled_images(images, prompt)
         content.append({"type": "text", "text": prompt})
         messages = [
             {"role": "system", "content": STEP3_SYSTEM_PROMPT},

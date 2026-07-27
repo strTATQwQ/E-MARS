@@ -6,7 +6,7 @@ usage() {
 usage: run_t5_fast_lane_online.sh LANE PROFILE RUN_ID CODE_SHA PREP_RESULT_ROOT RESULT_ROOT
 
   LANE:    a | b
-  PROFILE: canary60 | soak600 | screen1 | screen3 | fixed5 | final10
+  PROFILE: canary60 | soak600 | screen1 | screen3 | fixed5 | pilot-screen1 | final10
 
   INTERNNAV_T5_CANDIDATE_PROFILE: baseline | recovery_a | a[01][+b[01][+c[012]]]
       (default baseline; composite IDs are resolved only from the preregistered
@@ -16,7 +16,7 @@ usage: run_t5_fast_lane_online.sh LANE PROFILE RUN_ID CODE_SHA PREP_RESULT_ROOT 
       (default navigation_fast; only diagnostic profiles require canary60)
   INTERNNAV_T5_ISAAC_SENSOR_PROFILE: baseline | lane_b_revc_smoke |
       lane_b_revc_fixed5_capture | lane_b_step3_live_canary |
-      lane_a_step3_timeout_advisor
+      lane_a_step3_timeout_advisor | dual_lane_wp03_stop_shadow
   INTERNNAV_T5_STRICT_EXTENSION_PROFILE: off | cuvslam_shadow
       (default off; cuVSLAM shadow is Lane A screen3 only)
   INTERNNAV_T5_NVBLOX_MODE: off | shadow | active_local_gt
@@ -29,6 +29,12 @@ usage: run_t5_fast_lane_online.sh LANE PROFILE RUN_ID CODE_SHA PREP_RESULT_ROOT 
   INTERNVLA_T5_SYSTEM2_REPLAN_POLICY: strict | observation_bound | raw_wire_warn
       (default observation_bound; strict/raw-wire are Lane-A Recovery-A
       completion_sim diagnostics only)
+  INTERNVLA_T5_SYSTEM2_QUEUE_HORIZON: 0 | 1
+      (default 0; 1 is a Lane-A Recovery-A completion_sim receding-horizon
+      diagnostic that discards unexecuted actions from an old observation)
+  INTERNVLA_T5_SYSTEM1_QUEUE_HORIZON: 0 | 1
+      (default 0; 1 is a Lane-A Recovery-A completion_sim receding-horizon
+      diagnostic that replans a new System1 trajectory after each observation)
 
 Engineering-only T5 lane runner.  It deliberately does not consume a board
 grant or a D0 predecessor.  A run is bound to one clean code commit and one
@@ -36,7 +42,8 @@ successful D0.0 preparation receipt, and holds only the selected Lane's DGX
 and Isaac GPU leases.  canary60 and soak600 prove READY for 60 or 600 seconds
 respectively and then perform a supervised completion_sim shutdown. screen1
 and screen3 materialize the deterministic first N rows of the prepared frozen
-five; final10 consumes one half of the independently sealed frozen pilot20.
+five; pilot-screen1 selects one explicit episode from a sealed pilot lane, and
+final10 consumes that lane's full half of the independently sealed pilot20.
 All fixed-dataset profiles let their evaluator finish normally.
 EOF
   exit 64
@@ -106,16 +113,19 @@ if test "$lane" = a; then
 else
   test "$cpuset" = 1,3,5,7,9,11,13,15,17
 fi
-case "$profile" in canary60|soak600|screen1|screen3|fixed5|final10) ;; *) usage ;; esac
+case "$profile" in canary60|soak600|screen1|screen3|fixed5|pilot-screen1|final10) ;; *) usage ;; esac
 case "$profile" in
-  screen1) screen_episode_count=1 ;;
+  screen1|pilot-screen1) screen_episode_count=1 ;;
   screen3) screen_episode_count=3 ;;
   *) screen_episode_count=0 ;;
 esac
 screen_episode_key="${INTERNNAV_T5_SCREEN_EPISODE_KEY:-}"
 if test -n "$screen_episode_key"; then
-  test "$profile" = screen1 || usage
+  case "$profile" in screen1|pilot-screen1) ;; *) usage ;; esac
   [[ "$screen_episode_key" =~ ^[A-Za-z0-9_.-]+$ ]] || usage
+fi
+if test "$profile" = pilot-screen1; then
+  test -n "$screen_episode_key" || usage
 fi
 if [[ -v INTERNNAV_T5_CANDIDATE_PROFILE ]]; then
   candidate_profile="$INTERNNAV_T5_CANDIDATE_PROFILE"
@@ -128,6 +138,10 @@ case "$system2_replan_policy" in
   strict|observation_bound|raw_wire_warn) ;;
   *) usage ;;
 esac
+system2_queue_horizon="${INTERNVLA_T5_SYSTEM2_QUEUE_HORIZON:-0}"
+case "$system2_queue_horizon" in 0|1) ;; *) usage ;; esac
+system1_queue_horizon="${INTERNVLA_T5_SYSTEM1_QUEUE_HORIZON:-0}"
+case "$system1_queue_horizon" in 0|1) ;; *) usage ;; esac
 if test "$system2_replan_policy" != observation_bound; then
   test "$lane" = a || usage
   test "$candidate_profile" != baseline || usage
@@ -168,11 +182,17 @@ step3_live_advisor="${INTERNNAV_T5_STEP3_LIVE_ADVISOR:-0}"
 case "$step3_live_advisor" in 0|1) ;; *) usage ;; esac
 step3_timeout_advisor="${INTERNVLA_T5_STEP3_TIMEOUT_ADVISOR:-0}"
 case "$step3_timeout_advisor" in 0|1) ;; *) usage ;; esac
+full_rgb_capture="${INTERNVLA_T5_FULL_RGB_CAPTURE:-0}"
+case "$full_rgb_capture" in 0|1) ;; *) usage ;; esac
+test "$full_rgb_capture" != 1 || test "$lane" = a || usage
+termination_mode="${INTERNVLA_T5_TERMINATION_MODE:-model_stop}"
+case "$termination_mode" in model_stop|oracle_termination) ;; *) usage ;; esac
 live_frontier_capture="${INTERNNAV_T5_LIVE_FRONTIER_CAPTURE:-$step3_live_advisor}"
 case "$live_frontier_capture" in 0|1) ;; *) usage ;; esac
 test "$live_frontier_capture" != 1 || test "$lane" = b || usage
 step3_dgx_ports=""
 test "$step3_live_advisor" != 1 || step3_dgx_ports="8200 8300"
+test "$step3_timeout_advisor" != 1 || step3_dgx_ports="8200"
 case "$isaac_sensor_profile" in
   baseline)
     test "$step3_live_advisor" = 0 || usage
@@ -206,6 +226,14 @@ case "$isaac_sensor_profile" in
     test "$lane" = a || usage
     case "$profile" in screen1|screen3|fixed5) ;; *) usage ;; esac
     test "$candidate_profile" = recovery_a || usage
+    case "$rtf_ablation_profile" in navigation_fast|off) ;; *) usage ;; esac
+    ;;
+  dual_lane_wp03_stop_shadow)
+    test "$step3_live_advisor" = 0 || usage
+    test "$step3_timeout_advisor" = 1 || usage
+    case "$profile" in pilot-screen1|final10) ;; *) usage ;; esac
+    test "$candidate_profile" = recovery_a || usage
+    test "$termination_mode" = oracle_termination || usage
     case "$rtf_ablation_profile" in navigation_fast|off) ;; *) usage ;; esac
     ;;
   *) usage ;;
@@ -257,15 +285,42 @@ case "$run_mode" in
     ;;
   *) usage ;;
 esac
-if test "$profile" = final10; then
+if test "$system2_queue_horizon" = 1; then
+  test "$lane" = a || usage
+  test "$candidate_profile" = recovery_a || usage
+  test "$run_mode" = model || usage
+fi
+if test "$system1_queue_horizon" = 1; then
+  test "$lane" = a || usage
+  test "$candidate_profile" = recovery_a || usage
+  test "$run_mode" = model || usage
+fi
+if test "$termination_mode" = oracle_termination; then
+  test "$run_mode" = model || usage
+  if test "$isaac_sensor_profile" = dual_lane_wp03_stop_shadow; then
+    case "$profile" in pilot-screen1|final10) ;; *) usage ;; esac
+    test "$candidate_profile" = recovery_a || usage
+  else
+    test "$lane" = a || usage
+    case "$profile" in screen1|screen3|fixed5) ;; *) usage ;; esac
+    test "$isaac_sensor_profile" = lane_a_step3_timeout_advisor || usage
+  fi
+fi
+if [[ "$profile" == final10 || "$profile" == pilot-screen1 ]]; then
   test "$system2_replan_policy" = observation_bound || usage
-  test "$candidate_profile" = a1+b1+c1 || usage
   test "$rtf_ablation_profile" = navigation_fast || usage
-  test "$isaac_sensor_profile" = baseline || usage
   test "$strict_extension_profile" = off || usage
   test "$nvblox_mode" = off || usage
   test "$run_mode" = model || usage
   test "$live_frontier_capture" = 0 || usage
+  if test "$termination_mode" = oracle_termination; then
+    test "$candidate_profile" = recovery_a || usage
+    test "$isaac_sensor_profile" = dual_lane_wp03_stop_shadow || usage
+    test "$step3_timeout_advisor" = 1 || usage
+  else
+    test "$candidate_profile" = a1+b1+c1 || usage
+    test "$isaac_sensor_profile" = baseline || usage
+  fi
 fi
 if test "$step3_live_advisor" = 1; then
   test "$strict_extension_profile" = off || usage
@@ -293,7 +348,7 @@ case "$fault_injection_profile" in
 esac
 [[ "$run_id" =~ ^[a-z0-9][a-z0-9._-]{7,95}$ ]] || usage
 [[ "$code_sha" =~ ^[0-9a-f]{40}$ ]] || usage
-if test "$profile" = final10; then
+if [[ "$profile" == final10 || "$profile" == pilot-screen1 ]]; then
   [[ "$prep_relative" =~ ^results/internnav_t5/final-pilot-prepare-[a-z0-9][a-z0-9._-]{7,95}$ ]] || usage
 else
   [[ "$prep_relative" =~ ^results/internnav_t5/(d0-0-prepare-t5d00[0-9]{8}t[0-9]{6}|step3-lane-b-prepare-[a-z0-9][a-z0-9._-]{7,95})$ ]] || usage
@@ -308,7 +363,7 @@ result_dir="$root/$result_relative"
 prep_dir="$root/$prep_relative"
 test -d "$prep_dir"
 test ! -L "$prep_dir"
-if test "$profile" = final10; then
+if [[ "$profile" == final10 || "$profile" == pilot-screen1 ]]; then
   required_receipts=(final_pilot_prepare_receipt.json assets/final_pilot_split_audit.json)
 else
   required_receipts=(fast_prepare_input.json d0_prepare_summary.json \
@@ -337,12 +392,16 @@ if [[ "${INTERNNAV_T5_INSIDE_FAST_LANE:-0}" != 1 ]]; then
       INTERNNAV_T5_ISAAC_SENSOR_PROFILE="$isaac_sensor_profile" \
       INTERNNAV_T5_STEP3_LIVE_ADVISOR="$step3_live_advisor" \
       INTERNVLA_T5_STEP3_TIMEOUT_ADVISOR="$step3_timeout_advisor" \
+      INTERNVLA_T5_TERMINATION_MODE="$termination_mode" \
       INTERNNAV_T5_LIVE_FRONTIER_CAPTURE="$live_frontier_capture" \
       INTERNNAV_T5_STRICT_EXTENSION_PROFILE="$strict_extension_profile" \
       INTERNNAV_T5_NVBLOX_MODE="$nvblox_mode" \
       INTERNNAV_T5_RUN_MODE="$run_mode" \
       INTERNNAV_T5_FAULT_INJECTION_PROFILE="$fault_injection_profile" \
+      INTERNNAV_T5_SCREEN_EPISODE_KEY="$screen_episode_key" \
       INTERNVLA_T5_SYSTEM2_REPLAN_POLICY="$system2_replan_policy" \
+      INTERNVLA_T5_SYSTEM2_QUEUE_HORIZON="$system2_queue_horizon" \
+      INTERNVLA_T5_SYSTEM1_QUEUE_HORIZON="$system1_queue_horizon" \
       bash "$root/coordination/run_t5_fast_lane_online.sh" \
         "$lane" "$profile" "$run_id" "$code_sha" \
         "$prep_relative" "$result_relative"
@@ -443,7 +502,11 @@ trap 'rm -rf -- "$validation_tmp"' EXIT
 python3 "$root/scripts/resolve_t5_lane_a_candidate.py" \
   --root "$root" --selector "$candidate_profile" \
   --output "$validation_tmp/candidate_resolution.json" --format none
-if test "$profile" = final10; then
+if [[ "$profile" == final10 || "$profile" == pilot-screen1 ]]; then
+  final_pilot_selection_args=(--execution-profile "$profile")
+  if test "$profile" = pilot-screen1; then
+    final_pilot_selection_args+=(--episode-key "$screen_episode_key")
+  fi
   python3 "$root/scripts/resolve_t5_final_pilot_lane_binding.py" \
     --prepare-root "$prep_dir" --lane "$lane" --code-sha "$code_sha" \
     --candidate-resolution "$validation_tmp/candidate_resolution.json" \
@@ -452,6 +515,7 @@ if test "$profile" = final10; then
     --isaac-sensor-profile "$isaac_sensor_profile" \
     --strict-extension-profile "$strict_extension_profile" \
     --nvblox-mode "$nvblox_mode" --run-mode "$run_mode" \
+    "${final_pilot_selection_args[@]}" \
     --output "$validation_tmp/input_binding.json" >/dev/null
 else
   python3 - "$prep_dir/fast_prepare_input.json" \
@@ -630,6 +694,7 @@ checks = {
     "isaac_sensor_profile_allowed": isaac_sensor_profile in {
         "baseline", "lane_b_revc_smoke", "lane_b_revc_fixed5_capture",
         "lane_b_step3_live_canary", "lane_a_step3_timeout_advisor",
+        "dual_lane_wp03_stop_shadow",
     },
     "fault_injection_exact_scope": fault_injection_profile == "off" or (
         fault_injection_profile == "completion_sim_minimal_v1"
@@ -664,6 +729,15 @@ checks = {
         and run_mode == "model" and nvblox_mode == "off"
         and system2_replan_policy == "observation_bound"
         and rtf_ablation_profile in {"navigation_fast", "off"}
+    ) or (
+        isaac_sensor_profile == "dual_lane_wp03_stop_shadow"
+        and lane in {"a", "b"} and profile == "final10"
+        and candidate_profile == "recovery_a"
+        and termination_mode == "oracle_termination"
+        and step3_timeout_advisor and run_mode == "model"
+        and nvblox_mode == "off"
+        and system2_replan_policy == "observation_bound"
+        and rtf_ablation_profile == "navigation_fast"
     ),
     "nvblox_mode_allowed": nvblox_mode in {
         "off", "shadow", "active_local_gt",
@@ -871,7 +945,7 @@ export -n HF_TOKEN HUGGING_FACE_HUB_TOKEN DGX_A_PASSWORD DGX_B_PASSWORD \
 
 source "$root/scripts/t5_quarantine_common.sh"
 source "$root/scripts/t5_remote_compute_audit_common.sh"
-ssh_options=(-T -o BatchMode=yes -o ConnectTimeout=8 -o ServerAliveInterval=5 -o ServerAliveCountMax=2)
+ssh_options=(-T -i "${INTERNNAV_T5_SSH_IDENTITY_FILE:-$HOME/.ssh/id_ed25519_internnav_runtime}" -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=8 -o ServerAliveInterval=5 -o ServerAliveCountMax=2)
 x86_target="song@$x86_ip"
 remote() { local target="$1"; shift; ssh "${ssh_options[@]}" "$target" "$@"; }
 
@@ -1543,8 +1617,10 @@ fixed_dataset_profiles={
     "screen1":1,
     "screen3":3,
     "fixed5":5,
+    "pilot-screen1":1,
     "final10":10,
 }
+final_pilot_profiles={"pilot-screen1","final10"}
 expected_execution_count=(binding or {}).get("execution_episode_count")
 expected_execution_keys=(binding or {}).get("execution_episode_keys")
 expected_execution_episode_ids_ordered=(
@@ -1610,6 +1686,7 @@ checks={
     "command_path_completed": incoming == 0 and run_completed == 1,
     "input_binding": isinstance(binding,dict) and binding.get("status")=="PASS"
         and binding.get("code_ref_sha")==code_sha
+        and binding.get("execution_profile")==profile
         and binding.get("candidate_profile")==candidate_profile
         and binding.get("rtf_ablation_profile")==rtf_ablation_profile
         and binding.get("isaac_sensor_profile")==isaac_sensor_profile
@@ -1618,7 +1695,7 @@ checks={
         and (
             binding.get("fault_injection_profile")==fault_injection_profile
             or (
-                profile=="final10" and fault_injection_profile=="off"
+                profile in final_pilot_profiles and fault_injection_profile=="off"
                 and "fault_injection_profile" not in binding
             )
         )
@@ -1627,7 +1704,7 @@ checks={
             and binding.get("live_frontier_ready_required")
                 is live_frontier_ready_required
             or (
-                profile=="final10" and not live_frontier_capture
+                profile in final_pilot_profiles and not live_frontier_capture
                 and not live_frontier_ready_required
                 and "live_frontier_capture" not in binding
                 and "live_frontier_ready_required" not in binding
@@ -1865,7 +1942,7 @@ checks={
             == expected_execution_episode_ids
     ),
     "screen_dataset_binding": (
-        profile in {"screen1","screen3"}
+        profile in {"screen1","screen3","pilot-screen1"}
         and isinstance(screen_dataset_audit,dict)
         and screen_dataset_audit.get("status")=="PASS"
         and screen_dataset_audit.get("source_sha256")==(
@@ -1875,10 +1952,11 @@ checks={
         and screen_dataset_audit.get("selected_episode_count")==expected_execution_count
         and screen_dataset_audit.get("selected_episode_keys")==expected_execution_keys
     ) or (
-        profile not in {"screen1","screen3"} and screen_dataset_audit is None
+        profile not in {"screen1","screen3","pilot-screen1"}
+        and screen_dataset_audit is None
     ),
     "final_pilot_binding": (
-        profile=="final10"
+        profile in final_pilot_profiles
         and isinstance(x86_contract,dict)
         and isinstance(x86_status,dict)
         and (binding or {}).get("split_audit_sha256")
@@ -1888,7 +1966,7 @@ checks={
         and x86_contract.get("final_pilot_lane")==lane
         and x86_status.get("final_pilot_lane")==lane
     ) or (
-        profile!="final10"
+        profile not in final_pilot_profiles
         and isinstance(x86_contract,dict)
         and isinstance(x86_status,dict)
         and x86_contract.get("final_pilot_lane") in {None,"off"}
@@ -1979,7 +2057,7 @@ trap 'exit 130' INT TERM HUP
 
 # Only this Lane's deployment, container, ports and runtime lock are inspected.
 remote "$dgx_target" \
-  "set -euo pipefail; test \"\$(id -un)\" = '$dgx_user'; ip -4 -o addr show | grep -Fq ' $dgx_ip/'; test \"\$(cat '$dgx_root/T5_DEPLOYMENT_REF')\" = '$code_sha'; test -x '$dgx_root/scripts/run_t5_dgx_lane.sh'; test -f '$dgx_root/scripts/resolve_t5_lane_a_candidate.py'; test -f '$dgx_root/ros_ws/install/setup.bash'; test ! -e '$dgx_run'; test ! -e '$dgx_supervisor_ledger'; test \"\$(sha256sum '$map_manifest'|cut -d' ' -f1)\" = '$map_manifest_sha256'; for p in $own_ports $step3_dgx_ports; do test -z \"\$(ss -H -lntup|grep -E \"[:.]\$p[[:space:]]\"||true)\"; done"
+  "set -euo pipefail; test \"\$(id -un)\" = '$dgx_user'; ip -4 -o addr show | grep -Fq ' $dgx_ip/'; test \"\$(cat '$dgx_root/T5_DEPLOYMENT_REF')\" = '$code_sha'; test -x '$dgx_root/scripts/run_t5_dgx_lane.sh'; test -f '$dgx_root/scripts/resolve_t5_lane_a_candidate.py'; test -f '$dgx_root/scripts/verify_t5_oracle_termination_dataset.py'; test -f '$dgx_root/configs/internnav_t5/completion_sim_geometric_termination.json'; test -f '$dgx_root/ros_ws/install/setup.bash'; test ! -e '$dgx_run'; test ! -e '$dgx_supervisor_ledger'; test \"\$(sha256sum '$map_manifest'|cut -d' ' -f1)\" = '$map_manifest_sha256'; for p in $own_ports $step3_dgx_ports; do test -z \"\$(ss -H -lntup|grep -E \"[:.]\$p[[:space:]]\"||true)\"; done"
 remote "$x86_target" \
   "set -euo pipefail; test \"\$(id -un)\" = song; ip -4 -o addr show | grep -Fq ' $x86_ip/'; test \"\$(cat '$x86_root/T5_DEPLOYMENT_REF')\" = '$code_sha'; test -x '$x86_root/scripts/run_t5_distributed_isaac.sh'; test -x '$x86_root/scripts/materialize_t5_screen_dataset.py'; test -f '$x86_root/scripts/probe_t5_revc_snapshot_smoke.py'; test -f '$x86_root/scripts/probe_t5_revc_fixed5_capture.py'; test -f '$x86_root/configs/internnav_t5/revc_four_camera_snapshot.json'; test ! -e '$x86_run'; test ! -e '$x86_supervisor_ledger'; test \"\$(sha256sum '$dataset_root/val_unseen/val_unseen.json.gz'|cut -d' ' -f1)\" = '$dataset_sha256'; test \"\$(docker inspect -f '{{.State.Running}}' '$container')\" = false; test \"\$(docker inspect -f '{{.State.Pid}}' '$container')\" = 0; test \"\$(docker inspect -f '{{index .Config.Labels \"internnav.t5.deployment_root\"}}' '$container')\" = '$x86_root'; test \"\$(docker inspect -f '{{.HostConfig.CpusetCpus}}' '$container')\" = '$cpuset'; test ! -e '$lane_runtime_lock' || flock -n '$lane_runtime_lock' true; for p in $own_ports; do test -z \"\$(ss -H -lntup|grep -E \"[:.]\$p[[:space:]]\"||true)\"; done"
 
@@ -2003,6 +2081,40 @@ x86_quarantine_armed=true
 t5_remote_compute_absent "$dgx_target" \
   "$result_dir/audits/dgx_structured_compute_prestart.json"
 
+oracle_dataset=""
+if test "$termination_mode" = oracle_termination; then
+  x86_oracle_root="$x86_root/inputs/oracle_termination_datasets/$remote_run_name"
+  dgx_oracle_root="$dgx_root/inputs/oracle_termination_datasets/$remote_run_name"
+  source_oracle_dataset="$dataset_root/val_unseen/val_unseen.json.gz"
+  source_oracle_audit=""
+  if test "$screen_episode_count" != 0; then
+    screen_key_args=()
+    if test -n "$screen_episode_key"; then
+      screen_key_args=(--episode-key "$screen_episode_key")
+    fi
+    remote "$x86_target" \
+      "python3 '$x86_root/scripts/materialize_t5_screen_dataset.py' --source-root '$dataset_root' --output-root '$x86_oracle_root' --count '$screen_episode_count' ${screen_key_args[*]} --expected-source-sha256 '$dataset_sha256' --expected-episode-keys '$episode_keys_csv'" \
+      >"$result_dir/audits/oracle_dataset_materialize.json"
+    source_oracle_dataset="$x86_oracle_root/val_unseen/val_unseen.json.gz"
+    source_oracle_audit="$x86_oracle_root/screen_dataset_audit.json"
+  fi
+  oracle_dataset="$dgx_oracle_root/val_unseen/val_unseen.json.gz"
+  remote "$dgx_target" \
+    "set -euo pipefail; test ! -e '$dgx_oracle_root'; mkdir -p '$dgx_oracle_root/val_unseen'"
+  scp -q -3 -o BatchMode=yes -o ConnectTimeout=8 \
+    "$x86_target:$source_oracle_dataset" \
+    "$dgx_target:$oracle_dataset"
+  if test -n "$source_oracle_audit"; then
+    scp -q -3 -o BatchMode=yes -o ConnectTimeout=8 \
+      "$x86_target:$source_oracle_audit" \
+      "$dgx_target:$dgx_oracle_root/source_screen_dataset_audit.json"
+  fi
+  remote "$dgx_target" \
+    "python3 '$dgx_root/scripts/verify_t5_oracle_termination_dataset.py' --dataset '$oracle_dataset' --episode-keys '$execution_episode_keys_csv' --output '$dgx_oracle_root/oracle_dataset_binding.json'"
+  remote "$dgx_target" "cat '$dgx_oracle_root/oracle_dataset_binding.json'" \
+    >"$result_dir/audits/oracle_dataset_binding.json"
+fi
+
 read -r -d '' dgx_runtime_program <<'REMOTE_DGX' || true
 set -euo pipefail
 IFS= read -r HF_TOKEN
@@ -2010,7 +2122,7 @@ IFS= read -r HF_ENDPOINT
 [[ "$HF_TOKEN" =~ ^hf_[A-Za-z0-9]{20,}$ ]]
 exec {hf_token_fd}<<<"$HF_TOKEN"
 unset HF_TOKEN
-deployment="$1"; lane="$2"; result="$3"; map="$4"; lease="$5"; domain="$6"; ledger="$7"; candidate="$8"; isaac_ip="$9"; candidate_resolution_sha256="${10}"; strict_extension_profile="${11}"; nvblox_mode="${12}"; run_mode="${13}"; fault_injection_profile="${14}"; step3_live_advisor="${15}"; live_frontier_capture="${16}"; system2_replan_policy="${17}"; step3_timeout_advisor="${18}"
+deployment="$1"; lane="$2"; result="$3"; map="$4"; lease="$5"; domain="$6"; ledger="$7"; candidate="$8"; isaac_ip="$9"; candidate_resolution_sha256="${10}"; strict_extension_profile="${11}"; nvblox_mode="${12}"; run_mode="${13}"; fault_injection_profile="${14}"; step3_live_advisor="${15}"; live_frontier_capture="${16}"; system2_replan_policy="${17}"; step3_timeout_advisor="${18}"; termination_mode="${19}"; oracle_dataset="${20}"; system2_queue_horizon="${21}"; system1_queue_horizon="${22}"
 [[ "$candidate_resolution_sha256" =~ ^[0-9a-f]{64}$ ]]
 case "$strict_extension_profile" in off|cuvslam_shadow) ;; *) exit 64 ;; esac
 case "$nvblox_mode" in off|shadow|active_local_gt) ;; *) exit 64 ;; esac
@@ -2019,7 +2131,11 @@ case "$fault_injection_profile" in off|completion_sim_minimal_v1) ;; *) exit 64 
 case "$step3_live_advisor" in 0|1) ;; *) exit 64 ;; esac
 case "$live_frontier_capture" in 0|1) ;; *) exit 64 ;; esac
 case "$system2_replan_policy" in strict|observation_bound|raw_wire_warn) ;; *) exit 64 ;; esac
+case "$system2_queue_horizon" in 0|1) ;; *) exit 64 ;; esac
+case "$system1_queue_horizon" in 0|1) ;; *) exit 64 ;; esac
 case "$step3_timeout_advisor" in 0|1) ;; *) exit 64 ;; esac
+case "$termination_mode" in model_stop|oracle_termination) ;; *) exit 64 ;; esac
+test "$termination_mode" != oracle_termination || test -f "$oracle_dataset"
 test "$live_frontier_capture" != 1 || test "$lane" = b
 pgid="$(ps -o pgid= -p "$$"|tr -d ' ')"
 sid="$(ps -o sid= -p "$$"|tr -d ' ')"
@@ -2046,8 +2162,12 @@ env INTERNNAV_T5_RESOURCE_LEASE_ACK="$lease" INTERNVLA_HF_TOKEN_FD="$hf_token_fd
  INTERNNAV_T5_FAULT_INJECTION_PROFILE="$fault_injection_profile" \
  INTERNNAV_T5_STEP3_LIVE_ADVISOR="$step3_live_advisor" \
  INTERNVLA_T5_STEP3_TIMEOUT_ADVISOR="$step3_timeout_advisor" \
+ INTERNVLA_T5_TERMINATION_MODE="$termination_mode" \
+ INTERNVLA_T5_ORACLE_DATASET_FILE="$oracle_dataset" \
  INTERNNAV_T5_LIVE_FRONTIER_CAPTURE="$live_frontier_capture" \
  INTERNVLA_T5_SYSTEM2_REPLAN_POLICY="$system2_replan_policy" \
+ INTERNVLA_T5_SYSTEM2_QUEUE_HORIZON="$system2_queue_horizon" \
+ INTERNVLA_T5_SYSTEM1_QUEUE_HORIZON="$system1_queue_horizon" \
  INTERNVLA_T5_ISAAC_IP="$isaac_ip" \
  HF_ENDPOINT="$HF_ENDPOINT" INTERNNAV_RUNTIME_POLICY=completion_sim INTERNNAV_SIMULATION_TARGET=isaac \
  ROS_DOMAIN_ID="$domain" CUDA_VISIBLE_DEVICES=0 INTERNNAV_T1_CONTROL_ROOT="$deployment" \
@@ -2055,7 +2175,7 @@ env INTERNNAV_T5_RESOURCE_LEASE_ACK="$lease" INTERNVLA_HF_TOKEN_FD="$hf_token_fd
  "$lane" "$run_mode" "$result" "$map"
 REMOTE_DGX
 dgx_runtime_b64="$(printf '%s' "$dgx_runtime_program"|base64|tr -d '\r\n')"
-dgx_command="exec setsid --wait bash -c \"\$(printf '%s' '$dgx_runtime_b64'|base64 -d)\" fast-dgx '$dgx_root' '$lane' '$dgx_run' '$map_manifest' '$resource_profile' '$ros_domain_id' '$dgx_supervisor_ledger' '$candidate_profile' '$x86_ip' '$candidate_resolution_sha256' '$strict_extension_profile' '$nvblox_mode' '$run_mode' '$fault_injection_profile' '$step3_live_advisor' '$live_frontier_capture' '$system2_replan_policy' '$step3_timeout_advisor'"
+dgx_command="exec setsid --wait bash -c \"\$(printf '%s' '$dgx_runtime_b64'|base64 -d)\" fast-dgx '$dgx_root' '$lane' '$dgx_run' '$map_manifest' '$resource_profile' '$ros_domain_id' '$dgx_supervisor_ledger' '$candidate_profile' '$x86_ip' '$candidate_resolution_sha256' '$strict_extension_profile' '$nvblox_mode' '$run_mode' '$fault_injection_profile' '$step3_live_advisor' '$live_frontier_capture' '$system2_replan_policy' '$step3_timeout_advisor' '$termination_mode' '$oracle_dataset' '$system2_queue_horizon' '$system1_queue_horizon'"
 dgx_launch_attempted=1
 printf '%s\n%s\n' "$HF_TOKEN" "$HF_ENDPOINT" | \
   ssh "${ssh_options[@]}" "$dgx_target" "$dgx_command" \
@@ -2080,14 +2200,16 @@ remote "$x86_target" \
 container_started=1
 read -r -d '' x86_runtime_program <<'REMOTE_X86' || true
 set -euo pipefail
-deployment="$1"; lane="$2"; result="$3"; dataset="$4"; lease="$5"; domain="$6"; gpu="$7"; ledger="$8"; canary_sec="$9"; canary_ack="${10}"; rtf_ablation_profile="${11}"; cpuset="${12}"; screen_count="${13}"; source_dataset_sha256="${14}"; frozen_episode_keys_csv="${15}"; isaac_sensor_profile="${16}"; strict_extension_profile="${17}"; run_mode="${18}"; canary_timebase="${19}"; execution_count="${20}"; final_pilot_lane="${21}"; fault_injection_profile="${22}"; nvblox_mode="${23}"; step3_live_advisor="${24}"; step3_timeout_advisor="${25}"; screen_episode_key="${26}"
+deployment="$1"; lane="$2"; result="$3"; dataset="$4"; lease="$5"; domain="$6"; gpu="$7"; ledger="$8"; canary_sec="$9"; canary_ack="${10}"; rtf_ablation_profile="${11}"; cpuset="${12}"; screen_count="${13}"; source_dataset_sha256="${14}"; frozen_episode_keys_csv="${15}"; isaac_sensor_profile="${16}"; strict_extension_profile="${17}"; run_mode="${18}"; canary_timebase="${19}"; execution_count="${20}"; final_pilot_lane="${21}"; fault_injection_profile="${22}"; nvblox_mode="${23}"; step3_live_advisor="${24}"; step3_timeout_advisor="${25}"; screen_episode_key="${26}"; full_rgb_capture="${27}"
 [[ "$cpuset" =~ ^[0-9,-]+$ ]]
 case "$canary_timebase" in wall|sim) ;; *) exit 64 ;; esac
 if test "$canary_timebase" = sim; then test "$canary_sec" = 600; fi
 case "$screen_count" in 0|1|3) ;; *) exit 64 ;; esac
-case "$isaac_sensor_profile" in baseline|lane_b_revc_smoke|lane_b_revc_fixed5_capture|lane_b_step3_live_canary|lane_a_step3_timeout_advisor) ;; *) exit 64 ;; esac
+case "$isaac_sensor_profile" in baseline|lane_b_revc_smoke|lane_b_revc_fixed5_capture|lane_b_step3_live_canary|lane_a_step3_timeout_advisor|dual_lane_wp03_stop_shadow) ;; *) exit 64 ;; esac
 case "$step3_live_advisor" in 0|1) ;; *) exit 64 ;; esac
 case "$step3_timeout_advisor" in 0|1) ;; *) exit 64 ;; esac
+case "$full_rgb_capture" in 0|1) ;; *) exit 64 ;; esac
+test "$full_rgb_capture" != 1 || test "$lane" = a
 case "$strict_extension_profile" in off|cuvslam_shadow) ;; *) exit 64 ;; esac
 case "$run_mode" in model|oracle) ;; *) exit 64 ;; esac
 case "$fault_injection_profile" in off|completion_sim_minimal_v1) ;; *) exit 64 ;; esac
@@ -2123,12 +2245,24 @@ elif test "$isaac_sensor_profile" = lane_a_step3_timeout_advisor; then
   test "$lane" = a
   case "$screen_count" in 0|1|3) ;; *) exit 64 ;; esac
   case "$rtf_ablation_profile" in navigation_fast|off) ;; *) exit 64 ;; esac
+elif test "$isaac_sensor_profile" = dual_lane_wp03_stop_shadow; then
+  test "$step3_live_advisor" = 0
+  test "$step3_timeout_advisor" = 1
+  case "$screen_count:$execution_count" in 0:10|1:1) ;; *) exit 64 ;; esac
+  test "$final_pilot_lane" = "$lane"
+  test "$rtf_ablation_profile" = navigation_fast
 else
   test "$step3_live_advisor" = 0
   test "$step3_timeout_advisor" = 0
 fi
+pilot_max_step=16000
+# WP-03's frozen 5/5 successes completed between 2231 and 5831 evaluator
+# steps.  Do not truncate the STOP-shadow pilot below the navigation contract:
+# process liveness remains bounded by the outer wall-time timeout, while episode
+# completion is governed by the same 16000-step budget as the WP-03 baseline.
 [[ "$source_dataset_sha256" =~ ^[0-9a-f]{64}$ ]]
 [[ "$execution_count" =~ ^[1-9][0-9]*$ ]]
+[[ "$pilot_max_step" =~ ^[1-9][0-9]*$ ]]
 python3 - "$frozen_episode_keys_csv" "$execution_count" "$screen_count" <<'PY'
 import re,sys
 keys=sys.argv[1].split(",")
@@ -2148,7 +2282,18 @@ if test -n "$screen_episode_key"; then
     *) exit 64 ;;
   esac
 fi
-case "$final_pilot_lane" in off) ;; a|b) test "$final_pilot_lane" = "$lane"; test "$execution_count" = 10 ;; *) exit 64 ;; esac
+case "$final_pilot_lane" in
+  off) ;;
+  a|b)
+    test "$final_pilot_lane" = "$lane"
+    case "$screen_count:$execution_count" in
+      0:10) test -z "$screen_episode_key" ;;
+      1:1) test -n "$screen_episode_key" ;;
+      *) exit 64 ;;
+    esac
+    ;;
+  *) exit 64 ;;
+esac
 case "$lane" in
   a) cpuset_env=INTERNVLA_T5_LANE_A_CPUSET ;;
   b) cpuset_env=INTERNVLA_T5_LANE_B_CPUSET ;;
@@ -2203,10 +2348,12 @@ env INTERNNAV_T5_RESOURCE_LEASE_ACK="$lease" INTERNNAV_RUNTIME_POLICY=completion
  INTERNNAV_T5_ISAAC_SENSOR_PROFILE="$isaac_sensor_profile" \
  INTERNNAV_T5_STEP3_LIVE_ADVISOR="$step3_live_advisor" \
  INTERNVLA_T5_STEP3_TIMEOUT_ADVISOR="$step3_timeout_advisor" \
+ INTERNVLA_T5_FULL_RGB_CAPTURE="$full_rgb_capture" \
  INTERNNAV_T5_STRICT_EXTENSION_PROFILE="$strict_extension_profile" \
  INTERNNAV_T5_NVBLOX_MODE="$nvblox_mode" \
  INTERNNAV_T5_FINAL_PILOT_LANE="$final_pilot_lane" \
  INTERNNAV_T5_FAULT_INJECTION_PROFILE="$fault_injection_profile" \
+ INTERNVLA_T4_MAX_STEP="$pilot_max_step" \
  INTERNNAV_T1_CONTROL_ROOT="$deployment" INTERNVLA_ROS_WS=/home/song/internnav-t4/isaac_ros_ws_45 \
  INTERNVLA_T5_ISAAC_WORKER_ROOT=/home/song/internnav-t1-t2/runtime/t5_isaac_workers \
  bash "$deployment/scripts/run_t5_distributed_isaac.sh" "$lane" "$run_mode" "$result" "$dataset"
@@ -2229,9 +2376,9 @@ case "$profile" in
     engineering_canary_ack=fast-path
     engineering_canary_timebase=sim
     ;;
-  final10) final_pilot_lane="$lane" ;;
+  pilot-screen1|final10) final_pilot_lane="$lane" ;;
 esac
-x86_command="exec setsid --wait bash -c \"\$(printf '%s' '$x86_runtime_b64'|base64 -d)\" fast-x86 '$x86_root' '$lane' '$x86_run' '$dataset_root' '$resource_profile' '$ros_domain_id' '$gpu' '$x86_supervisor_ledger' '$engineering_canary_sec' '$engineering_canary_ack' '$rtf_ablation_profile' '$cpuset' '$screen_episode_count' '$dataset_sha256' '$episode_keys_csv' '$isaac_sensor_profile' '$strict_extension_profile' '$run_mode' '$engineering_canary_timebase' '$execution_episode_count' '$final_pilot_lane' '$fault_injection_profile' '$nvblox_mode' '$step3_live_advisor' '$step3_timeout_advisor' '$screen_episode_key'"
+x86_command="exec setsid --wait bash -c \"\$(printf '%s' '$x86_runtime_b64'|base64 -d)\" fast-x86 '$x86_root' '$lane' '$x86_run' '$dataset_root' '$resource_profile' '$ros_domain_id' '$gpu' '$x86_supervisor_ledger' '$engineering_canary_sec' '$engineering_canary_ack' '$rtf_ablation_profile' '$cpuset' '$screen_episode_count' '$dataset_sha256' '$episode_keys_csv' '$isaac_sensor_profile' '$strict_extension_profile' '$run_mode' '$engineering_canary_timebase' '$execution_episode_count' '$final_pilot_lane' '$fault_injection_profile' '$nvblox_mode' '$step3_live_advisor' '$step3_timeout_advisor' '$screen_episode_key' '$full_rgb_capture'"
 x86_launch_attempted=1
 remote "$x86_target" "$x86_command" >"$result_dir/logs/x86_runtime_ssh.log" 2>&1 &
 x86_ssh_pid=$!
@@ -2267,7 +2414,7 @@ fi
 case "$profile" in
   canary60) run_timeout="${INTERNNAV_T5_FAST_CANARY_TIMEOUT_SEC:-420}" ;;
   soak600) run_timeout="${INTERNNAV_T5_FAST_SOAK_TIMEOUT_SEC:-7800}" ;;
-  screen1|screen3) run_timeout="${INTERNNAV_T5_FAST_SCREEN_TIMEOUT_SEC:-10800}" ;;
+  screen1|screen3|pilot-screen1) run_timeout="${INTERNNAV_T5_FAST_SCREEN_TIMEOUT_SEC:-10800}" ;;
   fixed5) run_timeout="${INTERNNAV_T5_FAST_RUN_TIMEOUT_SEC:-21600}" ;;
   final10) run_timeout="${INTERNNAV_T5_FINAL_PILOT_TIMEOUT_SEC:-43200}" ;;
 esac

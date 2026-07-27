@@ -117,8 +117,11 @@ def test_invalid_candidate_profile_exits_before_any_resource_action(
 
 def test_final10_rejects_raw_wire_before_any_resource_action() -> None:
     env = dict(os.environ)
-    env["INTERNNAV_T5_CANDIDATE_PROFILE"] = "a1+b1+c1"
+    env["INTERNNAV_T5_CANDIDATE_PROFILE"] = "recovery_a"
     env["INTERNVLA_T5_SYSTEM2_REPLAN_POLICY"] = "raw_wire_warn"
+    env["INTERNNAV_T5_ISAAC_SENSOR_PROFILE"] = "dual_lane_wp03_stop_shadow"
+    env["INTERNVLA_T5_STEP3_TIMEOUT_ADVISOR"] = "1"
+    env["INTERNVLA_T5_TERMINATION_MODE"] = "oracle_termination"
     if os.name == "nt":
         forwarded = env.get("WSLENV", "")
         env["WSLENV"] = ":".join(
@@ -127,6 +130,9 @@ def test_final10_rejects_raw_wire_before_any_resource_action() -> None:
                 forwarded,
                 "INTERNNAV_T5_CANDIDATE_PROFILE",
                 "INTERNVLA_T5_SYSTEM2_REPLAN_POLICY",
+                "INTERNNAV_T5_ISAAC_SENSOR_PROFILE",
+                "INTERNVLA_T5_STEP3_TIMEOUT_ADVISOR",
+                "INTERNVLA_T5_TERMINATION_MODE",
             )
             if item
         )
@@ -285,7 +291,7 @@ def test_engineering_and_fixed_dataset_profiles_have_distinct_exit_contracts() -
 
 def test_screen_profiles_materialize_a_frozen_first_n_dataset() -> None:
     text = source()
-    assert 'screen1) screen_episode_count=1' in text
+    assert 'screen1|pilot-screen1) screen_episode_count=1' in text
     assert 'screen3) screen_episode_count=3' in text
     assert 'print(",".join(value["episode_keys"]))' in text
     assert 'print(",".join(value["execution_episode_keys"]))' in text
@@ -295,6 +301,9 @@ def test_screen_profiles_materialize_a_frozen_first_n_dataset() -> None:
     assert '--expected-source-sha256 "$source_dataset_sha256"' in text
     assert '--expected-episode-keys "$frozen_episode_keys_csv"' in text
     assert 'screen_episode_key="${INTERNNAV_T5_SCREEN_EPISODE_KEY:-}"' in text
+    assert 'if test "$profile" = pilot-screen1; then' in text
+    assert 'final_pilot_selection_args=(--execution-profile "$profile")' in text
+    assert 'final_pilot_selection_args+=(--episode-key "$screen_episode_key")' in text
     assert 'screen_key_args=(--episode-key "$screen_episode_key")' in text
     assert '"screen_episode_key_exact_scope"' in text
     assert 'print(",".join(value["episode_keys"]))' in text
@@ -313,8 +322,32 @@ def test_screen_profiles_materialize_a_frozen_first_n_dataset() -> None:
     assert '"screen1":1' in text
     assert '"screen3":3' in text
     assert '"fixed5":5' in text
+    assert '"pilot-screen1":1' in text
     assert '"final10":10' in text
     assert '"screen_dataset_binding"' in text
+
+
+def test_completion_sim_oracle_termination_supports_exact_dual_lane_shadow_profile() -> None:
+    text = source()
+    assert 'termination_mode="${INTERNVLA_T5_TERMINATION_MODE:-model_stop}"' in text
+    assert "model_stop|oracle_termination" in text
+    assert 'test "$isaac_sensor_profile" = dual_lane_wp03_stop_shadow' in text
+    assert 'and lane in {"a", "b"} and profile == "final10"' in text
+    assert 'test "$run_mode" = model || usage' in text
+    assert 'test "$isaac_sensor_profile" = lane_a_step3_timeout_advisor || usage' in text
+    assert "verify_t5_oracle_termination_dataset.py" in text
+    assert 'INTERNVLA_T5_ORACLE_DATASET_FILE="$oracle_dataset"' in text
+    assert text.count('INTERNVLA_T5_TERMINATION_MODE="$termination_mode"') == 2
+    assert 'pilot_max_step=16000' in text
+    assert 'pilot_max_step=1200' not in text
+    assert 'INTERNVLA_T4_MAX_STEP="$pilot_max_step"' in text
+
+
+def test_screen_episode_key_crosses_the_resource_lease_boundary() -> None:
+    text = source()
+    assert (
+        'INTERNNAV_T5_SCREEN_EPISODE_KEY="$screen_episode_key"' in text
+    )
 
 
 def test_summary_preserves_machine_readable_failure_before_x86_receipts_exist() -> None:

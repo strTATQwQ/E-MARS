@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "campaign_id": "t5_step3_semantic_waypoint_5round_v1",
+  "runtime_policy": "completion_sim",
+  "lane": "a",
+  "resources": {
+    "dgx": "railgun@10.100.100.128",
+    "isaac": "song@10.100.120.123",
+    "cuda_visible_devices": "0",
+    "isaac_cpu_list": "0,2,4,6,8,10,12,14,16"
+  },
+  "screen_episode": "433_121",
+  "promotion_profile": "fixed5",
+  "maximum_iterations": 5,
+  "rounds": [
+    {
+      "id": "WP-01",
+      "single_variable": "task_state_checkpoint_interval_4_to_1",
+      "code_sha": "f56e2e124f4882895cca598555dc40e906ce66d9",
+      "status": "SCREEN_PASS_FIXED5_EARLY_STOP"
+    },
+    {
+      "id": "WP-02",
+      "single_variable": "completed_motion_checkpoints_ignore_timeout_repeat_guard",
+      "code_sha": "16075486aca75a719935e29c37d5c2d9b5d3fc35",
+      "fixed5_success_count": 4,
+      "status": "PASS_4_OF_5"
+    },
+    {
+      "id": "WP-03",
+      "single_variable": "bounded_active_clause_grammar_travel_take_make",
+      "code_sha": "cfbe79e37f0942241bffb3cbb37bfde38d1b996c",
+      "fixed5_success_count": 5,
+      "status": "SELECTED_PASS_5_OF_5"
+    },
+    {
+      "id": "WP-04",
+      "single_variable": "relative_waypoint_horizon_or_refresh",
+      "status": "NOT_USED_REGRESSION_BUDGET_RESERVED"
+    },
+    {
+      "id": "WP-05",
+      "single_variable": "final_evidence_selected_refinement",
+      "status": "NOT_USED_REGRESSION_BUDGET_RESERVED"
+    }
+  ],
+  "selected_candidate_sha": "cfbe79e37f0942241bffb3cbb37bfde38d1b996c",
+  "selected_fixed5_run_id": "t5wp03f520260726t211300",
+  "selected_fixed5_success_rate": 1.0,
+  "stopping_reason": "fixed5_5_of_5_reached_without_safety_or_cleanup_regression",
+  "frozen": {
+    "model_weights": true,
+    "step3_prompt_except_registered_round": true,
+    "revc_camera_geometry": true,
+    "nav2_and_recovery_a": true,
+    "motion_thresholds": true,
+    "oracle_termination_diagnostics": true,
+    "completion_collision_warn_only": true
+  },
+  "promotion_rule": "screen_success_before_fixed5",
+  "real_go2_allowed": false
+}

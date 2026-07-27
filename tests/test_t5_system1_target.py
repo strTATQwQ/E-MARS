@@ -37,6 +37,18 @@ def test_frozen_target_hash_is_deterministic_and_binds_path_and_pose() -> None:
     assert first.target_sha256 != _target(position_xyz=(4.6, 0.25, 0.0)).target_sha256
 
 
+def test_frozen_target_reports_remaining_absolute_xy_distance() -> None:
+    target = _target(position_xyz=(4.5, 0.25, 0.0))
+    assert target.remaining_xy_distance(4.5, 0.0) == pytest.approx(0.25)
+    assert target.remaining_xy_distance(4.35, 0.05) == pytest.approx(0.25)
+    assert target.permits_bounded_reissue(4.5, 0.0, 0.25)
+    assert not target.permits_bounded_reissue(4.5, 0.01, 0.25)
+    with pytest.raises(ValueError, match="NaN/Inf"):
+        target.remaining_xy_distance(float("nan"), 0.0)
+    with pytest.raises(ValueError, match="invalid"):
+        target.permits_bounded_reissue(4.5, 0.0, 0.0)
+
+
 def test_queue_binding_requires_same_episode_reset_newer_sequence_and_ttl() -> None:
     target = _target()
     target.require_queue_binding(
@@ -99,4 +111,6 @@ def test_active_adapter_reissues_only_absolute_identity_bound_target() -> None:
     assert "command.local_path" not in queue_branch
     assert "_materialize_frozen_system1_target" in source
     assert "preserve_system1_target=True" in source
+    assert "permits_bounded_reissue" in source
+    assert '"cleared"' in source
     assert "System 1 queue has no identity-bound absolute target" in source

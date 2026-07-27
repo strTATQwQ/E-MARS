@@ -446,6 +446,59 @@ def test_cancel_rejects_empty_ack_while_goal_is_still_active(monkeypatch) -> Non
     assert fake.last_navigate_goal_monotonic == 4.0
 
 
+def test_completion_sim_cancel_ack_timeout_safe_stops_and_warns() -> None:
+    published_motion = []
+    published_ack = []
+    warnings = []
+    cancel_calls = []
+
+    def cancel_active(wait=False, *, preserve_system1_target=False):
+        cancel_calls.append((wait, preserve_system1_target))
+        if wait:
+            raise TimeoutError
+        return True
+
+    fake = SimpleNamespace(
+        _t5_sim_time_semantics=True,
+        stop_ack_publisher=SimpleNamespace(publish=published_ack.append),
+        operation_lock=Lock(),
+        execution_mode="continuous",
+        _publish_motion=published_motion.append,
+        active_episode="episode-1",
+        active_generation=2,
+        last_sequence=3,
+        frozen_system1_target=None,
+        _cancel_active=cancel_active,
+        get_logger=lambda: SimpleNamespace(warning=warnings.append),
+    )
+    request = SimpleNamespace(
+        data=json.dumps(
+            {
+                "schema_version": 1,
+                "token": "stop-1",
+                "episode_id": "episode-1",
+                "reset_generation": 2,
+                "sequence_id": 3,
+                "request_id": "request-1",
+                "reason": "measured motion timed out",
+            }
+        )
+    )
+
+    ActiveNav2Adapter._on_stop_request(fake, request)
+
+    assert published_motion == [False]
+    assert cancel_calls == [(True, False), (False, False)]
+    assert len(warnings) == 1
+    ack = json.loads(published_ack[0].data)
+    assert ack["status"] == "ok"
+    assert ack["episode_id"] == "episode-1"
+    assert ack["reset_generation"] == 2
+    assert ack["sequence_id"] == 3
+    assert ack["request_id"] == "request-1"
+    assert ack["detail"].startswith("WARN completion_sim")
+
+
 def test_nav2_plan_is_forwarded_to_recovery_supervisor() -> None:
     published = []
     fake = SimpleNamespace(

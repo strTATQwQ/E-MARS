@@ -109,6 +109,8 @@ def test_adapter_has_independent_factors_and_no_default_forward_action() -> None
         assert factor in adapter
     assert "no_real_system2_fallback" in adapter
     assert "oracle_continuation_unavailable" in adapter
+    assert 'observed_episode_id == f"{lane}::{frozen_episode_id}"' in adapter
+    assert 'lane in {"a", "b"}' in adapter
 
 
 def test_dgx_model_server_validates_the_same_generated_config() -> None:

@@ -66,6 +66,7 @@ def test_dgx_onboard_launcher_owns_navigation_map_and_speed() -> None:
     assert "get_subscriptions_info_by_topic" in data_plane_probe
     assert "INTERNVLA_T4_ONBOARD_PROFILE" in launcher
     assert "LIFECYCLE_PROBE_ARGS+=(--allow-inactive /collision_monitor)" in launcher
+    assert "LIFECYCLE_PROBE_ARGS+=(--allow-inactive /bt_navigator)" in launcher
     assert 'result_dir:="$RESULT_DIR/go2_sensor_bridge"' in launcher
     assert "enable_rgb:=false" in launcher
     bridge = (

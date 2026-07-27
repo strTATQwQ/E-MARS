@@ -335,6 +335,52 @@ class T4RecoveryModelNode(InternVLAModelNode):
         )
         return self.cache_epoch
 
+    def _invalidate_step3_action_queue_locked(
+        self,
+        recovery_id: str,
+        operation_id: str,
+    ) -> int:
+        """Drop an overridden action queue without resetting policy history.
+
+        The Step3 primitive is measured and stopped before this method runs.
+        Remaining actions came from the pre-correction observation, while the
+        System2 latent and policy history still describe the instruction. This
+        completion-simulation-only path clears only the consumable queue.
+        """
+
+        output = getattr(self._agent, "s2_output", None)
+        output_lock = getattr(self._agent, "s2_output_lock", None)
+        if output is None or output_lock is None:
+            raise RecoveryContractError(
+                STATUS_INTERNAL,
+                "InternVLA action queue is unavailable for Step3 refresh",
+            )
+        with output_lock:
+            output.output_action = None
+            latent_preserved = getattr(output, "output_latent", None) is not None
+        self._system1_queue_remaining = 0
+        self._results.clear()
+        self.recovery_clear_count += 1
+        self.cache_epoch += 1
+        self._write_audit(
+            {
+                "schema_version": 1,
+                "event": "step3_action_queue_invalidated",
+                "episode_id": self._barrier.episode_id,
+                "reset_generation": self._barrier.reset_generation,
+                "last_sequence_id": self._barrier.last_sequence_id,
+                "recovery_id": recovery_id,
+                "operation_id": operation_id,
+                "clear_count": self.recovery_clear_count,
+                "cache_epoch": self.cache_epoch,
+                "policy_history_preserved": True,
+                "system2_latent_preserved": latent_preserved,
+                "episode_identity_changed": False,
+                "wall_time_unix": time.time(),
+            }
+        )
+        return self.cache_epoch
+
     def _on_typed_clear_history(
         self,
         request: RecoveryControl.Request,
@@ -376,14 +422,28 @@ class T4RecoveryModelNode(InternVLAModelNode):
                     return response
                 restore_response(response, previous[1])
                 return response
-            response.cache_epoch = self._clear_history_locked(
-                identity.recovery_id,
-                identity.operation_id,
-                preserve_observation_tuple=self._recovery_uses_sim_time,
+            step3_queue_only = bool(
+                self._recovery_uses_sim_time
+                and identity.recovery_id.startswith("step3-refresh:")
             )
+            if step3_queue_only:
+                response.cache_epoch = self._invalidate_step3_action_queue_locked(
+                    identity.recovery_id,
+                    identity.operation_id,
+                )
+            else:
+                response.cache_epoch = self._clear_history_locked(
+                    identity.recovery_id,
+                    identity.operation_id,
+                    preserve_observation_tuple=self._recovery_uses_sim_time,
+                )
             response.success = True
             response.status_code = 0
-            response.status_message = "model cache cleared for active identity"
+            response.status_message = (
+                "model action queue cleared; policy history preserved"
+                if step3_queue_only
+                else "model cache cleared for active identity"
+            )
             response.motion_disabled = False
             response.safety_fresh = False
             if len(self._typed_recovery_results) >= 256:

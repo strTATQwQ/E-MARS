@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "profile": "completion_sim_geometric_termination_v1",
+  "runtime_policy": "completion_sim",
+  "simulation_target": "isaac",
+  "termination_mode": "oracle_termination",
+  "distance_source": "frozen_evaluator_ground_truth",
+  "success_radius_m": 2.5,
+  "attribution": {
+    "geometric_success": "resolved STOP inside the frozen evaluator radius",
+    "model_stop_success": "InternVLA proposed STOP inside the frozen evaluator radius",
+    "semantic_arrival_confirmed": "Step3 independently confirmed arrival"
+  },
+  "claims": {
+    "credits_model_stop": false,
+    "credits_step3_arrival": false,
+    "proves_navigation_reach": true
+  },
+  "real_go2_allowed": false
+}

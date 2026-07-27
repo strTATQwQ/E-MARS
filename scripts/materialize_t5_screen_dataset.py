@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Create a deterministic first-N screening view of the frozen T5 five episodes."""
+"""Create a deterministic screening view of a sealed T5 episode set."""
 
 from __future__ import annotations
 
@@ -67,12 +67,17 @@ def main() -> None:
     with gzip.open(source, "rt", encoding="utf-8") as stream:
         payload = json.load(stream)
     episodes = payload.get("episodes") if isinstance(payload, dict) else None
-    if not isinstance(episodes, list) or len(episodes) != 5:
-        raise SystemExit("screen source must be the frozen five-episode dataset")
+    if not isinstance(episodes, list) or len(episodes) not in {5, 10}:
+        raise SystemExit("screen source must contain five or ten sealed episodes")
     source_keys = [episode_key(episode) for episode in episodes]
     expected_keys = args.expected_episode_keys.split(",")
-    if len(expected_keys) != 5 or len(set(expected_keys)) != 5:
-        raise SystemExit("expected episode keys must name five unique episodes")
+    if (
+        len(expected_keys) != len(episodes)
+        or len(set(expected_keys)) != len(episodes)
+    ):
+        raise SystemExit(
+            "expected episode keys must exactly name the sealed source episodes"
+        )
     if source_keys != expected_keys:
         raise SystemExit("source episode order differs from the frozen input binding")
     if args.episode_key is not None:

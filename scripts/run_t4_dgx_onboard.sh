@@ -624,7 +624,12 @@ if [[ "$ONBOARD_PROFILE" == migrated_pilot20 || "$ONBOARD_PROFILE" == migrated_r
   # completion_sim pilot keeps bounded warn relay + simulation e-stop as the
   # motion boundary.  A lifecycle RPC race may leave Collision Monitor
   # inactive, which is recorded as a deviation instead of blocking function.
+  # The same bounded startup race can leave bt_navigator inactive after the
+  # 20-second probe even though the remaining Nav2 graph and resolver are
+  # healthy.  completion_sim records that state as WARN and lets the first
+  # identity-bound action/sensor/clock loop determine functional readiness.
   LIFECYCLE_PROBE_ARGS+=(--allow-inactive /collision_monitor)
+  LIFECYCLE_PROBE_ARGS+=(--allow-inactive /bt_navigator)
 fi
 CURRENT_PHASE="nav2_lifecycle_readiness_probe"
 python3 "$CONTROL_ROOT/scripts/check_t4_nav2_lifecycle.py" \

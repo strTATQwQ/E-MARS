@@ -12,20 +12,26 @@ root="${INTERNNAV_T1_CONTROL_ROOT:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/..
 python="$venv_path/bin/python"
 config="$root/configs/slow_models/step3_vl_10b_timeout_advisor.yaml"
 
-test "$(id -un)" = rail
-test "${INTERNNAV_T5_RESOURCE_LEASE_ACK:-}" = lane-b
+lane="${INTERNNAV_T5_LANE:-}"
+case "$lane" in
+  a) expected_user=railgun; lane_ip=10.100.100.128; expected_lease=lane-a ;;
+  b) expected_user=rail; lane_ip=10.100.120.122; expected_lease=lane-b ;;
+  *) exit 64 ;;
+esac
+test "$(id -un)" = "$expected_user"
+test "${INTERNNAV_T5_RESOURCE_LEASE_ACK:-}" = "$expected_lease"
 test "${INTERNNAV_RUNTIME_POLICY:-}" = completion_sim
 test "${INTERNNAV_SIMULATION_TARGET:-}" = isaac
 test "${CUDA_VISIBLE_DEVICES:-}" = 0
 ip -4 -o addr show scope global | awk '{sub(/\/.*/, "", $4); print $4}' | \
-  grep -Fxq 10.100.120.122
+  grep -Fxq "$lane_ip"
 test -x "$python"
 test -d "$model_path"
 test -f "$venv_path/T5_STEP3_RUNTIME_READY.json"
 test -f "$config"
-[[ "$result_root" = /home/rail/* ]]
+[[ "$result_root" = "$HOME"/* ]]
 test ! -e "$result_root"
-test -z "$(ss -H -lntp | grep -E '10[.]100[.]120[.]122:8200[[:space:]]' || true)"
+test -z "$(ss -H -lntp | grep -F "$lane_ip:8200" || true)"
 
 mkdir -p "$result_root/logs" "$result_root/step3"
 result_root="$(cd -- "$result_root" && pwd -P)"
@@ -35,12 +41,15 @@ service_pid=""
 stop_service() {
   test -n "$service_pid" || return 0
   kill -TERM -- "-$service_pid" 2>/dev/null || true
-  for _ in $(seq 1 300); do
+  # The owning Lane gives this wrapper a 20-second TERM window.  Finish the
+  # nested service's own TERM -> KILL sequence inside that window so its
+  # setsid process cannot be reparented after the wrapper is reaped.
+  for _ in $(seq 1 100); do
     kill -0 "$service_pid" 2>/dev/null || return 0
     sleep 0.1
   done
   kill -KILL -- "-$service_pid" 2>/dev/null || true
-  for _ in $(seq 1 300); do
+  for _ in $(seq 1 50); do
     kill -0 "$service_pid" 2>/dev/null || return 0
     sleep 0.1
   done
@@ -78,6 +87,7 @@ trap 'exit 143' TERM HUP
 
 export STEP3_VL_10B_MODEL_PATH="$model_path"
 export SLOW_BENCHMARK_RESULTS="$result_root/step3"
+export STEP3_TIMEOUT_BIND="tcp://$lane_ip:8200"
 export PYTHONPATH="$root${PYTHONPATH:+:$PYTHONPATH}"
 setsid env CUDA_VISIBLE_DEVICES=0 "$python" -m slow_planner.serve \
   --config "$config" >"$result_root/logs/service.log" 2>&1 &
@@ -89,7 +99,7 @@ while ((SECONDS < deadline)); do
     echo "Step3 timeout service exited before READY" >&2
     exit 1
   }
-  if "$python" - "$result_root/health.json" <<'PY' >/dev/null 2>&1
+if "$python" - "$result_root/health.json" "$lane_ip" <<'PY' >/dev/null 2>&1
 import json, sys, time, zmq
 from pathlib import Path
 ctx = zmq.Context()
@@ -98,7 +108,7 @@ sock.setsockopt(zmq.LINGER, 0)
 sock.setsockopt(zmq.SNDTIMEO, 1500)
 sock.setsockopt(zmq.RCVTIMEO, 1500)
 try:
-    sock.connect("tcp://10.100.120.122:8200")
+    sock.connect(f"tcp://{sys.argv[2]}:8200")
     sock.send_json({"type": "health"})
     value = dict(sock.recv_json())
 finally:
@@ -112,12 +122,16 @@ checks = {
     "clean_load": value.get("checkpoint_load_clean") is True,
     "bf16": set(value.get("parameter_dtype_counts") or {}) == {"torch.bfloat16"},
     "redacted": value.get("redact_raw_text") is True,
+    "task_state": (
+        value.get("planner_mode") == "task_state_v1"
+        and value.get("private_task_state_contract") == 1
+    ),
 }
 if not all(checks.values()):
     raise SystemExit(75)
 Path(sys.argv[1]).write_text(json.dumps({
     "schema_version": 1, "status": "READY", "checks": checks,
-    "endpoint": "tcp://10.100.120.122:8200", "recorded_unix": time.time(),
+    "endpoint": f"tcp://{sys.argv[2]}:8200", "recorded_unix": time.time(),
     **value,
 }, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 PY
