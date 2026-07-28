@@ -1,0 +1,1448 @@
+{
+  "authored_start_policy": "explicit audited keys; reset-order behavior must be validated",
+  "clearance_audit_sha256": "d1e70df3bc1506718261250ad2c7186b799466e3752ba2269275309ea93bda5f",
+  "duplicate_authored_start_count": 2,
+  "episode_count": 20,
+  "episode_keys": [
+    "6898_1741",
+    "6292_1573",
+    "5840_1474",
+    "6842_1720",
+    "1420_364",
+    "4084_1003",
+    "583_145",
+    "1803_448",
+    "6623_1657",
+    "2613_625",
+    "5627_1417",
+    "4182_1027",
+    "4009_976",
+    "654_157",
+    "4943_1255",
+    "6982_1765",
+    "3542_877",
+    "6157_1561",
+    "2564_610",
+    "2853_703"
+  ],
+  "geodesic_distances_m": [
+    7.01496696472168,
+    7.060490608215332,
+    7.123377799987793,
+    7.123378276824951,
+    7.134001731872559,
+    7.144303798675537,
+    7.243781566619873,
+    7.958865642547607,
+    8.035599708557129,
+    8.242502212524414,
+    8.260956764221191,
+    8.319707870483398,
+    8.899764060974121,
+    8.955533981323242,
+    9.162968635559082,
+    9.36455249786377,
+    10.597935676574707,
+    7.658452987670898,
+    9.637412071228027,
+    10.143523216247559
+  ],
+  "integrity": "official episode objects copied value-for-value; no trajectory, instruction, goal, or metric mutation",
+  "maximum_geodesic_m": 12.0,
+  "minimum_geodesic_m": 3.2,
+  "minimum_prefix_clearance_m": 0.3,
+  "minimum_prefix_length_m": 0.5,
+  "overlay_sha256": "f09b11004d15d579620ba2b2769dcbf863efe4cf04d9e404f071f66244463f8b",
+  "phase": "t3_go2_clear_20_episodes",
+  "scene_geometry_evidence": [
+    {
+      "floor_bands": [
+        {
+          "collision_height_vertex_count": 652664,
+          "reference_height_m": 0.1271,
+          "surface_z_range_m": [
+            0.04709999999999999,
+            0.6471
+          ]
+        }
+      ],
+      "ply_bytes": 408410090,
+      "ply_path": "$HOME/InternNav/data/scene_data/mp3d_pe/2azQ1b91cZZ/house_segmentations/2azQ1b91cZZ.ply",
+      "ply_sha256": "0bac3f7d627caa7da3913281bcaf24f69ee46413cfd357244d8b512d2dc3a078",
+      "scan": "2azQ1b91cZZ",
+      "total_vertex_count": 4847541
+    },
+    {
+      "floor_bands": [
+        {
+          "collision_height_vertex_count": 1010668,
+          "reference_height_m": 0.1548,
+          "surface_z_range_m": [
+            0.07479999999999999,
+            0.6748000000000001
+          ]
+        }
+      ],
+      "ply_bytes": 469906581,
+      "ply_path": "$HOME/InternNav/data/scene_data/mp3d_pe/QUCTc6BB5sX/house_segmentations/QUCTc6BB5sX.ply",
+      "ply_sha256": "47288b291b7385de2fafd5f367f380ff79de2ad8caf96e3bb52f5cde02c348c4",
+      "scan": "QUCTc6BB5sX",
+      "total_vertex_count": 5589420
+    },
+    {
+      "floor_bands": [
+        {
+          "collision_height_vertex_count": 205581,
+          "reference_height_m": -2.5756,
+          "surface_z_range_m": [
+            -2.6556,
+            -2.0556
+          ]
+        },
+        {
+          "collision_height_vertex_count": 347336,
+          "reference_height_m": 3.6244,
+          "surface_z_range_m": [
+            3.5444,
+            4.1444
+          ]
+        }
+      ],
+      "ply_bytes": 369008895,
+      "ply_path": "$HOME/InternNav/data/scene_data/mp3d_pe/TbHJrupSAjP/house_segmentations/TbHJrupSAjP.ply",
+      "ply_sha256": "d11efd4e438411a06642d350200dddf0a837a1480acec58ed349ca1a889229f7",
+      "scan": "TbHJrupSAjP",
+      "total_vertex_count": 4384559
+    },
+    {
+      "floor_bands": [
+        {
+          "collision_height_vertex_count": 343900,
+          "reference_height_m": 0.2095,
+          "surface_z_range_m": [
+            0.1295,
+            0.7295
+          ]
+        }
+      ],
+      "ply_bytes": 188402960,
+      "ply_path": "$HOME/InternNav/data/scene_data/mp3d_pe/Z6MFQCViBuw/house_segmentations/Z6MFQCViBuw.ply",
+      "ply_sha256": "6392f8075f8cb743521eb8ac2b5d95a8f07090988645619ec5bf1fbc1037a157",
+      "scan": "Z6MFQCViBuw",
+      "total_vertex_count": 2280308
+    },
+    {
+      "floor_bands": [
+        {
+          "collision_height_vertex_count": 636073,
+          "reference_height_m": 0.1716,
+          "surface_z_range_m": [
+            0.0916,
+            0.6916
+          ]
+        }
+      ],
+      "ply_bytes": 232849275,
+      "ply_path": "$HOME/InternNav/data/scene_data/mp3d_pe/zsNo4HB9uLZ/house_segmentations/zsNo4HB9uLZ.ply",
+      "ply_sha256": "8b83aee35d46725eb54152650b7efba1de97a1b8a877ed76b4fddc7d7322f1cb",
+      "scan": "zsNo4HB9uLZ",
+      "total_vertex_count": 2765017
+    }
+  ],
+  "scene_id": null,
+  "scene_ids": [
+    "mp3d/2azQ1b91cZZ/2azQ1b91cZZ.glb",
+    "mp3d/QUCTc6BB5sX/QUCTc6BB5sX.glb",
+    "mp3d/TbHJrupSAjP/TbHJrupSAjP.glb",
+    "mp3d/Z6MFQCViBuw/Z6MFQCViBuw.glb",
+    "mp3d/zsNo4HB9uLZ/zsNo4HB9uLZ.glb"
+  ],
+  "schema_version": 1,
+  "selected_clearance_evidence": [
+    {
+      "episode_key": "6898_1741",
+      "fraction_below_0_30": 0.10429447852760736,
+      "fraction_below_0_35": 0.17177914110429449,
+      "fraction_below_0_38": 0.20245398773006135,
+      "fraction_below_0_42": 0.2331288343558282,
+      "geodesic_distance_m": 7.01496696472168,
+      "median_clearance_m": 0.5065637510353431,
+      "minimum_clearance_m": 0.19456666276046009,
+      "minimum_path_xy": [
+        -0.8700596285343636,
+        16.923781156539917
+      ],
+      "nearest_surface_xy": [
+        -0.8361563682556152,
+        16.73219108581543
+      ],
+      "p05_clearance_m": 0.2654447826528468,
+      "reference_height_m": 0.1548,
+      "reference_sample_count": 163,
+      "required_prefix_fraction_below_0_38": 0.0,
+      "required_prefix_fraction_below_0_42": 0.0,
+      "required_prefix_fraction_below_0_45": 0.009900990099009901,
+      "required_prefix_length_m": 4.9697071560179396,
+      "required_prefix_minimum_clearance_m": 0.4478474472979693,
+      "required_prefix_minimum_path_xy": [
+        -1.9312412589788437,
+        15.441237449645996
+      ],
+      "required_prefix_nearest_surface_xy": [
+        -1.507763147354126,
+        15.586955070495605
+      ],
+      "required_prefix_oriented_geometry": {
+        "expanded_physical_body_intrusion_fraction": 0.0,
+        "expanded_physical_body_intrusion_point_count": 0,
+        "expanded_physical_body_intrusion_sample_count": 0,
+        "expanded_stop_polygon_intrusion_fraction": 0.0,
+        "expanded_stop_polygon_intrusion_point_count": 0,
+        "expanded_stop_polygon_intrusion_sample_count": 0,
+        "nav2_radius_intrusion_fraction": 0.0,
+        "nav2_radius_intrusion_point_count": 0,
+        "nav2_radius_intrusion_sample_count": 0,
+        "physical_body_intrusion_fraction": 0.0,
+        "physical_body_intrusion_point_count": 0,
+        "physical_body_intrusion_sample_count": 0,
+        "stop_polygon_intrusion_fraction": 0.0,
+        "stop_polygon_intrusion_point_count": 0,
+        "stop_polygon_intrusion_sample_count": 0
+      },
+      "required_prefix_p05_clearance_m": 0.4695582931162321,
+      "required_prefix_sample_count": 101,
+      "scene": "QUCTc6BB5sX",
+      "start_clearance_m": 0.5298362825119434,
+      "surface_z_range_m": [
+        0.07479999999999999,
+        0.6748000000000001
+      ]
+    },
+    {
+      "episode_key": "6292_1573",
+      "fraction_below_0_30": 0.0,
+      "fraction_below_0_35": 0.0,
+      "fraction_below_0_38": 0.0,
+      "fraction_below_0_42": 0.0,
+      "geodesic_distance_m": 7.060490608215332,
+      "median_clearance_m": 0.7764441383198735,
+      "minimum_clearance_m": 0.5072869487208194,
+      "minimum_path_xy": [
+        14.109691056338225,
+        -1.0820654142986645
+      ],
+      "nearest_surface_xy": [
+        14.134628295898438,
+        -0.5753917694091797
+      ],
+      "p05_clearance_m": 0.5431477466284897,
+      "reference_height_m": 0.1271,
+      "reference_sample_count": 150,
+      "required_prefix_fraction_below_0_38": 0.0,
+      "required_prefix_fraction_below_0_42": 0.0,
+      "required_prefix_fraction_below_0_45": 0.0,
+      "required_prefix_length_m": 4.8710265122068135,
+      "required_prefix_minimum_clearance_m": 0.5072869487208194,
+      "required_prefix_minimum_path_xy": [
+        14.109691056338225,
+        -1.0820654142986645
+      ],
+      "required_prefix_nearest_surface_xy": [
+        14.134628295898438,
+        -0.5753917694091797
+      ],
+      "required_prefix_oriented_geometry": {
+        "expanded_physical_body_intrusion_fraction": 0.0,
+        "expanded_physical_body_intrusion_point_count": 0,
+        "expanded_physical_body_intrusion_sample_count": 0,
+        "expanded_stop_polygon_intrusion_fraction": 0.0,
+        "expanded_stop_polygon_intrusion_point_count": 0,
+        "expanded_stop_polygon_intrusion_sample_count": 0,
+        "nav2_radius_intrusion_fraction": 0.0,
+        "nav2_radius_intrusion_point_count": 0,
+        "nav2_radius_intrusion_sample_count": 0,
+        "physical_body_intrusion_fraction": 0.0,
+        "physical_body_intrusion_point_count": 0,
+        "physical_body_intrusion_sample_count": 0,
+        "stop_polygon_intrusion_fraction": 0.0,
+        "stop_polygon_intrusion_point_count": 0,
+        "stop_polygon_intrusion_sample_count": 0
+      },
+      "required_prefix_p05_clearance_m": 0.5249606377891634,
+      "required_prefix_sample_count": 100,
+      "scene": "2azQ1b91cZZ",
+      "start_clearance_m": 0.9345379670434852,
+      "surface_z_range_m": [
+        0.04709999999999999,
+        0.6471
+      ]
+    },
+    {
+      "episode_key": "5840_1474",
+      "fraction_below_0_30": 0.0,
+      "fraction_below_0_35": 0.0,
+      "fraction_below_0_38": 0.0,
+      "fraction_below_0_42": 0.022727272727272728,
+      "geodesic_distance_m": 7.123377799987793,
+      "median_clearance_m": 0.6248599561557655,
+      "minimum_clearance_m": 0.410185934220844,
+      "minimum_path_xy": [
+        7.530361792620491,
+        -0.2595268207437852
+      ],
+      "nearest_surface_xy": [
+        7.884161949157715,
+        -0.4670791029930115
+      ],
+      "p05_clearance_m": 0.4613931409943301,
+      "reference_height_m": 0.1716,
+      "reference_sample_count": 176,
+      "required_prefix_fraction_below_0_38": 0.0,
+      "required_prefix_fraction_below_0_42": 0.03636363636363636,
+      "required_prefix_fraction_below_0_45": 0.07272727272727272,
+      "required_prefix_length_m": 5.394122203541527,
+      "required_prefix_minimum_clearance_m": 0.410185934220844,
+      "required_prefix_minimum_path_xy": [
+        7.530361792620491,
+        -0.2595268207437852
+      ],
+      "required_prefix_nearest_surface_xy": [
+        7.884161949157715,
+        -0.4670791029930115
+      ],
+      "required_prefix_oriented_geometry": {
+        "expanded_physical_body_intrusion_fraction": 0.0,
+        "expanded_physical_body_intrusion_point_count": 0,
+        "expanded_physical_body_intrusion_sample_count": 0,
+        "expanded_stop_polygon_intrusion_fraction": 0.0,
+        "expanded_stop_polygon_intrusion_point_count": 0,
+        "expanded_stop_polygon_intrusion_sample_count": 0,
+        "nav2_radius_intrusion_fraction": 0.0,
+        "nav2_radius_intrusion_point_count": 0,
+        "nav2_radius_intrusion_sample_count": 0,
+        "physical_body_intrusion_fraction": 0.0,
+        "physical_body_intrusion_point_count": 0,
+        "physical_body_intrusion_sample_count": 0,
+        "stop_polygon_intrusion_fraction": 0.0,
+        "stop_polygon_intrusion_point_count": 0,
+        "stop_polygon_intrusion_sample_count": 0
+      },
+      "required_prefix_p05_clearance_m": 0.43405371879981103,
+      "required_prefix_sample_count": 110,
+      "scene": "zsNo4HB9uLZ",
+      "start_clearance_m": 0.570970275958543,
+      "surface_z_range_m": [
+        0.0916,
+        0.6916
+      ]
+    },
+    {
+      "episode_key": "6842_1720",
+      "fraction_below_0_30": 0.0,
+      "fraction_below_0_35": 0.0,
+      "fraction_below_0_38": 0.0,
+      "fraction_below_0_42": 0.022727272727272728,
+      "geodesic_distance_m": 7.123378276824951,
+      "median_clearance_m": 0.6248599561557653,
+      "minimum_clearance_m": 0.4101859342208447,
+      "minimum_path_xy": [
+        7.53036179262049,
+        -0.2595268207437852
+      ],
+      "nearest_surface_xy": [
+        7.884161949157715,
+        -0.4670791029930115
+      ],
+      "p05_clearance_m": 0.4613931409943301,
+      "reference_height_m": 0.1716,
+      "reference_sample_count": 176,
+      "required_prefix_fraction_below_0_38": 0.0,
+      "required_prefix_fraction_below_0_42": 0.0,
+      "required_prefix_fraction_below_0_45": 0.0,
+      "required_prefix_length_m": 5.826339609536445,
+      "required_prefix_minimum_clearance_m": 0.5893990864066413,
+      "required_prefix_minimum_path_xy": [
+        10.611091353676535,
+        0.1697985435074026
+      ],
+      "required_prefix_nearest_surface_xy": [
+        10.646982192993164,
+        0.7581038475036621
+      ],
+      "required_prefix_oriented_geometry": {
+        "expanded_physical_body_intrusion_fraction": 0.0,
+        "expanded_physical_body_intrusion_point_count": 0,
+        "expanded_physical_body_intrusion_sample_count": 0,
+        "expanded_stop_polygon_intrusion_fraction": 0.0,
+        "expanded_stop_polygon_intrusion_point_count": 0,
+        "expanded_stop_polygon_intrusion_sample_count": 0,
+        "nav2_radius_intrusion_fraction": 0.0,
+        "nav2_radius_intrusion_point_count": 0,
+        "nav2_radius_intrusion_sample_count": 0,
+        "physical_body_intrusion_fraction": 0.0,
+        "physical_body_intrusion_point_count": 0,
+        "physical_body_intrusion_sample_count": 0,
+        "stop_polygon_intrusion_fraction": 0.0,
+        "stop_polygon_intrusion_point_count": 0,
+        "stop_polygon_intrusion_sample_count": 0
+      },
+      "required_prefix_p05_clearance_m": 0.6058255854989273,
+      "required_prefix_sample_count": 119,
+      "scene": "zsNo4HB9uLZ",
+      "start_clearance_m": 0.9961265161084717,
+      "surface_z_range_m": [
+        0.0916,
+        0.6916
+      ]
+    },
+    {
+      "episode_key": "1420_364",
+      "fraction_below_0_30": 0.0457516339869281,
+      "fraction_below_0_35": 0.0784313725490196,
+      "fraction_below_0_38": 0.11764705882352941,
+      "fraction_below_0_42": 0.35294117647058826,
+      "geodesic_distance_m": 7.134001731872559,
+      "median_clearance_m": 0.46875879607433096,
+      "minimum_clearance_m": 0.24341193500983072,
+      "minimum_path_xy": [
+        4.184434393177861,
+        6.890173082766325
+      ],
+      "nearest_surface_xy": [
+        4.05058479309082,
+        6.686866283416748
+      ],
+      "p05_clearance_m": 0.30770643011529575,
+      "reference_height_m": 0.1271,
+      "reference_sample_count": 153,
+      "required_prefix_fraction_below_0_38": 0.0,
+      "required_prefix_fraction_below_0_42": 0.25,
+      "required_prefix_fraction_below_0_45": 0.3125,
+      "required_prefix_length_m": 4.638385581490915,
+      "required_prefix_minimum_clearance_m": 0.383273784633812,
+      "required_prefix_minimum_path_xy": [
+        4.586249828338623,
+        0.1209309995174408
+      ],
+      "required_prefix_nearest_surface_xy": [
+        4.944317817687988,
+        -0.015766143798828125
+      ],
+      "required_prefix_oriented_geometry": {
+        "expanded_physical_body_intrusion_fraction": 0.0,
+        "expanded_physical_body_intrusion_point_count": 0,
+        "expanded_physical_body_intrusion_sample_count": 0,
+        "expanded_stop_polygon_intrusion_fraction": 0.0,
+        "expanded_stop_polygon_intrusion_point_count": 0,
+        "expanded_stop_polygon_intrusion_sample_count": 0,
+        "nav2_radius_intrusion_fraction": 0.0,
+        "nav2_radius_intrusion_point_count": 0,
+        "nav2_radius_intrusion_sample_count": 0,
+        "physical_body_intrusion_fraction": 0.0,
+        "physical_body_intrusion_point_count": 0,
+        "physical_body_intrusion_sample_count": 0,
+        "stop_polygon_intrusion_fraction": 0.0,
+        "stop_polygon_intrusion_point_count": 0,
+        "stop_polygon_intrusion_sample_count": 0
+      },
+      "required_prefix_p05_clearance_m": 0.3854535641132403,
+      "required_prefix_sample_count": 96,
+      "scene": "2azQ1b91cZZ",
+      "start_clearance_m": 0.383273784633812,
+      "surface_z_range_m": [
+        0.04709999999999999,
+        0.6471
+      ]
+    },
+    {
+      "episode_key": "4084_1003",
+      "fraction_below_0_30": 0.07453416149068323,
+      "fraction_below_0_35": 0.10559006211180125,
+      "fraction_below_0_38": 0.14906832298136646,
+      "fraction_below_0_42": 0.2919254658385093,
+      "geodesic_distance_m": 7.144303798675537,
+      "median_clearance_m": 0.4833019225176682,
+      "minimum_clearance_m": 0.21130907226720697,
+      "minimum_path_xy": [
+        -6.394241840608658,
+        17.430245061074533
+      ],
+      "nearest_surface_xy": [
+        -6.195373058319092,
+        17.501678466796875
+      ],
+      "p05_clearance_m": 0.27581631517163935,
+      "reference_height_m": 0.1548,
+      "reference_sample_count": 161,
+      "required_prefix_fraction_below_0_38": 0.03636363636363636,
+      "required_prefix_fraction_below_0_42": 0.14545454545454545,
+      "required_prefix_fraction_below_0_45": 0.16363636363636364,
+      "required_prefix_length_m": 5.39542427550802,
+      "required_prefix_minimum_clearance_m": 0.3700550350228349,
+      "required_prefix_minimum_path_xy": [
+        -6.23042323741507,
+        15.785721291886999
+      ],
+      "required_prefix_nearest_surface_xy": [
+        -5.860382080078125,
+        15.782516479492188
+      ],
+      "required_prefix_oriented_geometry": {
+        "expanded_physical_body_intrusion_fraction": 0.0,
+        "expanded_physical_body_intrusion_point_count": 0,
+        "expanded_physical_body_intrusion_sample_count": 0,
+        "expanded_stop_polygon_intrusion_fraction": 0.0,
+        "expanded_stop_polygon_intrusion_point_count": 0,
+        "expanded_stop_polygon_intrusion_sample_count": 0,
+        "nav2_radius_intrusion_fraction": 0.0,
+        "nav2_radius_intrusion_point_count": 0,
+        "nav2_radius_intrusion_sample_count": 0,
+        "physical_body_intrusion_fraction": 0.0,
+        "physical_body_intrusion_point_count": 0,
+        "physical_body_intrusion_sample_count": 0,
+        "stop_polygon_intrusion_fraction": 0.0,
+        "stop_polygon_intrusion_point_count": 0,
+        "stop_polygon_intrusion_sample_count": 0
+      },
+      "required_prefix_p05_clearance_m": 0.390445621047505,
+      "required_prefix_sample_count": 110,
+      "scene": "QUCTc6BB5sX",
+      "start_clearance_m": 0.7515810080330712,
+      "surface_z_range_m": [
+        0.07479999999999999,
+        0.6748000000000001
+      ]
+    },
+    {
+      "episode_key": "583_145",
+      "fraction_below_0_30": 0.0,
+      "fraction_below_0_35": 0.0,
+      "fraction_below_0_38": 0.006097560975609756,
+      "fraction_below_0_42": 0.012195121951219513,
+      "geodesic_distance_m": 7.243781566619873,
+      "median_clearance_m": 0.6173657228148318,
+      "minimum_clearance_m": 0.3677315582252763,
+      "minimum_path_xy": [
+        3.9526500701904297,
+        2.1764400005340576
+      ],
+      "nearest_surface_xy": [
+        3.982576370239258,
+        2.542951822280884
+      ],
+      "p05_clearance_m": 0.49406967007773117,
+      "reference_height_m": 0.1716,
+      "reference_sample_count": 164,
+      "required_prefix_fraction_below_0_38": 0.0,
+      "required_prefix_fraction_below_0_42": 0.0,
+      "required_prefix_fraction_below_0_45": 0.0,
+      "required_prefix_length_m": 4.794600450061137,
+      "required_prefix_minimum_clearance_m": 0.5492351544180082,
+      "required_prefix_minimum_path_xy": [
+        7.860569953918457,
+        0.23864400386810303
+      ],
+      "required_prefix_nearest_surface_xy": [
+        7.862429618835449,
+        0.7878760099411011
+      ],
+      "required_prefix_oriented_geometry": {
+        "expanded_physical_body_intrusion_fraction": 0.0,
+        "expanded_physical_body_intrusion_point_count": 0,
+        "expanded_physical_body_intrusion_sample_count": 0,
+        "expanded_stop_polygon_intrusion_fraction": 0.0,
+        "expanded_stop_polygon_intrusion_point_count": 0,
+        "expanded_stop_polygon_intrusion_sample_count": 0,
+        "nav2_radius_intrusion_fraction": 0.0,
+        "nav2_radius_intrusion_point_count": 0,
+        "nav2_radius_intrusion_sample_count": 0,
+        "physical_body_intrusion_fraction": 0.0,
+        "physical_body_intrusion_point_count": 0,
+        "physical_body_intrusion_sample_count": 0,
+        "stop_polygon_intrusion_fraction": 0.0,
+        "stop_polygon_intrusion_point_count": 0,
+        "stop_polygon_intrusion_sample_count": 0
+      },
+      "required_prefix_p05_clearance_m": 0.5550934862093402,
+      "required_prefix_sample_count": 98,
+      "scene": "zsNo4HB9uLZ",
+      "start_clearance_m": 0.6329143166620084,
+      "surface_z_range_m": [
+        0.0916,
+        0.6916
+      ]
+    },
+    {
+      "episode_key": "1803_448",
+      "fraction_below_0_30": 0.0,
+      "fraction_below_0_35": 0.0,
+      "fraction_below_0_38": 0.048484848484848485,
+      "fraction_below_0_42": 0.3696969696969697,
+      "geodesic_distance_m": 7.958865642547607,
+      "median_clearance_m": 0.44838934933324937,
+      "minimum_clearance_m": 0.3572568181952195,
+      "minimum_path_xy": [
+        4.40851472348583,
+        5.717046689014046
+      ],
+      "nearest_surface_xy": [
+        4.053521156311035,
+        5.757196426391602
+      ],
+      "p05_clearance_m": 0.38124665948469116,
+      "reference_height_m": 0.1271,
+      "reference_sample_count": 165,
+      "required_prefix_fraction_below_0_38": 0.07017543859649122,
+      "required_prefix_fraction_below_0_42": 0.38596491228070173,
+      "required_prefix_fraction_below_0_45": 0.5614035087719298,
+      "required_prefix_length_m": 5.552419067255816,
+      "required_prefix_minimum_clearance_m": 0.3572568181952195,
+      "required_prefix_minimum_path_xy": [
+        4.40851472348583,
+        5.717046689014046
+      ],
+      "required_prefix_nearest_surface_xy": [
+        4.053521156311035,
+        5.757196426391602
+      ],
+      "required_prefix_oriented_geometry": {
+        "expanded_physical_body_intrusion_fraction": 0.0,
+        "expanded_physical_body_intrusion_point_count": 0,
+        "expanded_physical_body_intrusion_sample_count": 0,
+        "expanded_stop_polygon_intrusion_fraction": 0.0,
+        "expanded_stop_polygon_intrusion_point_count": 0,
+        "expanded_stop_polygon_intrusion_sample_count": 0,
+        "nav2_radius_intrusion_fraction": 0.0,
+        "nav2_radius_intrusion_point_count": 0,
+        "nav2_radius_intrusion_sample_count": 0,
+        "physical_body_intrusion_fraction": 0.0,
+        "physical_body_intrusion_point_count": 0,
+        "physical_body_intrusion_sample_count": 0,
+        "stop_polygon_intrusion_fraction": 0.0,
+        "stop_polygon_intrusion_point_count": 0,
+        "stop_polygon_intrusion_sample_count": 0
+      },
+      "required_prefix_p05_clearance_m": 0.37240763812503286,
+      "required_prefix_sample_count": 114,
+      "scene": "2azQ1b91cZZ",
+      "start_clearance_m": 0.9915944527598298,
+      "surface_z_range_m": [
+        0.04709999999999999,
+        0.6471
+      ]
+    },
+    {
+      "episode_key": "6623_1657",
+      "fraction_below_0_30": 0.0,
+      "fraction_below_0_35": 0.0,
+      "fraction_below_0_38": 0.0,
+      "fraction_below_0_42": 0.0,
+      "geodesic_distance_m": 8.035599708557129,
+      "median_clearance_m": 0.7955955380581373,
+      "minimum_clearance_m": 0.6290650275528163,
+      "minimum_path_xy": [
+        7.462531462311745,
+        13.773581475019455
+      ],
+      "nearest_surface_xy": [
+        7.460792064666748,
+        13.144518852233887
+      ],
+      "p05_clearance_m": 0.6334657673633864,
+      "reference_height_m": 0.2095,
+      "reference_sample_count": 165,
+      "required_prefix_fraction_below_0_38": 0.0,
+      "required_prefix_fraction_below_0_42": 0.0,
+      "required_prefix_fraction_below_0_45": 0.0,
+      "required_prefix_length_m": 5.542164297561863,
+      "required_prefix_minimum_clearance_m": 0.7516617006896927,
+      "required_prefix_minimum_path_xy": [
+        14.083694608587967,
+        13.760536896555047
+      ],
+      "required_prefix_nearest_surface_xy": [
+        14.09225845336914,
+        14.512149810791016
+      ],
+      "required_prefix_oriented_geometry": {
+        "expanded_physical_body_intrusion_fraction": 0.0,
+        "expanded_physical_body_intrusion_point_count": 0,
+        "expanded_physical_body_intrusion_sample_count": 0,
+        "expanded_stop_polygon_intrusion_fraction": 0.0,
+        "expanded_stop_polygon_intrusion_point_count": 0,
+        "expanded_stop_polygon_intrusion_sample_count": 0,
+        "nav2_radius_intrusion_fraction": 0.0,
+        "nav2_radius_intrusion_point_count": 0,
+        "nav2_radius_intrusion_sample_count": 0,
+        "physical_body_intrusion_fraction": 0.0,
+        "physical_body_intrusion_point_count": 0,
+        "physical_body_intrusion_sample_count": 0,
+        "stop_polygon_intrusion_fraction": 0.0,
+        "stop_polygon_intrusion_point_count": 0,
+        "stop_polygon_intrusion_sample_count": 0
+      },
+      "required_prefix_p05_clearance_m": 0.7585371384166343,
+      "required_prefix_sample_count": 114,
+      "scene": "Z6MFQCViBuw",
+      "start_clearance_m": 0.7755897595767235,
+      "surface_z_range_m": [
+        0.1295,
+        0.7295
+      ]
+    },
+    {
+      "episode_key": "2613_625",
+      "fraction_below_0_30": 0.0,
+      "fraction_below_0_35": 0.0,
+      "fraction_below_0_38": 0.0,
+      "fraction_below_0_42": 0.0,
+      "geodesic_distance_m": 8.242502212524414,
+      "median_clearance_m": 0.8184772399241012,
+      "minimum_clearance_m": 0.6478090054061787,
+      "minimum_path_xy": [
+        24.758399963378906,
+        13.749300003051758
+      ],
+      "nearest_surface_xy": [
+        24.838655471801758,
+        13.106481552124023
+      ],
+      "p05_clearance_m": 0.6670645582035364,
+      "reference_height_m": 0.2095,
+      "reference_sample_count": 168,
+      "required_prefix_fraction_below_0_38": 0.0,
+      "required_prefix_fraction_below_0_42": 0.0,
+      "required_prefix_fraction_below_0_45": 0.0,
+      "required_prefix_length_m": 5.778059453979472,
+      "required_prefix_minimum_clearance_m": 0.6572838220013925,
+      "required_prefix_minimum_path_xy": [
+        16.565191578220677,
+        13.74388650945715
+      ],
+      "required_prefix_nearest_surface_xy": [
+        16.56078338623047,
+        13.086617469787598
+      ],
+      "required_prefix_oriented_geometry": {
+        "expanded_physical_body_intrusion_fraction": 0.0,
+        "expanded_physical_body_intrusion_point_count": 0,
+        "expanded_physical_body_intrusion_sample_count": 0,
+        "expanded_stop_polygon_intrusion_fraction": 0.0,
+        "expanded_stop_polygon_intrusion_point_count": 0,
+        "expanded_stop_polygon_intrusion_sample_count": 0,
+        "nav2_radius_intrusion_fraction": 0.0,
+        "nav2_radius_intrusion_point_count": 0,
+        "nav2_radius_intrusion_sample_count": 0,
+        "physical_body_intrusion_fraction": 0.0,
+        "physical_body_intrusion_point_count": 0,
+        "physical_body_intrusion_sample_count": 0,
+        "stop_polygon_intrusion_fraction": 0.0,
+        "stop_polygon_intrusion_point_count": 0,
+        "stop_polygon_intrusion_sample_count": 0
+      },
+      "required_prefix_p05_clearance_m": 0.6829482937119594,
+      "required_prefix_sample_count": 118,
+      "scene": "Z6MFQCViBuw",
+      "start_clearance_m": 0.657915355552733,
+      "surface_z_range_m": [
+        0.1295,
+        0.7295
+      ]
+    },
+    {
+      "episode_key": "5627_1417",
+      "fraction_below_0_30": 0.0,
+      "fraction_below_0_35": 0.0,
+      "fraction_below_0_38": 0.0,
+      "fraction_below_0_42": 0.0,
+      "geodesic_distance_m": 8.260956764221191,
+      "median_clearance_m": 0.5873390224297437,
+      "minimum_clearance_m": 0.44272297391956966,
+      "minimum_path_xy": [
+        7.494368314743042,
+        4.205346584320068
+      ],
+      "nearest_surface_xy": [
+        7.060168266296387,
+        4.2917985916137695
+      ],
+      "p05_clearance_m": 0.4902401623537183,
+      "reference_height_m": -2.5756,
+      "reference_sample_count": 194,
+      "required_prefix_fraction_below_0_38": 0.0,
+      "required_prefix_fraction_below_0_42": 0.0,
+      "required_prefix_fraction_below_0_45": 0.027777777777777776,
+      "required_prefix_length_m": 7.095399053696627,
+      "required_prefix_minimum_clearance_m": 0.44272297391956966,
+      "required_prefix_minimum_path_xy": [
+        7.494368314743042,
+        4.205346584320068
+      ],
+      "required_prefix_nearest_surface_xy": [
+        7.060168266296387,
+        4.2917985916137695
+      ],
+      "required_prefix_oriented_geometry": {
+        "expanded_physical_body_intrusion_fraction": 0.0,
+        "expanded_physical_body_intrusion_point_count": 0,
+        "expanded_physical_body_intrusion_sample_count": 0,
+        "expanded_stop_polygon_intrusion_fraction": 0.0,
+        "expanded_stop_polygon_intrusion_point_count": 0,
+        "expanded_stop_polygon_intrusion_sample_count": 0,
+        "nav2_radius_intrusion_fraction": 0.0,
+        "nav2_radius_intrusion_point_count": 0,
+        "nav2_radius_intrusion_sample_count": 0,
+        "physical_body_intrusion_fraction": 0.0,
+        "physical_body_intrusion_point_count": 0,
+        "physical_body_intrusion_sample_count": 0,
+        "stop_polygon_intrusion_fraction": 0.0,
+        "stop_polygon_intrusion_point_count": 0,
+        "stop_polygon_intrusion_sample_count": 0
+      },
+      "required_prefix_p05_clearance_m": 0.4717653539623654,
+      "required_prefix_sample_count": 144,
+      "scene": "TbHJrupSAjP",
+      "start_clearance_m": 0.6751305950802828,
+      "surface_z_range_m": [
+        -2.6556,
+        -2.0556
+      ]
+    },
+    {
+      "episode_key": "4182_1027",
+      "fraction_below_0_30": 0.0,
+      "fraction_below_0_35": 0.0,
+      "fraction_below_0_38": 0.0,
+      "fraction_below_0_42": 0.0,
+      "geodesic_distance_m": 8.319707870483398,
+      "median_clearance_m": 0.814041536114056,
+      "minimum_clearance_m": 0.596942599115246,
+      "minimum_path_xy": [
+        25.099605266864483,
+        13.751992372366098
+      ],
+      "nearest_surface_xy": [
+        25.090089797973633,
+        13.155125617980957
+      ],
+      "p05_clearance_m": 0.6110159591856191,
+      "reference_height_m": 0.2095,
+      "reference_sample_count": 170,
+      "required_prefix_fraction_below_0_38": 0.0,
+      "required_prefix_fraction_below_0_42": 0.0,
+      "required_prefix_fraction_below_0_45": 0.0,
+      "required_prefix_length_m": 5.8270403016183305,
+      "required_prefix_minimum_clearance_m": 0.7214601539707899,
+      "required_prefix_minimum_path_xy": [
+        24.166133244832356,
+        13.753499984741211
+      ],
+      "required_prefix_nearest_surface_xy": [
+        24.250730514526367,
+        14.469983100891113
+      ],
+      "required_prefix_oriented_geometry": {
+        "expanded_physical_body_intrusion_fraction": 0.0,
+        "expanded_physical_body_intrusion_point_count": 0,
+        "expanded_physical_body_intrusion_sample_count": 0,
+        "expanded_stop_polygon_intrusion_fraction": 0.0,
+        "expanded_stop_polygon_intrusion_point_count": 0,
+        "expanded_stop_polygon_intrusion_sample_count": 0,
+        "nav2_radius_intrusion_fraction": 0.0,
+        "nav2_radius_intrusion_point_count": 0,
+        "nav2_radius_intrusion_sample_count": 0,
+        "physical_body_intrusion_fraction": 0.0,
+        "physical_body_intrusion_point_count": 0,
+        "physical_body_intrusion_sample_count": 0,
+        "stop_polygon_intrusion_fraction": 0.0,
+        "stop_polygon_intrusion_point_count": 0,
+        "stop_polygon_intrusion_sample_count": 0
+      },
+      "required_prefix_p05_clearance_m": 0.7723933141244581,
+      "required_prefix_sample_count": 119,
+      "scene": "Z6MFQCViBuw",
+      "start_clearance_m": 0.7714961240735463,
+      "surface_z_range_m": [
+        0.1295,
+        0.7295
+      ]
+    },
+    {
+      "episode_key": "4009_976",
+      "fraction_below_0_30": 0.07281553398058252,
+      "fraction_below_0_35": 0.0970873786407767,
+      "fraction_below_0_38": 0.10679611650485436,
+      "fraction_below_0_42": 0.11650485436893204,
+      "geodesic_distance_m": 8.899764060974121,
+      "median_clearance_m": 0.5750538020478237,
+      "minimum_clearance_m": 0.10347837026233354,
+      "minimum_path_xy": [
+        1.1839264559663005,
+        8.2267517513699
+      ],
+      "nearest_surface_xy": [
+        1.2303123474121094,
+        8.31925106048584
+      ],
+      "p05_clearance_m": 0.22811708553129625,
+      "reference_height_m": 0.1548,
+      "reference_sample_count": 206,
+      "required_prefix_fraction_below_0_38": 0.0,
+      "required_prefix_fraction_below_0_42": 0.0,
+      "required_prefix_fraction_below_0_45": 0.039473684210526314,
+      "required_prefix_length_m": 7.495910482384945,
+      "required_prefix_minimum_clearance_m": 0.4357671989167833,
+      "required_prefix_minimum_path_xy": [
+        4.944920063018799,
+        12.134599685668945
+      ],
+      "required_prefix_nearest_surface_xy": [
+        5.115933895111084,
+        12.535408020019531
+      ],
+      "required_prefix_oriented_geometry": {
+        "expanded_physical_body_intrusion_fraction": 0.0,
+        "expanded_physical_body_intrusion_point_count": 0,
+        "expanded_physical_body_intrusion_sample_count": 0,
+        "expanded_stop_polygon_intrusion_fraction": 0.0,
+        "expanded_stop_polygon_intrusion_point_count": 0,
+        "expanded_stop_polygon_intrusion_sample_count": 0,
+        "nav2_radius_intrusion_fraction": 0.0,
+        "nav2_radius_intrusion_point_count": 0,
+        "nav2_radius_intrusion_sample_count": 0,
+        "physical_body_intrusion_fraction": 0.0,
+        "physical_body_intrusion_point_count": 0,
+        "physical_body_intrusion_sample_count": 0,
+        "stop_polygon_intrusion_fraction": 0.0,
+        "stop_polygon_intrusion_point_count": 0,
+        "stop_polygon_intrusion_sample_count": 0
+      },
+      "required_prefix_p05_clearance_m": 0.4588459548932822,
+      "required_prefix_sample_count": 152,
+      "scene": "QUCTc6BB5sX",
+      "start_clearance_m": 0.4357671989167833,
+      "surface_z_range_m": [
+        0.07479999999999999,
+        0.6748000000000001
+      ]
+    },
+    {
+      "episode_key": "654_157",
+      "fraction_below_0_30": 0.0,
+      "fraction_below_0_35": 0.0,
+      "fraction_below_0_38": 0.0,
+      "fraction_below_0_42": 0.0,
+      "geodesic_distance_m": 8.955533981323242,
+      "median_clearance_m": 0.8327366393620704,
+      "minimum_clearance_m": 0.5072869487208195,
+      "minimum_path_xy": [
+        14.109691056338223,
+        -1.0820654142986645
+      ],
+      "nearest_surface_xy": [
+        14.134628295898438,
+        -0.5753917694091797
+      ],
+      "p05_clearance_m": 0.542828293758005,
+      "reference_height_m": 0.1271,
+      "reference_sample_count": 189,
+      "required_prefix_fraction_below_0_38": 0.0,
+      "required_prefix_fraction_below_0_42": 0.0,
+      "required_prefix_fraction_below_0_45": 0.0,
+      "required_prefix_length_m": 6.798711997173793,
+      "required_prefix_minimum_clearance_m": 0.5072869487208195,
+      "required_prefix_minimum_path_xy": [
+        14.109691056338223,
+        -1.0820654142986645
+      ],
+      "required_prefix_nearest_surface_xy": [
+        14.134628295898438,
+        -0.5753917694091797
+      ],
+      "required_prefix_oriented_geometry": {
+        "expanded_physical_body_intrusion_fraction": 0.0,
+        "expanded_physical_body_intrusion_point_count": 0,
+        "expanded_physical_body_intrusion_sample_count": 0,
+        "expanded_stop_polygon_intrusion_fraction": 0.0,
+        "expanded_stop_polygon_intrusion_point_count": 0,
+        "expanded_stop_polygon_intrusion_sample_count": 0,
+        "nav2_radius_intrusion_fraction": 0.0,
+        "nav2_radius_intrusion_point_count": 0,
+        "nav2_radius_intrusion_sample_count": 0,
+        "physical_body_intrusion_fraction": 0.0,
+        "physical_body_intrusion_point_count": 0,
+        "physical_body_intrusion_sample_count": 0,
+        "stop_polygon_intrusion_fraction": 0.0,
+        "stop_polygon_intrusion_point_count": 0,
+        "stop_polygon_intrusion_sample_count": 0
+      },
+      "required_prefix_p05_clearance_m": 0.531180284771888,
+      "required_prefix_sample_count": 139,
+      "scene": "2azQ1b91cZZ",
+      "start_clearance_m": 0.5144648191263281,
+      "surface_z_range_m": [
+        0.04709999999999999,
+        0.6471
+      ]
+    },
+    {
+      "episode_key": "4943_1255",
+      "fraction_below_0_30": 0.0,
+      "fraction_below_0_35": 0.0,
+      "fraction_below_0_38": 0.0,
+      "fraction_below_0_42": 0.0,
+      "geodesic_distance_m": 9.162968635559082,
+      "median_clearance_m": 0.7451271177538501,
+      "minimum_clearance_m": 0.5072869487208194,
+      "minimum_path_xy": [
+        14.109691056338225,
+        -1.0820654142986645
+      ],
+      "nearest_surface_xy": [
+        14.134628295898438,
+        -0.5753917694091797
+      ],
+      "p05_clearance_m": 0.5526627306868885,
+      "reference_height_m": 0.1271,
+      "reference_sample_count": 193,
+      "required_prefix_fraction_below_0_38": 0.0,
+      "required_prefix_fraction_below_0_42": 0.0,
+      "required_prefix_fraction_below_0_45": 0.0,
+      "required_prefix_length_m": 6.973740305578235,
+      "required_prefix_minimum_clearance_m": 0.5072869487208194,
+      "required_prefix_minimum_path_xy": [
+        14.109691056338225,
+        -1.0820654142986645
+      ],
+      "required_prefix_nearest_surface_xy": [
+        14.134628295898438,
+        -0.5753917694091797
+      ],
+      "required_prefix_oriented_geometry": {
+        "expanded_physical_body_intrusion_fraction": 0.0,
+        "expanded_physical_body_intrusion_point_count": 0,
+        "expanded_physical_body_intrusion_sample_count": 0,
+        "expanded_stop_polygon_intrusion_fraction": 0.0,
+        "expanded_stop_polygon_intrusion_point_count": 0,
+        "expanded_stop_polygon_intrusion_sample_count": 0,
+        "nav2_radius_intrusion_fraction": 0.0,
+        "nav2_radius_intrusion_point_count": 0,
+        "nav2_radius_intrusion_sample_count": 0,
+        "physical_body_intrusion_fraction": 0.0,
+        "physical_body_intrusion_point_count": 0,
+        "physical_body_intrusion_sample_count": 0,
+        "stop_polygon_intrusion_fraction": 0.0,
+        "stop_polygon_intrusion_point_count": 0,
+        "stop_polygon_intrusion_sample_count": 0
+      },
+      "required_prefix_p05_clearance_m": 0.5409115765350964,
+      "required_prefix_sample_count": 143,
+      "scene": "2azQ1b91cZZ",
+      "start_clearance_m": 0.8654120998824948,
+      "surface_z_range_m": [
+        0.04709999999999999,
+        0.6471
+      ]
+    },
+    {
+      "episode_key": "6982_1765",
+      "fraction_below_0_30": 0.0,
+      "fraction_below_0_35": 0.005263157894736842,
+      "fraction_below_0_38": 0.010526315789473684,
+      "fraction_below_0_42": 0.015789473684210527,
+      "geodesic_distance_m": 9.36455249786377,
+      "median_clearance_m": 0.6318977775168008,
+      "minimum_clearance_m": 0.3231767418686561,
+      "minimum_path_xy": [
+        14.38700008392334,
+        0.21611900627613068
+      ],
+      "nearest_surface_xy": [
+        14.569677352905273,
+        0.4827127456665039
+      ],
+      "p05_clearance_m": 0.5527314722593137,
+      "reference_height_m": 0.1716,
+      "reference_sample_count": 190,
+      "required_prefix_fraction_below_0_38": 0.0,
+      "required_prefix_fraction_below_0_42": 0.0,
+      "required_prefix_fraction_below_0_45": 0.0,
+      "required_prefix_length_m": 6.892259382648373,
+      "required_prefix_minimum_clearance_m": 0.5492351544180082,
+      "required_prefix_minimum_path_xy": [
+        7.860569953918457,
+        0.23864400386810303
+      ],
+      "required_prefix_nearest_surface_xy": [
+        7.862429618835449,
+        0.7878760099411011
+      ],
+      "required_prefix_oriented_geometry": {
+        "expanded_physical_body_intrusion_fraction": 0.0,
+        "expanded_physical_body_intrusion_point_count": 0,
+        "expanded_physical_body_intrusion_sample_count": 0,
+        "expanded_stop_polygon_intrusion_fraction": 0.0,
+        "expanded_stop_polygon_intrusion_point_count": 0,
+        "expanded_stop_polygon_intrusion_sample_count": 0,
+        "nav2_radius_intrusion_fraction": 0.0,
+        "nav2_radius_intrusion_point_count": 0,
+        "nav2_radius_intrusion_sample_count": 0,
+        "physical_body_intrusion_fraction": 0.0,
+        "physical_body_intrusion_point_count": 0,
+        "physical_body_intrusion_sample_count": 0,
+        "stop_polygon_intrusion_fraction": 0.0,
+        "stop_polygon_intrusion_point_count": 0,
+        "stop_polygon_intrusion_sample_count": 0
+      },
+      "required_prefix_p05_clearance_m": 0.5570931029449846,
+      "required_prefix_sample_count": 140,
+      "scene": "zsNo4HB9uLZ",
+      "start_clearance_m": 0.7343208386187545,
+      "surface_z_range_m": [
+        0.0916,
+        0.6916
+      ]
+    },
+    {
+      "episode_key": "3542_877",
+      "fraction_below_0_30": 0.0,
+      "fraction_below_0_35": 0.0,
+      "fraction_below_0_38": 0.0,
+      "fraction_below_0_42": 0.0,
+      "geodesic_distance_m": 10.597935676574707,
+      "median_clearance_m": 0.9143099904766222,
+      "minimum_clearance_m": 0.5679639191369181,
+      "minimum_path_xy": [
+        -0.04368511374507632,
+        -3.9683002063206265
+      ],
+      "nearest_surface_xy": [
+        -0.6116437911987305,
+        -3.97074031829834
+      ],
+      "p05_clearance_m": 0.5905067716033826,
+      "reference_height_m": 0.1548,
+      "reference_sample_count": 217,
+      "required_prefix_fraction_below_0_38": 0.0,
+      "required_prefix_fraction_below_0_42": 0.0,
+      "required_prefix_fraction_below_0_45": 0.0,
+      "required_prefix_length_m": 8.201457403138855,
+      "required_prefix_minimum_clearance_m": 0.5679639191369181,
+      "required_prefix_minimum_path_xy": [
+        -0.04368511374507632,
+        -3.9683002063206265
+      ],
+      "required_prefix_nearest_surface_xy": [
+        -0.6116437911987305,
+        -3.97074031829834
+      ],
+      "required_prefix_oriented_geometry": {
+        "expanded_physical_body_intrusion_fraction": 0.0,
+        "expanded_physical_body_intrusion_point_count": 0,
+        "expanded_physical_body_intrusion_sample_count": 0,
+        "expanded_stop_polygon_intrusion_fraction": 0.0,
+        "expanded_stop_polygon_intrusion_point_count": 0,
+        "expanded_stop_polygon_intrusion_sample_count": 0,
+        "nav2_radius_intrusion_fraction": 0.0,
+        "nav2_radius_intrusion_point_count": 0,
+        "nav2_radius_intrusion_sample_count": 0,
+        "physical_body_intrusion_fraction": 0.0,
+        "physical_body_intrusion_point_count": 0,
+        "physical_body_intrusion_sample_count": 0,
+        "stop_polygon_intrusion_fraction": 0.0,
+        "stop_polygon_intrusion_point_count": 0,
+        "stop_polygon_intrusion_sample_count": 0
+      },
+      "required_prefix_p05_clearance_m": 0.5844043779738216,
+      "required_prefix_sample_count": 167,
+      "scene": "QUCTc6BB5sX",
+      "start_clearance_m": 0.5884490536745245,
+      "surface_z_range_m": [
+        0.07479999999999999,
+        0.6748000000000001
+      ]
+    },
+    {
+      "episode_key": "6157_1561",
+      "fraction_below_0_30": 0.06666666666666667,
+      "fraction_below_0_35": 0.07777777777777778,
+      "fraction_below_0_38": 0.08888888888888889,
+      "fraction_below_0_42": 0.09444444444444444,
+      "geodesic_distance_m": 7.658452987670898,
+      "median_clearance_m": 0.7684408241659799,
+      "minimum_clearance_m": 0.022237981282308594,
+      "minimum_path_xy": [
+        3.7965131304984867,
+        -6.549501762833706
+      ],
+      "nearest_surface_xy": [
+        3.779916763305664,
+        -6.564303398132324
+      ],
+      "p05_clearance_m": 0.22894358357266606,
+      "reference_height_m": 0.1548,
+      "reference_sample_count": 180,
+      "required_prefix_fraction_below_0_38": 0.0,
+      "required_prefix_fraction_below_0_42": 0.0,
+      "required_prefix_fraction_below_0_45": 0.0,
+      "required_prefix_length_m": 6.377876515335163,
+      "required_prefix_minimum_clearance_m": 0.5679639191369181,
+      "required_prefix_minimum_path_xy": [
+        -0.04368511374507632,
+        -3.968300206320626
+      ],
+      "required_prefix_nearest_surface_xy": [
+        -0.6116437911987305,
+        -3.97074031829834
+      ],
+      "required_prefix_oriented_geometry": {
+        "expanded_physical_body_intrusion_fraction": 0.0,
+        "expanded_physical_body_intrusion_point_count": 0,
+        "expanded_physical_body_intrusion_sample_count": 0,
+        "expanded_stop_polygon_intrusion_fraction": 0.0,
+        "expanded_stop_polygon_intrusion_point_count": 0,
+        "expanded_stop_polygon_intrusion_sample_count": 0,
+        "nav2_radius_intrusion_fraction": 0.0,
+        "nav2_radius_intrusion_point_count": 0,
+        "nav2_radius_intrusion_sample_count": 0,
+        "physical_body_intrusion_fraction": 0.0,
+        "physical_body_intrusion_point_count": 0,
+        "physical_body_intrusion_sample_count": 0,
+        "stop_polygon_intrusion_fraction": 0.0,
+        "stop_polygon_intrusion_point_count": 0,
+        "stop_polygon_intrusion_sample_count": 0
+      },
+      "required_prefix_p05_clearance_m": 0.5824607533779295,
+      "required_prefix_sample_count": 130,
+      "scene": "QUCTc6BB5sX",
+      "start_clearance_m": 1.0162162109888124,
+      "surface_z_range_m": [
+        0.07479999999999999,
+        0.6748000000000001
+      ]
+    },
+    {
+      "episode_key": "2564_610",
+      "fraction_below_0_30": 0.0,
+      "fraction_below_0_35": 0.0,
+      "fraction_below_0_38": 0.0,
+      "fraction_below_0_42": 0.0,
+      "geodesic_distance_m": 9.637412071228027,
+      "median_clearance_m": 0.7949540275553019,
+      "minimum_clearance_m": 0.6290650275528163,
+      "minimum_path_xy": [
+        7.462531462311745,
+        13.773581475019455
+      ],
+      "nearest_surface_xy": [
+        7.460792064666748,
+        13.144518852233887
+      ],
+      "p05_clearance_m": 0.6354369229968332,
+      "reference_height_m": 0.2095,
+      "reference_sample_count": 198,
+      "required_prefix_fraction_below_0_38": 0.0,
+      "required_prefix_fraction_below_0_42": 0.0,
+      "required_prefix_fraction_below_0_45": 0.0,
+      "required_prefix_length_m": 7.160696734077806,
+      "required_prefix_minimum_clearance_m": 0.6309793959435963,
+      "required_prefix_minimum_path_xy": [
+        7.7057205736637115,
+        13.776112735271454
+      ],
+      "required_prefix_nearest_surface_xy": [
+        7.723430633544922,
+        13.145381927490234
+      ],
+      "required_prefix_oriented_geometry": {
+        "expanded_physical_body_intrusion_fraction": 0.0,
+        "expanded_physical_body_intrusion_point_count": 0,
+        "expanded_physical_body_intrusion_sample_count": 0,
+        "expanded_stop_polygon_intrusion_fraction": 0.0,
+        "expanded_stop_polygon_intrusion_point_count": 0,
+        "expanded_stop_polygon_intrusion_sample_count": 0,
+        "nav2_radius_intrusion_fraction": 0.0,
+        "nav2_radius_intrusion_point_count": 0,
+        "nav2_radius_intrusion_sample_count": 0,
+        "physical_body_intrusion_fraction": 0.0,
+        "physical_body_intrusion_point_count": 0,
+        "physical_body_intrusion_sample_count": 0,
+        "stop_polygon_intrusion_fraction": 0.0,
+        "stop_polygon_intrusion_point_count": 0,
+        "stop_polygon_intrusion_sample_count": 0
+      },
+      "required_prefix_p05_clearance_m": 0.6729203302510313,
+      "required_prefix_sample_count": 147,
+      "scene": "Z6MFQCViBuw",
+      "start_clearance_m": 0.7755897595767235,
+      "surface_z_range_m": [
+        0.1295,
+        0.7295
+      ]
+    },
+    {
+      "episode_key": "2853_703",
+      "fraction_below_0_30": 0.0,
+      "fraction_below_0_35": 0.0,
+      "fraction_below_0_38": 0.0,
+      "fraction_below_0_42": 0.0,
+      "geodesic_distance_m": 10.143523216247559,
+      "median_clearance_m": 0.8033184955888854,
+      "minimum_clearance_m": 0.596942599115246,
+      "minimum_path_xy": [
+        25.099605266864483,
+        13.751992372366098
+      ],
+      "nearest_surface_xy": [
+        25.090089797973633,
+        13.155125617980957
+      ],
+      "p05_clearance_m": 0.6162933781807365,
+      "reference_height_m": 0.2095,
+      "reference_sample_count": 207,
+      "required_prefix_fraction_below_0_38": 0.0,
+      "required_prefix_fraction_below_0_42": 0.0,
+      "required_prefix_fraction_below_0_45": 0.0,
+      "required_prefix_length_m": 7.65113625785421,
+      "required_prefix_minimum_clearance_m": 0.6572838220013925,
+      "required_prefix_minimum_path_xy": [
+        16.565191578220677,
+        13.74388650945715
+      ],
+      "required_prefix_nearest_surface_xy": [
+        16.56078338623047,
+        13.086617469787598
+      ],
+      "required_prefix_oriented_geometry": {
+        "expanded_physical_body_intrusion_fraction": 0.0,
+        "expanded_physical_body_intrusion_point_count": 0,
+        "expanded_physical_body_intrusion_sample_count": 0,
+        "expanded_stop_polygon_intrusion_fraction": 0.0,
+        "expanded_stop_polygon_intrusion_point_count": 0,
+        "expanded_stop_polygon_intrusion_sample_count": 0,
+        "nav2_radius_intrusion_fraction": 0.0,
+        "nav2_radius_intrusion_point_count": 0,
+        "nav2_radius_intrusion_sample_count": 0,
+        "physical_body_intrusion_fraction": 0.0,
+        "physical_body_intrusion_point_count": 0,
+        "physical_body_intrusion_sample_count": 0,
+        "stop_polygon_intrusion_fraction": 0.0,
+        "stop_polygon_intrusion_point_count": 0,
+        "stop_polygon_intrusion_sample_count": 0
+      },
+      "required_prefix_p05_clearance_m": 0.697866233103086,
+      "required_prefix_sample_count": 156,
+      "scene": "Z6MFQCViBuw",
+      "start_clearance_m": 0.657915355552733,
+      "surface_z_range_m": [
+        0.1295,
+        0.7295
+      ]
+    }
+  ],
+  "selection": "explicit frozen episode keys; duplicate authored starts retained; official filter_stairs; single-floor; geodesic 3.2-12.0m; explicit audited keys; reset-order behavior must be validated; required 2.5m-stop prefix; scalar clearance >= 0.30m; 0.15m conservative sparse-mesh/body sweep margin over the 0.30m Nav2 radius; zero intrusion into Nav2 0.30m radius, physical body +0.03m, and Collision Monitor stop polygon +0.03m; shortest 20; disjoint declared exclusion manifests",
+  "source_revision": "7b05993b21813c3787f2f7f604bfc22b80c48c8e",
+  "source_sha256": "853673f8faadb26f883d57d71828cf895345c89fa594a7b918a78862318aeb31",
+  "start_keys": [
+    [
+      -6.22882,
+      0.154805,
+      -14.6111
+    ],
+    [
+      10.2655,
+      0.12711,
+      0.90138
+    ],
+    [
+      6.92498,
+      0.171628,
+      1.17284
+    ],
+    [
+      13.0464,
+      0.171628,
+      1.87397
+    ],
+    [
+      4.58625,
+      0.12711,
+      -0.120931
+    ],
+    [
+      -2.15959,
+      0.154805,
+      -14.5751
+    ],
+    [
+      10.112,
+      0.171628,
+      -0.192094
+    ],
+    [
+      4.94592,
+      0.12711,
+      -9.00319
+    ],
+    [
+      14.8658,
+      0.209526,
+      -13.7418
+    ],
+    [
+      16.5159,
+      0.209526,
+      -13.743
+    ],
+    [
+      7.64038,
+      -2.5756,
+      -4.82614
+    ],
+    [
+      18.339701,
+      0.209526,
+      -13.7758
+    ],
+    [
+      4.94492,
+      0.154805,
+      -12.1346
+    ],
+    [
+      18.031401,
+      0.12711,
+      -2.50066
+    ],
+    [
+      8.16331,
+      0.12711,
+      0.94831
+    ],
+    [
+      5.02353,
+      0.171628,
+      -0.073737
+    ],
+    [
+      -0.029423,
+      0.154805,
+      4.31548
+    ],
+    [
+      -0.129256,
+      0.154805,
+      1.88522
+    ],
+    [
+      14.8658,
+      0.209526,
+      -13.7418
+    ],
+    [
+      16.5159,
+      0.209526,
+      -13.743
+    ]
+  ]
+}
