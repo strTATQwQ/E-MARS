@@ -31,11 +31,11 @@ def _chunk(kind: bytes, payload: bytes) -> bytes:
     )
 
 
-def _png() -> bytes:
-    scanlines = b"".join(b"\0" + b"\0" * (640 * 3) for _ in range(480))
+def _png(width: int = 640, height: int = 480) -> bytes:
+    scanlines = b"".join(b"\0" + b"\0" * (width * 3) for _ in range(height))
     return (
         smoke.PNG_SIGNATURE
-        + _chunk(b"IHDR", struct.pack(">IIBBBBB", 640, 480, 8, 2, 0, 0, 0))
+        + _chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0))
         + _chunk(b"IDAT", zlib.compress(scanlines, 9))
         + _chunk(b"IEND", b"")
     )
@@ -81,6 +81,23 @@ def _fixture(tmp_path: Path) -> tuple[dict, dict]:
                 "bytes": path.stat().st_size,
             }
         )
+    observer_path = snapshot_dir / "04_third_person_topdown.png"
+    observer_path.write_bytes(_png(500, 500))
+    observer = {
+        "status": "CAPTURED",
+        "purpose": "review_only_robot_localization",
+        "fed_to_step3": False,
+        "alignment": "same_paused_render_barrier_and_sim_stamp",
+        "sim_stamp_ns": 31_000_000,
+        "sensor_name": "topdown_camera_500",
+        "prim_path": "/go2_description/topdown_camera_500",
+        "encoding": "png_rgb8",
+        "resolution": [500, 500],
+        "path": observer_path.relative_to(tmp_path).as_posix(),
+        "sha256": hashlib.sha256(observer_path.read_bytes()).hexdigest(),
+        "bytes": observer_path.stat().st_size,
+        "error": None,
+    }
     sidecar = {
         "schema_version": 1,
         "contract_id": "internnav-t5-revc-four-camera-v1",
@@ -101,6 +118,7 @@ def _fixture(tmp_path: Path) -> tuple[dict, dict]:
         "external_preview_max_hz": 1.0,
         "cuvslam_stereo_is_separate": True,
         "cameras": cameras,
+        "observer": observer,
     }
     sidecar_path = snapshot_dir / "snapshot.json"
     sidecar_path.write_text(json.dumps(sidecar), encoding="utf-8")
@@ -122,15 +140,22 @@ def test_capture_validator_binds_same_tick_four_images_and_preview_rate(
     tmp_path: Path,
 ) -> None:
     request, ack = _fixture(tmp_path)
-    result = smoke.validate_capture(tmp_path, CONTRACT, request, ack)
+    result = smoke.validate_capture(
+        tmp_path, CONTRACT, request, ack, require_observer=True
+    )
     assert result["status"] == "PASS"
     assert result["same_render_tick"] is True
     assert result["camera_order"] == list(ORDER)
     assert result["external_preview_max_hz"] == 1.0
     assert len(result["images"]) == 4
+    assert result["observer"]["status"] == "CAPTURED"
+    assert result["observer"]["resolution"] == [500, 500]
+    assert result["observer"]["fed_to_step3"] is False
 
 
-@pytest.mark.parametrize("mutation", ("preview", "render_identity", "cross_root"))
+@pytest.mark.parametrize(
+    "mutation", ("preview", "render_identity", "observer_sha", "cross_root")
+)
 def test_capture_validator_fails_closed_on_scope_or_render_drift(
     tmp_path: Path, mutation: str,
 ) -> None:
@@ -141,13 +166,17 @@ def test_capture_validator_fails_closed_on_scope_or_render_drift(
         sidecar["external_preview_max_hz"] = 1.01
     elif mutation == "render_identity":
         sidecar["cameras"][3]["render_identity"]["referenceTimeNumerator"] = 32
+    elif mutation == "observer_sha":
+        sidecar["observer"]["sha256"] = "0" * 64
     else:
         outside = tmp_path.parent / "outside.json"
         outside.write_text("{}", encoding="utf-8")
         ack["sidecar"] = "../outside.json"
     sidecar_path.write_text(json.dumps(sidecar), encoding="utf-8")
     with pytest.raises(smoke.SmokeContractError):
-        smoke.validate_capture(tmp_path, CONTRACT, request, ack)
+        smoke.validate_capture(
+            tmp_path, CONTRACT, request, ack, require_observer=True
+        )
 
 
 def test_request_uses_first_materialized_episode_and_lane_b_identity() -> None:
@@ -210,6 +239,8 @@ def test_distributed_runner_requires_explicit_lane_b_canary_profile() -> None:
     assert 'test "$mode" = model' in profile_block
     assert 'test "$engineering_canary_sec" = 60' in profile_block
     assert 'export INTERNVLA_T5_REVC_ENABLE=1' in profile_block
+    assert 'export INTERNVLA_T5_REVC_OBSERVER_ENABLE=1' in profile_block
+    assert 'Rev-C observer must be selected only by the T5 sensor profile' in text
     assert 'case "$rtf_ablation_profile" in off|navigation_fast)' in text
     assert probe < gate
     assert '--run-token "$run_token"' in text

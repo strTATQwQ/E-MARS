@@ -81,6 +81,16 @@ def main() -> None:
     stereo_odometry_enabled = stereo_odometry_override == "1"
     t5_revc_scope = t5_revc_feature_scope()
     t5_sensor_extensions_enabled = t5_revc_scope is not None
+    revc_observer_value = os.environ.get(
+        "INTERNVLA_T5_REVC_OBSERVER_ENABLE", "0"
+    )
+    if revc_observer_value not in {"0", "1"}:
+        raise RuntimeError("T5 Rev-C observer enable must be 0 or 1")
+    revc_observer_enabled = revc_observer_value == "1"
+    if revc_observer_enabled and not t5_sensor_extensions_enabled:
+        raise RuntimeError(
+            "T5 Rev-C observer requires the exact completion_sim Rev-C scope"
+        )
     revc_config_path: Path | None = None
     revc_contract: dict[str, object] | None = None
     imu_contract_path: Path | None = None
@@ -1405,6 +1415,19 @@ def main() -> None:
                 "            )\n"
                 "        )\n"
             )
+        if revc_observer_enabled:
+            revc_sensor_block += (
+                "        robot.sensors.append(\n"
+                "            SensorCfg(\n"
+                "                sensor_settings=VLNCameraCfg(\n"
+                "                    name='topdown_camera_500',\n"
+                "                    prim_path='topdown_camera_500',\n"
+                "                    enable=True,\n"
+                "                    resolution=[500, 500],\n"
+                "                ).model_dump(),\n"
+                "            )\n"
+                "        )\n"
+            )
     text = _replace_once(
         text,
         "        if os.environ.get(\"INTERNVLA_T4_ENABLE_STEREO_ODOMETRY\", \"0\") == \"1\":\n",
@@ -1524,6 +1547,18 @@ def main() -> None:
                 "result_root": str(t5_revc_scope.result_root),
             },
         }
+        if revc_observer_enabled:
+            payload["changes"].append(
+                "t5_only_revc_snapshot_third_person_observer"
+            )
+            payload["revc_four_camera"]["observer"] = {
+                "enabled": True,
+                "sensor_name": "topdown_camera_500",
+                "prim_path": "topdown_camera_500",
+                "resolution": [500, 500],
+                "purpose": "review_only_robot_localization",
+                "fed_to_step3": False,
+            }
         payload["simulated_imu_linear_acceleration"] = {
             "contract_id": imu_contract["contract_id"],
             "contract_sha256": _sha256(imu_contract_path),

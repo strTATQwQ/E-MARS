@@ -1840,10 +1840,14 @@ checks={
             == isaac_sensor_profile
         and x86_contract["isaac_sensor_profile"].get("revc_enabled")
             == (isaac_sensor_profile!="baseline")
+        and x86_contract["isaac_sensor_profile"].get("observer_enabled")
+            == (isaac_sensor_profile=="lane_b_revc_smoke")
         and isinstance(x86_status,dict)
         and x86_status.get("isaac_sensor_profile")==isaac_sensor_profile
         and x86_status.get("revc_enabled")
-            == (isaac_sensor_profile!="baseline"),
+            == (isaac_sensor_profile!="baseline")
+        and x86_status.get("revc_observer_enabled")
+            == (isaac_sensor_profile=="lane_b_revc_smoke"),
     "step3_live_canary": (
         step3_profile
         and isinstance(step3_services_ready,dict)
@@ -1900,6 +1904,10 @@ checks={
         and 0 <= revc_snapshot_smoke["identity_sync_attempt_count"] <= 2
         and isinstance(revc_snapshot_smoke.get("images"),list)
         and len(revc_snapshot_smoke["images"])==4
+        and isinstance(revc_snapshot_smoke.get("observer"),dict)
+        and revc_snapshot_smoke["observer"].get("status")=="CAPTURED"
+        and revc_snapshot_smoke["observer"].get("resolution")==[500,500]
+        and revc_snapshot_smoke["observer"].get("fed_to_step3") is False
         and isinstance(revc_snapshot_smoke.get("contract_sha256"),str)
         and len(revc_snapshot_smoke["contract_sha256"])==64
         and isinstance(revc_snapshot_sha256,str)
@@ -2515,7 +2523,7 @@ if test "$profile" = canary60 || test "$profile" = soak600; then
 fi
 if test "$isaac_sensor_profile" = lane_b_revc_smoke; then
   remote "$x86_target" \
-    "python3 -c 'import json;v=json.load(open(\"$x86_run/evaluator/revc_snapshot_smoke.json\"));assert v[\"status\"]==\"PASS\" and v[\"profile\"]==\"lane_b_revc_smoke\" and v[\"lane\"]==\"b\" and v[\"same_render_tick\"] is True and v[\"camera_order\"]==[\"front_left\",\"front\",\"front_right\",\"rear\"] and 0 < v[\"external_preview_max_hz\"] <= 1 and len(v[\"images\"])==4'" \
+    "python3 -c 'import json;v=json.load(open(\"$x86_run/evaluator/revc_snapshot_smoke.json\"));o=v.get(\"observer\",{});assert v[\"status\"]==\"PASS\" and v[\"profile\"]==\"lane_b_revc_smoke\" and v[\"lane\"]==\"b\" and v[\"same_render_tick\"] is True and v[\"camera_order\"]==[\"front_left\",\"front\",\"front_right\",\"rear\"] and 0 < v[\"external_preview_max_hz\"] <= 1 and len(v[\"images\"])==4 and o.get(\"status\")==\"CAPTURED\" and o.get(\"resolution\")==[500,500] and o.get(\"fed_to_step3\") is False'" \
     >/dev/null
 elif test "$isaac_sensor_profile" = lane_b_revc_fixed5_capture; then
   remote "$x86_target" \

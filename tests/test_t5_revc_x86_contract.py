@@ -29,7 +29,12 @@ from t5_revc_sensor_contract import (  # noqa: E402
 )
 
 
-def _build_runtime(tmp_path: Path, *, revc_enabled: bool) -> tuple[str, dict[str, Any]]:
+def _build_runtime(
+    tmp_path: Path,
+    *,
+    revc_enabled: bool,
+    observer_enabled: bool = False,
+) -> tuple[str, dict[str, Any]]:
     output = tmp_path / "runtime.py"
     manifest = tmp_path / "manifest.json"
     env = os.environ.copy()
@@ -41,15 +46,19 @@ def _build_runtime(tmp_path: Path, *, revc_enabled: bool) -> tuple[str, dict[str
         "INTERNNAV_T5_ID_PREFIX",
         "INTERNVLA_T4_RESULT_ROOT",
         "INTERNVLA_T5_REVC_CAMERA_CONFIG",
+        "INTERNVLA_T5_REVC_OBSERVER_ENABLE",
         "INTERNVLA_T4_R3_ENABLE_D435I",
         "INTERNVLA_T4_R3_ENABLE_LIDAR",
         "INTERNVLA_T4_R3_LIDAR_RAY_COUNT",
         "INTERNVLA_T4_R3_ENABLE_RGB_IPC",
     ):
         env.pop(name, None)
+    env["INTERNVLA_T5_REVC_OBSERVER_ENABLE"] = (
+        "1" if observer_enabled else "0"
+    )
     if revc_enabled:
         result_root = tmp_path / "lane-a-result"
-        result_root.mkdir()
+        result_root.mkdir(parents=True)
         env.update(
             {
                 "INTERNNAV_RUNTIME_POLICY": "completion_sim",
@@ -95,6 +104,7 @@ def _build_direct_runtime(tmp_path: Path) -> tuple[str, dict[str, Any]]:
     env = {
         **os.environ,
         "INTERNVLA_T5_REVC_ENABLE": "1",
+        "INTERNVLA_T5_REVC_OBSERVER_ENABLE": "0",
         "INTERNNAV_RUNTIME_POLICY": "completion_sim",
         "INTERNNAV_SIMULATION_TARGET": "isaac",
         "INTERNNAV_T5_LANE": "b",
@@ -339,6 +349,7 @@ def test_runtime_builder_rejects_feature_flag_outside_exact_scope(
     env.update(
         {
             "INTERNVLA_T5_REVC_ENABLE": "1",
+            "INTERNVLA_T5_REVC_OBSERVER_ENABLE": "0",
             "INTERNNAV_RUNTIME_POLICY": "strict_evidence",
             "INTERNNAV_SIMULATION_TARGET": "isaac",
             "INTERNNAV_T5_LANE": "a",
@@ -537,6 +548,40 @@ def test_generated_runtime_enables_four_dedicated_cameras_without_stereo_alias(
     assert '"revc_snapshot_status": "RATE_LIMITED"' in generated
 
 
+def test_t5_observer_registration_is_explicit_scoped_and_manifested(
+    tmp_path: Path,
+) -> None:
+    generated, manifest = _build_runtime(
+        tmp_path, revc_enabled=True, observer_enabled=True
+    )
+    assert generated.count("name='topdown_camera_500'") == 1
+    assert generated.count("prim_path='topdown_camera_500'") == 1
+    assert "resolution=[500, 500]" in generated
+    assert manifest["revc_four_camera"]["observer"] == {
+        "enabled": True,
+        "sensor_name": "topdown_camera_500",
+        "prim_path": "topdown_camera_500",
+        "resolution": [500, 500],
+        "purpose": "review_only_robot_localization",
+        "fed_to_step3": False,
+    }
+    assert "t5_only_revc_snapshot_third_person_observer" in manifest["changes"]
+
+    generated_without_observer, manifest_without_observer = _build_runtime(
+        tmp_path / "without-observer", revc_enabled=True
+    )
+    assert "name='topdown_camera_500'" not in generated_without_observer
+    assert "observer" not in manifest_without_observer["revc_four_camera"]
+
+
+def test_t5_observer_fails_closed_without_revc_scope(tmp_path: Path) -> None:
+    with pytest.raises(
+        AssertionError,
+        match="T5 Rev-C observer requires the exact completion_sim Rev-C scope",
+    ):
+        _build_runtime(tmp_path, revc_enabled=False, observer_enabled=True)
+
+
 def test_independent_d435_capture_survives_disabled_review_rgb_ipc(
     tmp_path: Path,
 ) -> None:
@@ -548,6 +593,7 @@ def test_independent_d435_capture_survives_disabled_review_rgb_ipc(
     env.update(
         {
             "INTERNVLA_T5_REVC_ENABLE": "0",
+            "INTERNVLA_T5_REVC_OBSERVER_ENABLE": "0",
             "INTERNVLA_T5_D435_5HZ_CAPTURE": "1",
             "INTERNVLA_T4_R3_ENABLE_RGB_IPC": "0",
             "INTERNNAV_RUNTIME_POLICY": "completion_sim",

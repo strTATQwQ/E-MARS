@@ -218,6 +218,7 @@ def validate_capture(
     expected_sidecar_count: int = 1,
     profile: str = "lane_b_revc_smoke",
     expected_lane: str = "b",
+    require_observer: bool = False,
 ) -> dict[str, Any]:
     if expected_lane not in {"a", "b"}:
         raise SmokeContractError("expected lane must be a or b")
@@ -342,6 +343,48 @@ def validate_capture(
                 "bytes": byte_count,
             }
         )
+    observer = sidecar.get("observer")
+    observer_evidence: dict[str, Any]
+    if isinstance(observer, dict) and observer.get("status") == "CAPTURED":
+        observer_path = _scoped_regular(
+            result_root, observer.get("path"), "third-person observer image"
+        )
+        observer_bytes = observer_path.stat().st_size
+        if (
+            observer.get("purpose") != "review_only_robot_localization"
+            or observer.get("fed_to_step3") is not False
+            or observer.get("alignment")
+            != "same_paused_render_barrier_and_sim_stamp"
+            or observer.get("sim_stamp_ns") != sidecar.get("sim_stamp_before_ns")
+            or observer.get("sensor_name") != "topdown_camera_500"
+            or observer.get("prim_path") != "/go2_description/topdown_camera_500"
+            or observer.get("encoding") != "png_rgb8"
+            or observer.get("resolution") != [500, 500]
+            or observer.get("bytes") != observer_bytes
+            or observer.get("sha256") != _sha256(observer_path)
+            or observer.get("error") is not None
+            or _png_dimensions(observer_path) != (500, 500)
+        ):
+            raise SmokeContractError("third-person observer evidence is invalid")
+        observer_evidence = {
+            "status": "CAPTURED",
+            "path": observer_path.relative_to(result_root).as_posix(),
+            "sha256": observer["sha256"],
+            "bytes": observer_bytes,
+            "resolution": [500, 500],
+            "fed_to_step3": False,
+        }
+    else:
+        if require_observer:
+            raise SmokeContractError(
+                "T5 observer smoke requires a captured third-person image"
+            )
+        observer_evidence = {
+            "status": str(observer.get("status", "MISSING"))
+            if isinstance(observer, dict)
+            else "MISSING",
+            "error": observer.get("error") if isinstance(observer, dict) else None,
+        }
     if expected_sidecar_count < 1:
         raise SmokeContractError("expected snapshot sidecar count must be positive")
     sidecars = sorted((result_root / "revc_snapshots").glob("*/snapshot.json"))
@@ -367,6 +410,7 @@ def validate_capture(
         "external_preview_max_hz": float(preview_hz),
         "camera_order": list(CAMERA_ORDER),
         "images": image_evidence,
+        "observer": observer_evidence,
         "recorded_unix": time.time(),
     }
 
@@ -411,7 +455,13 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             }
         )
         if ack.get("status") == "CAPTURED":
-            payload = validate_capture(result_root, args.contract, request, ack)
+            payload = validate_capture(
+                result_root,
+                args.contract,
+                request,
+                ack,
+                require_observer=True,
+            )
             payload["identity_sync_attempt_count"] = attempt
             payload["request_attempts"] = attempts
             return payload
