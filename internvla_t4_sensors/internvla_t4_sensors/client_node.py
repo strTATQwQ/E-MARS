@@ -157,8 +157,7 @@ class T4OdometryClientNode(InternVLAClientNode):
     STEP3_ARRIVAL_MAX_CHECKS = 24
     STEP3_ARRIVAL_REQUIRED_CONFIRMATIONS = 2
     STEP3_ARRIVAL_MINIMUM_CONFIDENCE = 0.80
-    STEP3_MODEL_STOP_ESCAPE_MAX = 6
-    STEP3_TASK_STATE_MAX_MODEL_HOLD_DEFERRALS = 1
+    STEP3_MODEL_STOP_ESCAPE_BURST_MAX = 1
 
     def __init__(self) -> None:
         super().__init__()
@@ -281,6 +280,7 @@ class T4OdometryClientNode(InternVLAClientNode):
         self._step3_arrival_checks = 0
         self._step3_last_completed_action: int | None = None
         self._step3_model_stop_escapes = 0
+        self._step3_model_stop_escape_burst_count = 0
         self._step3_model_stop_escape_motion: dict[str, Any] | None = None
         self._oracle_terminal_shadow_result: dict[str, Any] | None = None
         self._termination_mode = os.environ.get(
@@ -834,20 +834,11 @@ class T4OdometryClientNode(InternVLAClientNode):
     def _settle_step3_model_stop_escape_motion(
         self, decision: GateDecision, pending: dict[str, Any]
     ) -> None:
-        """Remember only an identity-bound timeout of an applied STOP escape."""
+        """Settle one escape and rearm only after effective measured motion."""
 
-        event: tuple[str, dict[str, Any]] | None = None
+        events: list[tuple[str, dict[str, Any]]] = []
         with self._step3_timeout_condition:
             state = self._step3_model_stop_escape_motion
-            if state is None or state.get("timed_out") is True:
-                return
-            expected = (
-                str(state["episode_id"]),
-                int(state["reset_generation"]),
-                int(state["sequence_id"]),
-                str(state["request_id"]),
-                int(state["action"]),
-            )
             observed = (
                 self.episode_id,
                 self.reset_generation,
@@ -855,27 +846,57 @@ class T4OdometryClientNode(InternVLAClientNode):
                 str(pending.get("request_id", "")),
                 int(pending.get("action", ACTION_STAND_STILL)),
             )
-            if observed != expected:
-                return
-            if decision.kind == DECISION_SAFE_STOP_TIMEOUT:
-                state = dict(state)
-                state["timed_out"] = True
-                state["minimum_stop_sequence_id"] = int(state["sequence_id"]) + 1
-                self._step3_model_stop_escape_motion = state
-                event = ("step3_model_stop_escape_timed_out", dict(state))
-            else:
-                self._step3_model_stop_escape_motion = None
-                event = (
-                    "step3_model_stop_escape_settled",
-                    {
-                        "sequence_id": int(state["sequence_id"]),
-                        "request_id": str(state["request_id"]),
-                        "action": int(state["action"]),
-                        "decision": str(decision.kind),
-                    },
+            if decision.kind == DECISION_SAFE_STOP_COMPLETE:
+                if self._step3_model_stop_escape_burst_count > 0:
+                    previous_count = self._step3_model_stop_escape_burst_count
+                    self._step3_model_stop_escape_burst_count = 0
+                    events.append(
+                        (
+                            "step3_model_stop_escape_rearmed_after_measured_motion",
+                            {
+                                "sequence_id": observed[2],
+                                "request_id": observed[3],
+                                "action": observed[4],
+                                "previous_burst_escape_count": previous_count,
+                                "progress": float(decision.progress),
+                                "required_progress": float(
+                                    decision.required_progress
+                                ),
+                            },
+                        )
+                    )
+            if state is not None and state.get("timed_out") is not True:
+                expected = (
+                    str(state["episode_id"]),
+                    int(state["reset_generation"]),
+                    int(state["sequence_id"]),
+                    str(state["request_id"]),
+                    int(state["action"]),
                 )
-        if event is not None:
-            self._record_motion_gate_event(event[0], "", event[1])
+                if (
+                    observed == expected
+                    and decision.kind == DECISION_SAFE_STOP_TIMEOUT
+                ):
+                    state = dict(state)
+                    state["timed_out"] = True
+                    state["minimum_stop_sequence_id"] = int(state["sequence_id"]) + 1
+                    self._step3_model_stop_escape_motion = state
+                    events.append(("step3_model_stop_escape_timed_out", dict(state)))
+                elif observed == expected:
+                    self._step3_model_stop_escape_motion = None
+                    events.append(
+                        (
+                            "step3_model_stop_escape_settled",
+                            {
+                                "sequence_id": int(state["sequence_id"]),
+                                "request_id": str(state["request_id"]),
+                                "action": int(state["action"]),
+                                "decision": str(decision.kind),
+                            },
+                        )
+                    )
+        for event, payload in events:
+            self._record_motion_gate_event(event, "", payload)
 
     def _begin_oracle_terminal_shadow(
         self,
@@ -1615,19 +1636,18 @@ class T4OdometryClientNode(InternVLAClientNode):
 
         if not getattr(self, "_step3_timeout_enabled", False):
             return
-        deferred_over_model_hold: dict[str, Any] | None = None
         with self._step3_timeout_condition:
             pending = self._step3_timeout_pending
             advice = self._step3_timeout_advice
             if pending is None or advice is None:
                 return
             kind = str(pending.get("kind", ""))
+            task_state_checkpoint = (
+                kind == "task_state_checkpoint_after_completed_motion"
+                and advice.get("status") == "ADVISE"
+            )
             task_state_advice = (
-                kind
-                in {
-                    "motion_timeout_after_confirmed_safe_stop",
-                    "task_state_checkpoint_after_completed_motion",
-                }
+                kind == "motion_timeout_after_confirmed_safe_stop"
                 and advice.get("status") == "ADVISE"
             )
             model_stop_escape = (
@@ -1635,12 +1655,16 @@ class T4OdometryClientNode(InternVLAClientNode):
                 and model_stop_escape_transition(
                     pending,
                     advice,
-                    escape_count=self._step3_model_stop_escapes,
-                    escape_limit=self.STEP3_MODEL_STOP_ESCAPE_MAX,
+                    escape_count=self._step3_model_stop_escape_burst_count,
+                    escape_limit=self.STEP3_MODEL_STOP_ESCAPE_BURST_MAX,
                 ).action
                 == APPLY_BOUNDED_ESCAPE
             )
-            if not task_state_advice and not model_stop_escape:
+            if (
+                not task_state_checkpoint
+                and not task_state_advice
+                and not model_stop_escape
+            ):
                 return
             identity = (
                 str(command.episode_id),
@@ -1657,40 +1681,44 @@ class T4OdometryClientNode(InternVLAClientNode):
                 and int(command.discrete_action)
                 in {ACTION_FORWARD, ACTION_LEFT, ACTION_RIGHT}
             )
-            model_hold_deferrals = int(pending.get("model_hold_deferrals", 0))
-            if (
-                kind == "task_state_checkpoint_after_completed_motion"
-                and task_state_advice
-                and identity == expected
-                and not bool(command.stop)
-                and int(command.discrete_action) == ACTION_STAND_STILL
-                and model_hold_deferrals
-                < self.STEP3_TASK_STATE_MAX_MODEL_HOLD_DEFERRALS
-            ):
-                pending["model_hold_deferrals"] = model_hold_deferrals + 1
-                pending["expected_sequence_id"] = int(command.sequence_id) + 1
-                deferred_over_model_hold = {
-                    "reason": "single_transient_internvla_standstill",
-                    "expected_identity_before": list(expected),
-                    "observed_identity": list(identity),
-                    "expected_identity_after": [
-                        str(command.episode_id),
-                        int(command.reset_generation),
-                        int(command.sequence_id) + 1,
-                    ],
-                    "model_hold_deferrals": model_hold_deferrals + 1,
-                    "maximum_model_hold_deferrals": (
-                        self.STEP3_TASK_STATE_MAX_MODEL_HOLD_DEFERRALS
-                    ),
-                }
-            else:
-                self._step3_timeout_pending = None
-                self._step3_timeout_advice = None
-        if deferred_over_model_hold is not None:
+            self._step3_timeout_pending = None
+            self._step3_timeout_advice = None
+        if task_state_checkpoint:
+            if identity != expected:
+                self._record_motion_gate_event(
+                    "step3_timeout_fallback",
+                    str(pending.get("stop_token", "")),
+                    {
+                        "reason": "sequence_identity_mismatch",
+                        "expected_identity": list(expected),
+                        "observed_identity": list(identity),
+                    },
+                )
+                return
+            # Periodic task-state checkpoints update the advisor's semantic
+            # state only. Their wall-time arrival must never change the normal
+            # InternVLA action; bounded control advice remains reserved for a
+            # measured motion timeout or an oracle-rejected model STOP.
+            self._step3_timeout_interventions += 1
             self._record_motion_gate_event(
-                "step3_task_state_advice_deferred_over_model_hold",
+                "step3_task_state_checkpoint_semantic_only",
                 str(pending.get("stop_token", "")),
-                deferred_over_model_hold,
+                {
+                    "episode_id": str(command.episode_id),
+                    "reset_generation": int(command.reset_generation),
+                    "sequence_id": int(command.sequence_id),
+                    "trigger_sequence_id": int(pending["trigger_sequence_id"]),
+                    "trigger_request_id": str(pending["trigger_request_id"]),
+                    "model_action_retained": int(command.discrete_action),
+                    "shadow_advised_action": int(advice["advised_action"]),
+                    "confidence": float(advice["confidence"]),
+                    "snapshot_id": str(advice.get("snapshot_id", "")),
+                    "service_wall_latency_sec": float(
+                        advice.get("service_wall_latency_sec", 0.0)
+                    ),
+                    "camera_count": int(advice.get("camera_count", 0)),
+                    "control_effect": "none",
+                },
             )
             return
         if (
@@ -1723,6 +1751,7 @@ class T4OdometryClientNode(InternVLAClientNode):
         command.local_path.poses = []
         if model_stop_escape:
             self._step3_model_stop_escapes += 1
+            self._step3_model_stop_escape_burst_count += 1
             self._step3_model_stop_escape_motion = {
                 "episode_id": str(command.episode_id),
                 "reset_generation": int(command.reset_generation),
@@ -1750,13 +1779,15 @@ class T4OdometryClientNode(InternVLAClientNode):
             "intervention_kind": (
                 "model_stop_escape"
                 if model_stop_escape
-                else (
-                    "task_state_checkpoint"
-                    if kind == "task_state_checkpoint_after_completed_motion"
-                    else "motion_timeout"
-                )
+                else "motion_timeout"
             ),
             "model_stop_escape_count": self._step3_model_stop_escapes,
+            "model_stop_escape_burst_count": (
+                self._step3_model_stop_escape_burst_count
+            ),
+            "model_stop_escape_burst_limit": (
+                self.STEP3_MODEL_STOP_ESCAPE_BURST_MAX
+            ),
         }
         # A timed-out primitive proves that its queued continuation is based on
         # an observation/action transition which did not occur, so refresh it
@@ -1774,11 +1805,7 @@ class T4OdometryClientNode(InternVLAClientNode):
             (
                 "step3_model_stop_escape_applied"
                 if model_stop_escape
-                else (
-                    "step3_task_state_checkpoint_applied"
-                    if kind == "task_state_checkpoint_after_completed_motion"
-                    else "step3_timeout_advice_applied"
-                )
+                else "step3_timeout_advice_applied"
             ),
             str(pending.get("stop_token", "")),
             self._step3_timeout_override,
@@ -1947,8 +1974,8 @@ class T4OdometryClientNode(InternVLAClientNode):
                 escape_transition = model_stop_escape_transition(
                     pending,
                     advice,
-                    escape_count=self._step3_model_stop_escapes,
-                    escape_limit=self.STEP3_MODEL_STOP_ESCAPE_MAX,
+                    escape_count=self._step3_model_stop_escape_burst_count,
+                    escape_limit=self.STEP3_MODEL_STOP_ESCAPE_BURST_MAX,
                 )
                 if escape_transition.action == APPLY_BOUNDED_ESCAPE:
                     return None
@@ -2552,6 +2579,7 @@ class T4OdometryClientNode(InternVLAClientNode):
             self._step3_arrival_checks = 0
             self._step3_last_completed_action = None
             self._step3_model_stop_escapes = 0
+            self._step3_model_stop_escape_burst_count = 0
             self._step3_model_stop_escape_motion = None
             self._oracle_terminal_shadow_result = None
             self._step3_model_refresh_pending = None
@@ -2624,6 +2652,7 @@ class T4OdometryClientNode(InternVLAClientNode):
             self._step3_arrival_checks = 0
             self._step3_last_completed_action = None
             self._step3_model_stop_escapes = 0
+            self._step3_model_stop_escape_burst_count = 0
             self._step3_model_stop_escape_motion = None
             self._oracle_terminal_shadow_result = None
             self._step3_model_refresh_pending = None

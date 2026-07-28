@@ -98,13 +98,13 @@ def _bare_client() -> T4OdometryClientNode:
     client.navigation_odometry_timeout = 0.5
     client.last_committed_sequence = -1
     client._step3_timeout_condition = threading.Condition()
+    client._step3_model_stop_escape_burst_count = 0
     client._step3_model_stop_escape_motion = None
     return client
 
 
 def _task_state_advice_client(
     *,
-    deferrals: int = 0,
     kind: str = "task_state_checkpoint_after_completed_motion",
 ) -> T4OdometryClientNode:
     client = _bare_client()
@@ -118,7 +118,6 @@ def _task_state_advice_client(
         "trigger_sequence_id": 16,
         "trigger_request_id": "a::259:1:16",
         "stop_token": "step3-task-state:test",
-        "model_hold_deferrals": deferrals,
     }
     client._step3_timeout_advice = {
         "status": "ADVISE",
@@ -130,6 +129,7 @@ def _task_state_advice_client(
     }
     client._step3_timeout_interventions = 0
     client._step3_model_stop_escapes = 0
+    client._step3_model_stop_escape_burst_count = 0
     client._step3_timeout_override = None
     client._step3_model_refresh_pending = None
     return client
@@ -188,6 +188,7 @@ def test_failed_model_stop_escape_is_excluded_after_intervening_sequences() -> N
     client = _bare_client()
     client._step3_timeout_enabled = True
     client._step3_last_completed_action = 3
+    client._step3_model_stop_escape_burst_count = 1
     client._step3_model_stop_escape_motion = {
         "episode_id": "a::259",
         "reset_generation": 1,
@@ -231,6 +232,7 @@ def test_failed_model_stop_escape_is_excluded_after_intervening_sequences() -> N
         "timed_out": True,
         "minimum_stop_sequence_id": 42,
     }
+    assert client._step3_model_stop_escape_burst_count == 1
     result: dict[str, object] = {
         "episode_id": "a::259",
         "reset_generation": 1,
@@ -301,6 +303,153 @@ def test_model_stop_escape_exclusion_waits_for_next_qualifying_stop() -> None:
     assert client._step3_model_stop_escape_motion is None
 
 
+def test_model_stop_escape_burst_rearms_only_after_effective_measured_motion() -> None:
+    client = _bare_client()
+    client._step3_model_stop_escape_burst_count = 1
+    events: list[tuple[str, dict[str, object]]] = []
+    client._record_motion_gate_event = (  # type: ignore[method-assign]
+        lambda event, _token, payload: events.append((event, payload))
+    )
+    pending = {
+        "sequence_id": 41,
+        "request_id": "a::259:1:41",
+        "action": 2,
+    }
+    timeout = t4_client_module.GateDecision(
+        kind=t4_client_module.DECISION_SAFE_STOP_TIMEOUT,
+        reason="measured motion missed the sim-time deadline",
+        permits_model_step=False,
+        requires_safe_stop=True,
+        keep_safe_stop=True,
+    )
+    stale = t4_client_module.GateDecision(
+        kind=t4_client_module.DECISION_SAFE_STOP_STALE,
+        reason="odometry regressed",
+        permits_model_step=False,
+        requires_safe_stop=True,
+        keep_safe_stop=True,
+    )
+
+    client._settle_step3_model_stop_escape_motion(timeout, pending)
+    client._settle_step3_model_stop_escape_motion(stale, pending)
+
+    assert client._step3_model_stop_escape_burst_count == 1
+    assert events == []
+
+    timed_out_state = {
+        "episode_id": "a::259",
+        "reset_generation": 1,
+        "sequence_id": 41,
+        "request_id": "a::259:1:41",
+        "action": 2,
+        "timed_out": True,
+        "minimum_stop_sequence_id": 42,
+    }
+    client._step3_model_stop_escape_motion = dict(timed_out_state)
+
+    complete = t4_client_module.GateDecision(
+        kind=t4_client_module.DECISION_SAFE_STOP_COMPLETE,
+        reason="measured motion reached the preregistered completion threshold",
+        permits_model_step=True,
+        requires_safe_stop=True,
+        keep_safe_stop=True,
+        progress=0.24,
+        required_progress=0.2,
+        commanded_progress=0.25,
+    )
+    client._settle_step3_model_stop_escape_motion(complete, pending)
+
+    assert client._step3_model_stop_escape_burst_count == 0
+    assert client._step3_model_stop_escape_motion == timed_out_state
+    assert events == [
+        (
+            "step3_model_stop_escape_rearmed_after_measured_motion",
+            {
+                "sequence_id": 41,
+                "request_id": "a::259:1:41",
+                "action": 2,
+                "previous_burst_escape_count": 1,
+                "progress": 0.24,
+                "required_progress": 0.2,
+            },
+        )
+    ]
+
+
+def test_model_stop_escape_is_blocked_until_measured_motion_rearms_burst() -> None:
+    client = _bare_client()
+    client._step3_timeout_enabled = True
+    client._step3_timeout_interventions = 0
+    client._step3_model_stop_escapes = 0
+    client._step3_timeout_override = None
+    client._step3_model_refresh_pending = None
+    client._record_motion_gate_event = lambda *_args: None  # type: ignore[method-assign]
+
+    def install_escape(sequence_id: int) -> None:
+        client._step3_timeout_pending = {
+            "kind": "arrival_check_after_completed_motion",
+            "episode_id": "a::259",
+            "reset_generation": 1,
+            "expected_sequence_id": sequence_id,
+            "trigger_sequence_id": sequence_id - 1,
+            "trigger_request_id": f"a::259:1:{sequence_id - 1}",
+            "stop_token": f"step3-model-stop:{sequence_id}",
+            "advisor_round": 2,
+            "model_stop_candidate": True,
+            "first_advised_action": 2,
+        }
+        client._step3_timeout_advice = {
+            "status": "NOT_ARRIVED",
+            "advised_action": 2,
+            "confidence": 0.9,
+            "snapshot_id": f"a::259::1::{sequence_id}",
+            "snapshot_sim_stamp_ns": sequence_id * 1_000_000_000,
+            "service_wall_latency_sec": 0.1,
+            "camera_count": 4,
+        }
+
+    install_escape(17)
+    first = _command(sequence=17, action=0)
+    client._apply_step3_timeout_advice(first)
+
+    assert first.discrete_action == 2
+    assert client._step3_model_stop_escapes == 1
+    assert client._step3_model_stop_escape_burst_count == 1
+
+    install_escape(18)
+    blocked = _command(sequence=18, action=0)
+    client._apply_step3_timeout_advice(blocked)
+
+    assert blocked.discrete_action == 0
+    assert client._step3_timeout_pending is not None
+    assert client._step3_model_stop_escapes == 1
+    assert client._step3_model_stop_escape_burst_count == 1
+
+    complete = t4_client_module.GateDecision(
+        kind=t4_client_module.DECISION_SAFE_STOP_COMPLETE,
+        reason="measured motion reached the preregistered completion threshold",
+        permits_model_step=True,
+        requires_safe_stop=True,
+        keep_safe_stop=True,
+        progress=0.24,
+        required_progress=0.2,
+        commanded_progress=0.25,
+    )
+    client._settle_step3_model_stop_escape_motion(
+        complete,
+        {
+            "sequence_id": 17,
+            "request_id": "a::259:1:17",
+            "action": 2,
+        },
+    )
+    client._apply_step3_timeout_advice(blocked)
+
+    assert blocked.discrete_action == 2
+    assert client._step3_model_stop_escapes == 2
+    assert client._step3_model_stop_escape_burst_count == 1
+
+
 def test_model_stop_confirmation_preserves_exclusion_across_two_rounds() -> None:
     client = _bare_client()
     client._step3_timeout_enabled = True
@@ -342,7 +491,7 @@ def test_model_stop_confirmation_preserves_exclusion_across_two_rounds() -> None
     assert published[1]["first_advised_action"] == 2
 
 
-def test_task_state_advice_crosses_exactly_one_transient_model_standstill() -> None:
+def test_task_state_checkpoint_is_semantic_only_over_model_standstill() -> None:
     client = _task_state_advice_client()
     events: list[tuple[str, dict[str, object]]] = []
     client._record_motion_gate_event = (  # type: ignore[method-assign]
@@ -353,24 +502,17 @@ def test_task_state_advice_crosses_exactly_one_transient_model_standstill() -> N
     client._apply_step3_timeout_advice(hold)
 
     assert hold.discrete_action == -1
-    assert client._step3_timeout_pending is not None
-    assert client._step3_timeout_pending["expected_sequence_id"] == 18
-    assert client._step3_timeout_pending["model_hold_deferrals"] == 1
-    assert client._step3_timeout_advice is not None
-    assert events[0][0] == "step3_task_state_advice_deferred_over_model_hold"
-
-    motion = _command(sequence=18, action=1)
-    client._apply_step3_timeout_advice(motion)
-
-    assert motion.discrete_action == 2
     assert client._step3_timeout_pending is None
     assert client._step3_timeout_advice is None
     assert client._step3_timeout_interventions == 1
+    assert client._step3_timeout_override is None
     assert client._step3_model_refresh_pending is None
     assert [event for event, _payload in events] == [
-        "step3_task_state_advice_deferred_over_model_hold",
-        "step3_task_state_checkpoint_applied",
+        "step3_task_state_checkpoint_semantic_only"
     ]
+    assert events[0][1]["model_action_retained"] == -1
+    assert events[0][1]["shadow_advised_action"] == 2
+    assert events[0][1]["control_effect"] == "none"
 
 
 def test_motion_timeout_advice_invalidates_only_its_stale_action_queue() -> None:
@@ -391,25 +533,38 @@ def test_motion_timeout_advice_invalidates_only_its_stale_action_queue() -> None
     }
 
 
-def test_task_state_advice_does_not_cross_a_second_model_standstill() -> None:
-    client = _task_state_advice_client(deferrals=1)
+def test_task_state_checkpoint_retains_normal_internvla_motion() -> None:
+    client = _task_state_advice_client()
     events: list[tuple[str, dict[str, object]]] = []
     client._record_motion_gate_event = (  # type: ignore[method-assign]
         lambda event, _token, payload: events.append((event, payload))
     )
 
-    client._apply_step3_timeout_advice(_command(sequence=17, action=-1))
+    motion = _command(sequence=17, action=3)
+    client._apply_step3_timeout_advice(motion)
 
+    assert motion.discrete_action == 3
     assert client._step3_timeout_pending is None
     assert client._step3_timeout_advice is None
+    assert client._step3_timeout_interventions == 1
+    assert client._step3_timeout_override is None
     assert client._step3_model_refresh_pending is None
     assert events == [
         (
-            "step3_timeout_fallback",
+            "step3_task_state_checkpoint_semantic_only",
             {
-                "reason": "internvla_terminal_or_hold_retained",
-                "expected_identity": ["a::259", 1, 17],
-                "observed_identity": ["a::259", 1, 17],
+                "episode_id": "a::259",
+                "reset_generation": 1,
+                "sequence_id": 17,
+                "trigger_sequence_id": 16,
+                "trigger_request_id": "a::259:1:16",
+                "model_action_retained": 3,
+                "shadow_advised_action": 2,
+                "confidence": 0.8,
+                "snapshot_id": "a::259::1::16",
+                "service_wall_latency_sec": 0.1,
+                "camera_count": 4,
+                "control_effect": "none",
             },
         )
     ]

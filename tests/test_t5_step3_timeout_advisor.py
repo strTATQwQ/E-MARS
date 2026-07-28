@@ -988,6 +988,21 @@ def test_model_stop_escape_requires_two_direction_consistent_rounds() -> None:
         escape_count=0,
         escape_limit=2,
     )
+    burst_exhausted = model_stop_escape_transition(
+        {
+            **valid_arrival_context(
+                advisor_round=2, model_stop_candidate=True
+            ),
+            "first_advised_action": 2,
+        },
+        {
+            "status": "NOT_ARRIVED",
+            "advised_action": 2,
+            "snapshot_sim_stamp_ns": 230,
+        },
+        escape_count=1,
+        escape_limit=1,
+    )
 
     assert first.action == REQUEST_CONFIRMATION
     assert first.advised_action == 2
@@ -995,6 +1010,7 @@ def test_model_stop_escape_requires_two_direction_consistent_rounds() -> None:
     assert matching.advised_action == 2
     assert conflicting.action == CONTINUE_NAVIGATION
     assert excluded.action == CONTINUE_NAVIGATION
+    assert burst_exhausted.action == CONTINUE_NAVIGATION
 
 
 def test_arrival_followup_retains_the_completed_bounded_action() -> None:
@@ -1077,16 +1093,21 @@ def test_advisor_has_no_direct_motion_or_terminal_stop_authority() -> None:
     assert '"stop_shadow_step3_task_state_target_found"' in client
 
 
-def test_timeout_advisor_has_bounded_multi_escape_budget() -> None:
+def test_timeout_advisor_has_one_escape_per_measured_motion_burst() -> None:
     client = (
         ROOT
         / "internvla_t4_sensors/internvla_t4_sensors/client_node.py"
     ).read_text(encoding="utf-8")
     assert 'INTERNVLA_T5_STEP3_TIMEOUT_MAX_INTERVENTIONS", "12"' in client
     assert "1 <= self._step3_timeout_max_interventions <= 12" in client
-    assert "STEP3_MODEL_STOP_ESCAPE_MAX = 6" in client
+    assert "STEP3_MODEL_STOP_ESCAPE_BURST_MAX = 1" in client
+    assert "escape_count=self._step3_model_stop_escape_burst_count" in client
+    assert "self._step3_model_stop_escape_burst_count += 1" in client
+    assert (
+        '"step3_model_stop_escape_rearmed_after_measured_motion"' in client
+    )
     assert "STEP3_TASK_STATE_ACTION_INTERVAL = 1" in client
-    assert "STEP3_TASK_STATE_MAX_MODEL_HOLD_DEFERRALS = 1" in client
+    assert '"step3_task_state_checkpoint_semantic_only"' in client
     assert '"step3_model_queue_invalidated"' in client
     assert "OP_CLEAR_MODEL_CACHE" in client
     recovery_model = (
@@ -1108,6 +1129,7 @@ def test_timeout_advisor_has_bounded_multi_escape_budget() -> None:
     assert "self._step3_arrival_checks = 0" in post_reset
     assert "self._step3_last_completed_action = None" in post_reset
     assert "self._step3_model_stop_escapes = 0" in post_reset
+    assert "self._step3_model_stop_escape_burst_count = 0" in post_reset
     assert "self._step3_model_stop_escape_motion = None" in post_reset
     assert "self._step3_model_refresh_pending = None" in post_reset
     assert "self._step3_model_refresh_count = 0" in post_reset
