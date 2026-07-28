@@ -34,6 +34,7 @@ def _build_runtime(
     *,
     revc_enabled: bool,
     observer_enabled: bool = False,
+    d435_capture_enabled: bool = False,
 ) -> tuple[str, dict[str, Any]]:
     output = tmp_path / "runtime.py"
     manifest = tmp_path / "manifest.json"
@@ -51,10 +52,15 @@ def _build_runtime(
         "INTERNVLA_T4_R3_ENABLE_LIDAR",
         "INTERNVLA_T4_R3_LIDAR_RAY_COUNT",
         "INTERNVLA_T4_R3_ENABLE_RGB_IPC",
+        "INTERNVLA_T5_D435_5HZ_CAPTURE",
+        "INTERNVLA_T5_D435_5HZ_CAPTURE_ROOT",
     ):
         env.pop(name, None)
     env["INTERNVLA_T5_REVC_OBSERVER_ENABLE"] = (
         "1" if observer_enabled else "0"
+    )
+    env["INTERNVLA_T5_D435_5HZ_CAPTURE"] = (
+        "1" if d435_capture_enabled else "0"
     )
     if revc_enabled:
         result_root = tmp_path / "lane-a-result"
@@ -634,6 +640,12 @@ def test_independent_d435_capture_survives_disabled_review_rgb_ipc(
     assert manifest["frozen_geometry_sources"]["rgb_ipc"] is False
     assert manifest["frozen_geometry_sources"]["d435_rgb_5hz_capture"] is True
     assert "independent_d435_rgb_5hz_archival_capture" in manifest["changes"]
+    recorder = _function_source(generated, "_record_t5_d435_rgb")
+    assert "import sys" in generated
+    assert "InternUtopia recreates the controller at an episode" in recorder
+    assert 'summary.get("status") != "RUNNING"' in recorder
+    assert 'previous.get("sha256")' in recorder
+    assert '"bytes": len(png)' in recorder
 
     invalid = subprocess.run(
         [
@@ -654,6 +666,79 @@ def test_independent_d435_capture_survives_disabled_review_rgb_ipc(
     )
     assert invalid.returncode != 0
     assert "restricted to an isolated T5 completion_sim lane" in invalid.stderr
+
+
+def test_independent_d435_capture_resumes_after_episode_controller_reset(
+    tmp_path: Path, monkeypatch: Any
+) -> None:
+    generated, _ = _build_runtime(
+        tmp_path, revc_enabled=True, d435_capture_enabled=True
+    )
+    result_root = (tmp_path / "lane-a-result").resolve()
+    capture_root = result_root / "d435_rgb_5hz"
+    monkeypatch.setenv("INTERNVLA_T4_RESULT_ROOT", str(result_root))
+    monkeypatch.setenv("INTERNVLA_T5_D435_5HZ_CAPTURE_ROOT", str(capture_root))
+    class CaptureRgb:
+        shape = (480, 640, 3)
+
+    class CaptureNumpy:
+        uint8 = "uint8"
+
+        @staticmethod
+        def ascontiguousarray(value: Any, dtype: Any = None) -> Any:
+            assert dtype == CaptureNumpy.uint8
+            return value
+
+    probe_type = _runtime_probe_class(
+        generated,
+        ("_encode_t5_capture_png", "_record_t5_d435_rgb"),
+        {
+            "Path": Path,
+            "hashlib": hashlib,
+            "json": json,
+            "np": CaptureNumpy,
+            "os": os,
+            "struct": struct,
+            "sys": sys,
+            "time": time,
+            "zlib": zlib,
+        },
+    )
+    probe_type._encode_t5_capture_png = staticmethod(
+        lambda _frame: b"\x89PNG\r\n\x1a\nresume-test"
+    )
+    rgb = CaptureRgb()
+    first = probe_type()
+    first._record_t5_d435_rgb(
+        rgb,
+        episode_id="a::145",
+        reset_generation=0,
+        sequence_id=123,
+        sim_stamp_ns=10_000_000_000,
+    )
+    second = probe_type()
+    second._record_t5_d435_rgb(
+        rgb,
+        episode_id="a::1720",
+        reset_generation=1,
+        sequence_id=0,
+        sim_stamp_ns=10_200_000_000,
+    )
+    rows = [
+        json.loads(line)
+        for line in (capture_root / "frames.jsonl").read_text(
+            encoding="utf-8"
+        ).splitlines()
+    ]
+    assert [row["frame_index"] for row in rows] == [0, 1]
+    assert [row["episode_id"] for row in rows] == ["a::145", "a::1720"]
+    assert all(row["bytes"] > 0 for row in rows)
+    summary = json.loads(
+        (capture_root / "capture_summary.json").read_text(encoding="utf-8")
+    )
+    assert summary["frame_count"] == 2
+    assert summary["first_sim_stamp_ns"] == 10_000_000_000
+    assert summary["last_sim_stamp_ns"] == 10_200_000_000
 
 
 def test_revc_snapshot_aggregator_has_one_tick_identity_sidecar_and_rate_limit(

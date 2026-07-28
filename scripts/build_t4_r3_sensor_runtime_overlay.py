@@ -153,6 +153,7 @@ def main() -> None:
             text,
             "import base64\nimport math\nimport json",
             "import base64\nimport hashlib\nimport math\nimport json\nimport struct\n"
+            "import sys\n"
             "from numbers import Integral, Real",
         )
     if t5_sensor_extensions_enabled:
@@ -271,11 +272,70 @@ def main() -> None:
                 if not capture_root.is_relative_to(result_root):
                     raise ValueError("D435 capture root escapes evaluator result root")
                 if not hasattr(self, "_t5_d435_capture_index"):
-                    capture_root.mkdir(parents=True, exist_ok=False)
-                    (capture_root / "frames").mkdir()
-                    self._t5_d435_capture_index = 0
-                    self._t5_d435_last_stamp_ns = -1
-                    self._t5_d435_first_stamp_ns = None
+                    frames_root = capture_root / "frames"
+                    events_path = capture_root / "frames.jsonl"
+                    summary_path = capture_root / "capture_summary.json"
+                    if not capture_root.exists():
+                        capture_root.mkdir(parents=True, exist_ok=False)
+                        frames_root.mkdir()
+                        self._t5_d435_capture_index = 0
+                        self._t5_d435_last_stamp_ns = -1
+                        self._t5_d435_first_stamp_ns = None
+                    else:
+                        # InternUtopia recreates the controller at an episode
+                        # reset.  Resume only the exact current-run stream; an
+                        # arbitrary pre-existing directory still fails closed.
+                        if capture_root.is_symlink() or not capture_root.is_dir():
+                            raise ValueError("D435 capture root is unsafe")
+                        required = (frames_root, events_path, summary_path)
+                        if any(path.is_symlink() for path in required):
+                            raise ValueError("D435 capture stream contains a symlink")
+                        if not frames_root.is_dir():
+                            raise ValueError("D435 capture frames directory is absent")
+                        if not events_path.is_file() or not summary_path.is_file():
+                            raise ValueError("D435 capture resume metadata is absent")
+                        event_lines = [
+                            line for line in events_path.read_text(
+                                encoding="utf-8"
+                            ).splitlines() if line.strip()
+                        ]
+                        if not event_lines:
+                            raise ValueError("D435 capture event stream is empty")
+                        previous = json.loads(event_lines[-1])
+                        summary = json.loads(summary_path.read_text(encoding="utf-8"))
+                        previous_index = int(previous["frame_index"])
+                        previous_stamp_ns = int(previous["sim_stamp_ns"])
+                        first_stamp_ns = int(summary["first_sim_stamp_ns"])
+                        previous_relative = Path("frames") / f"{previous_index:08d}.png"
+                        previous_frame = capture_root / previous_relative
+                        if (
+                            previous.get("schema_version") != 1
+                            or previous.get("event_type") != "d435_rgb_5hz"
+                            or previous.get("path") != previous_relative.as_posix()
+                            or summary.get("schema_version") != 1
+                            or summary.get("status") != "RUNNING"
+                            or summary.get("capture_role")
+                                != "independent_d435_rgb_review_stream"
+                            or int(summary.get("frame_count", -1))
+                                != previous_index + 1
+                            or int(summary.get("last_sim_stamp_ns", -1))
+                                != previous_stamp_ns
+                            or first_stamp_ns <= 0
+                            or previous_stamp_ns < first_stamp_ns
+                            or previous_frame.is_symlink()
+                            or not previous_frame.is_file()
+                            or int(previous.get("bytes", previous_frame.stat().st_size))
+                                != previous_frame.stat().st_size
+                            or previous.get("sha256")
+                                != hashlib.sha256(previous_frame.read_bytes()).hexdigest()
+                        ):
+                            raise ValueError("D435 capture resume binding is invalid")
+                        next_frame = frames_root / f"{previous_index + 1:08d}.png"
+                        if next_frame.exists() or next_frame.is_symlink():
+                            raise ValueError("D435 capture next frame already exists")
+                        self._t5_d435_capture_index = previous_index + 1
+                        self._t5_d435_last_stamp_ns = previous_stamp_ns
+                        self._t5_d435_first_stamp_ns = first_stamp_ns
                 if sim_stamp_ns <= self._t5_d435_last_stamp_ns:
                     raise ValueError("D435 capture simulation stamp did not advance")
                 frame = np.ascontiguousarray(rgb, dtype=np.uint8)
@@ -297,6 +357,7 @@ def main() -> None:
                     "frame_index": frame_index,
                     "path": relative.as_posix(),
                     "sha256": hashlib.sha256(png).hexdigest(),
+                    "bytes": len(png),
                     "episode_id": str(episode_id),
                     "reset_generation": int(reset_generation),
                     "sequence_id": int(sequence_id),
