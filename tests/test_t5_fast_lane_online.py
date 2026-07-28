@@ -388,6 +388,14 @@ def test_cleanup_is_owned_and_strictly_lane_scoped() -> None:
     assert "assert_other_lane_quiet" not in text
 
 
+def test_x86_supervisor_ledger_parent_is_materialized_inside_deployment() -> None:
+    text = source()
+    assert 'test "$ledger_parent" = "$result_parent"' in text
+    assert 'test "$ledger_parent" = "$deployment/results"' in text
+    assert 'mkdir -p "$ledger_parent"' in text
+    assert 'test ! -L "$ledger_parent"' in text
+
+
 def test_cleanup_has_child_ledger_fallback_and_one_shared_budget() -> None:
     text = source()
     cleanup_start = text.index("request_stop_and_audit()")

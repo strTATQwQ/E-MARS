@@ -2357,6 +2357,13 @@ case "$lane" in
   b) cpuset_env=INTERNVLA_T5_LANE_B_CPUSET ;;
   *) exit 64 ;;
 esac
+ledger_parent="$(dirname -- "$ledger")"
+result_parent="$(dirname -- "$result")"
+test "$ledger_parent" = "$result_parent"
+test "$ledger_parent" = "$deployment/results"
+mkdir -p "$ledger_parent"
+test -d "$ledger_parent"
+test ! -L "$ledger_parent"
 pgid="$(ps -o pgid= -p "$$"|tr -d ' ')"
 sid="$(ps -o sid= -p "$$"|tr -d ' ')"
 starttime="$(awk '{print $22}' /proc/$$/stat)"
