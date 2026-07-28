@@ -150,7 +150,11 @@
         "rear"
       ],
       "format": "FOUR_PNG_PLUS_SIDECAR",
-      "third_person_observer": "BEST_EFFORT_SAME_PAUSED_RENDER_BARRIER",
+      "third_person_observer": "REQUIRED_SAME_PAUSED_RENDER_BARRIER",
+      "third_person_resolution": [
+        500,
+        500
+      ],
       "third_person_must_show_robot_body": true,
       "third_person_fed_to_step3": false
     },

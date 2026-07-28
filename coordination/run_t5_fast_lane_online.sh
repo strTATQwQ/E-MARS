@@ -1841,13 +1841,17 @@ checks={
         and x86_contract["isaac_sensor_profile"].get("revc_enabled")
             == (isaac_sensor_profile!="baseline")
         and x86_contract["isaac_sensor_profile"].get("observer_enabled")
-            == (isaac_sensor_profile=="lane_b_revc_smoke")
+            == (isaac_sensor_profile in {
+                "lane_b_revc_smoke", "dual_lane_wp03_stop_shadow"
+            })
         and isinstance(x86_status,dict)
         and x86_status.get("isaac_sensor_profile")==isaac_sensor_profile
         and x86_status.get("revc_enabled")
             == (isaac_sensor_profile!="baseline")
         and x86_status.get("revc_observer_enabled")
-            == (isaac_sensor_profile=="lane_b_revc_smoke"),
+            == (isaac_sensor_profile in {
+                "lane_b_revc_smoke", "dual_lane_wp03_stop_shadow"
+            }),
     "step3_live_canary": (
         step3_profile
         and isinstance(step3_services_ready,dict)

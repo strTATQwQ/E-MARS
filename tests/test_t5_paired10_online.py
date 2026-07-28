@@ -30,6 +30,12 @@ def test_paired10_manifest_freezes_two_disjoint_sets_and_balanced_arms() -> None
         "internvla_only",
     ]
     assert value["capture_contract"]["d435_rgb"]["sim_hz"] == 5
+    snapshot = value["capture_contract"]["step3_snapshot"]
+    assert snapshot["third_person_observer"] == (
+        "REQUIRED_SAME_PAUSED_RENDER_BARRIER"
+    )
+    assert snapshot["third_person_resolution"] == [500, 500]
+    assert snapshot["third_person_fed_to_step3"] is False
     assert value["latency_contract"]["step3"]["required_fields"][-1] == (
         "wall_response_duration_ms"
     )
@@ -57,3 +63,5 @@ def test_serial_postprocess_uses_existing_shared_io_lock_and_builds_timeline() -
     assert 'scripts/summarize_t5_paired10.py' in text
     assert "streamed_uncompressed_tar" in text
     assert "remote_originals_retained" in text
+    assert '"step3_snapshot_observers_complete"' in text
+    assert '"third_person_observer_count"' in text

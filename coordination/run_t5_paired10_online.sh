@@ -114,6 +114,11 @@ assert capture.get("d435_rgb", {}).get("sim_hz") == 5
 assert capture.get("step3_snapshot", {}).get("ordered_views") == [
     "front_left", "front", "front_right", "rear"
 ]
+assert capture.get("step3_snapshot", {}).get("third_person_observer") == (
+    "REQUIRED_SAME_PAUSED_RENDER_BARRIER"
+)
+assert capture.get("step3_snapshot", {}).get("third_person_resolution") == [500, 500]
+assert capture.get("step3_snapshot", {}).get("third_person_fed_to_step3") is False
 latency = manifest.get("latency_contract") or {}
 assert "wall_response_duration_ms" in latency.get("step3", {}).get(
     "required_fields", []

@@ -332,6 +332,54 @@ evidence = [
     inventory("evaluator/step3_timeout_advice.jsonl"),
     inventory("evaluator/task_state"),
 ]
+snapshot_root = child_path / "remote/x86/evaluator/revc_snapshots"
+advice_path = child_path / "remote/x86/evaluator/step3_timeout_advice.jsonl"
+snapshot_sidecars = (
+    sorted(snapshot_root.glob("*/snapshot.json")) if snapshot_root.is_dir() else []
+)
+snapshot_observer_checks = []
+for snapshot_sidecar in snapshot_sidecars:
+    if snapshot_sidecar.is_symlink() or not snapshot_sidecar.is_file():
+        raise SystemExit(f"unsafe Rev-C snapshot sidecar: {snapshot_sidecar}")
+    snapshot = json.loads(snapshot_sidecar.read_text(encoding="utf-8"))
+    cameras = snapshot.get("cameras")
+    if not isinstance(cameras, list):
+        raise SystemExit(f"Rev-C snapshot camera list is invalid: {snapshot_sidecar}")
+    identities = [camera.get("identity") for camera in cameras if isinstance(camera, dict)]
+    if identities != ["front_left", "front", "front_right", "rear"]:
+        raise SystemExit(f"Rev-C snapshot camera order is invalid: {snapshot_sidecar}")
+    for camera in cameras:
+        artifact = child_path / "remote/x86/evaluator" / str(camera.get("path", ""))
+        if artifact.is_symlink() or not artifact.is_file():
+            raise SystemExit(f"Rev-C camera PNG is absent or unsafe: {artifact}")
+        if camera.get("bytes") != artifact.stat().st_size or camera.get("sha256") != sha256(artifact):
+            raise SystemExit(f"Rev-C camera PNG differs from sidecar: {artifact}")
+    observer = snapshot.get("observer")
+    if not isinstance(observer, dict):
+        raise SystemExit(f"third-person observer record is absent: {snapshot_sidecar}")
+    observer_path = child_path / "remote/x86/evaluator" / str(observer.get("path", ""))
+    observer_ok = all((
+        observer.get("status") == "CAPTURED",
+        observer.get("fed_to_step3") is False,
+        observer.get("alignment") == "same_paused_render_barrier_and_sim_stamp",
+        observer.get("resolution") == [500, 500],
+        not observer_path.is_symlink(),
+        observer_path.is_file(),
+        observer.get("bytes") == observer_path.stat().st_size if observer_path.is_file() else False,
+        observer.get("sha256") == sha256(observer_path) if observer_path.is_file() else False,
+        snapshot.get("same_render_tick") is True,
+    ))
+    snapshot_observer_checks.append(observer_ok)
+
+step3_advice_rows = []
+if advice_path.is_file() and not advice_path.is_symlink():
+    for line in advice_path.read_text(encoding="utf-8").splitlines():
+        if line.strip():
+            value = json.loads(line)
+            if not isinstance(value, dict):
+                raise SystemExit("Step3 advice JSONL contains a non-object")
+            step3_advice_rows.append(value)
+step3_arm = evaluation_arm == "internvla_step3"
 checks = {
     "d435_5hz_mp4_complete": True,
     "model_observation_stream_present": evidence[1]["present"],
@@ -340,6 +388,11 @@ checks = {
     "unified_timeline_built": index.get("timeline_sha256") == sha256(timeline),
     "time_authority_is_x86_sim_stamp": index.get("time_authority") == "x86_sim_stamp_ns",
     "wall_latency_summary_recorded": isinstance(index.get("wall_latency_summary"), dict),
+    "step3_snapshots_present_when_active": (not step3_arm) or bool(snapshot_sidecars),
+    "step3_advice_present_when_active": (not step3_arm) or bool(step3_advice_rows),
+    "step3_snapshot_observers_complete": (not step3_arm) or (
+        bool(snapshot_observer_checks) and all(snapshot_observer_checks)
+    ),
 }
 payload = {
     "schema_version": 1,
@@ -364,6 +417,13 @@ payload = {
         "online_encoding_allowed": False,
     },
     "capture_inventory": evidence,
+    "step3_capture": {
+        "snapshot_count": len(snapshot_sidecars),
+        "advice_count": len(step3_advice_rows),
+        "third_person_observer_count": sum(snapshot_observer_checks),
+        "third_person_resolution": [500, 500],
+        "third_person_fed_to_step3": False,
+    },
     "d435_video": {
         "path": "remote/x86/evaluator/d435_rgb_5hz/full_d435_rgb_5hz.mp4",
         "sha256": sha256(video),

@@ -233,7 +233,10 @@ case "$isaac_sensor_profile" in
     test "$execution_profile" = fixed_dataset
     test "$fault_injection_profile" = off
     export INTERNVLA_T5_REVC_ENABLE=1
-    export INTERNVLA_T5_REVC_OBSERVER_ENABLE=0
+    # Paired-10 review evidence requires the robot-following observer on the
+    # exact same paused render barrier as every Step3 four-camera snapshot.
+    # It remains review-only and is never included in the Step3 request.
+    export INTERNVLA_T5_REVC_OBSERVER_ENABLE=1
     ;;
   *) echo "unsupported T5 Isaac sensor profile: $isaac_sensor_profile" >&2; exit 64 ;;
 esac
@@ -1987,7 +1990,7 @@ Path(sys.argv[1]).write_text(json.dumps({
         "observer_enabled": (
             os.environ.get("INTERNVLA_T5_REVC_OBSERVER_ENABLE") == "1"
         ),
-        "scope": "lane_b_snapshot_evidence_only"
+        "scope": "t5_snapshot_evidence_only"
             if os.environ["INTERNNAV_T5_ISAAC_SENSOR_PROFILE"] != "baseline"
             else "disabled",
         "external_preview_max_hz": 1.0

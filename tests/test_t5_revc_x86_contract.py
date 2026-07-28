@@ -1103,3 +1103,13 @@ def test_x86_lane_resource_mapping_is_even_gpu0_and_odd_gpu1() -> None:
     assert f'test "$cpuset" = {even}' in run
     assert f'test "$cpuset" = {odd}' in run
     assert "container_cuda_visible_devices=0" in run
+
+
+def test_paired10_profile_registers_review_only_observer() -> None:
+    run = (SCRIPTS / "run_t5_distributed_isaac.sh").read_text(encoding="utf-8")
+    profile = run.split("  dual_lane_wp03_stop_shadow)", 1)[1].split(
+        "  *) echo", 1
+    )[0]
+    assert "export INTERNVLA_T5_REVC_ENABLE=1" in profile
+    assert "export INTERNVLA_T5_REVC_OBSERVER_ENABLE=1" in profile
+    assert "never included in the Step3 request" in profile
