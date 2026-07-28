@@ -537,6 +537,79 @@ def test_generated_runtime_enables_four_dedicated_cameras_without_stereo_alias(
     assert '"revc_snapshot_status": "RATE_LIMITED"' in generated
 
 
+def test_independent_d435_capture_survives_disabled_review_rgb_ipc(
+    tmp_path: Path,
+) -> None:
+    output = tmp_path / "d435_capture_runtime.py"
+    manifest_path = tmp_path / "d435_capture_manifest.json"
+    result_root = tmp_path / "lane-a-result"
+    result_root.mkdir()
+    env = os.environ.copy()
+    env.update(
+        {
+            "INTERNVLA_T5_REVC_ENABLE": "0",
+            "INTERNVLA_T5_D435_5HZ_CAPTURE": "1",
+            "INTERNVLA_T4_R3_ENABLE_RGB_IPC": "0",
+            "INTERNNAV_RUNTIME_POLICY": "completion_sim",
+            "INTERNNAV_SIMULATION_TARGET": "isaac",
+            "INTERNNAV_T5_LANE": "a",
+            "INTERNVLA_T4_RESULT_ROOT": str(result_root.resolve()),
+        }
+    )
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(SCRIPTS / "build_t4_r3_sensor_runtime_overlay.py"),
+            "--source",
+            str(SCRIPTS / "internnav_go2_runtime.py"),
+            "--output",
+            str(output),
+            "--manifest",
+            str(manifest_path),
+        ],
+        cwd=ROOT,
+        env=env,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    generated = output.read_text(encoding="utf-8")
+    ast.parse(generated)
+    sampler = _function_source(generated, "_sample_r3_images_and_imu")
+    assert "_record_t5_d435_rgb(" in sampler
+    assert "if not rgb_ipc_enabled:" in sampler
+    assert sampler.index("_record_t5_d435_rgb(") < sampler.index(
+        "if not rgb_ipc_enabled:"
+    )
+    assert "rgb_ipc_enabled =" in sampler
+    assert "INTERNVLA_T4_R3_ENABLE_RGB_IPC" not in sampler
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    assert manifest["frozen_geometry_sources"]["rgb_ipc"] is False
+    assert manifest["frozen_geometry_sources"]["d435_rgb_5hz_capture"] is True
+    assert "independent_d435_rgb_5hz_archival_capture" in manifest["changes"]
+
+    invalid = subprocess.run(
+        [
+            sys.executable,
+            str(SCRIPTS / "build_t4_r3_sensor_runtime_overlay.py"),
+            "--source",
+            str(SCRIPTS / "internnav_go2_runtime.py"),
+            "--output",
+            str(tmp_path / "strict-must-not-exist.py"),
+            "--manifest",
+            str(tmp_path / "strict-must-not-exist.json"),
+        ],
+        cwd=ROOT,
+        env={**env, "INTERNNAV_RUNTIME_POLICY": "strict_evidence"},
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert invalid.returncode != 0
+    assert "restricted to an isolated T5 completion_sim lane" in invalid.stderr
+
+
 def test_revc_snapshot_aggregator_has_one_tick_identity_sidecar_and_rate_limit(
     tmp_path: Path,
 ) -> None:
@@ -564,6 +637,10 @@ def test_revc_snapshot_aggregator_has_one_tick_identity_sidecar_and_rate_limit(
     assert '"camera_order": expected_order' in sampler
     assert 'snapshot_dir / "snapshot.json"' in sampler
     assert 'hashlib.sha256(png).hexdigest()' in sampler
+    assert 'snapshot_dir / "04_third_person_topdown.png"' in sampler
+    assert '"observer": observer_metadata' in sampler
+    assert '"fed_to_step3": False' in sampler
+    assert '"same_paused_render_barrier_and_sim_stamp"' in sampler
     assert '"revc_snapshot_status": "RATE_LIMITED"' in sampler
     assert "1.0 / preview_hz" in sampler
     assert "def scoped_path(candidate: Path, label: str) -> Path:" in sampler

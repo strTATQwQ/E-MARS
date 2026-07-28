@@ -466,6 +466,7 @@ def test_step3_service_response_and_jsonl_redact_raw_generation(tmp_path) -> Non
     server.planner = SimpleNamespace(model_variant="step3_vl_10b_bf16", precision_mode="bf16")
     server.max_request_age_s = 5.0
     server.redact_raw_text = True
+    server.private_trace_path = None
     server.log_path = tmp_path / "service.jsonl"
     with pytest.raises(StopIteration):
         server.run()
@@ -510,3 +511,37 @@ def test_fatal_generation_timeout_does_not_accept_queued_request() -> None:
         server.run()
     assert server.socket.recv_count == 1
     assert server.socket.send_count == 0
+
+
+def test_step3_private_trace_is_mode_600_and_keeps_public_response_redacted(
+    tmp_path,
+) -> None:
+    request = _request()
+    server = object.__new__(SlowPlannerServer)
+    server.private_trace_path = tmp_path / "private" / "trace.jsonl"
+    server.private_trace_path.parent.mkdir(mode=0o700)
+    decision = _decision('{"decision":"abstain"}')
+    server._write_private_trace(
+        request=request,
+        prompt="choose safely",
+        decision=decision,
+        metrics=PlannerMetrics(model_variant="step3_vl_10b_bf16"),
+        received_unix_ns=10,
+        completed_unix_ns=20,
+        received_monotonic_ns=100,
+        completed_monotonic_ns=110,
+    )
+
+    value = json.loads(server.private_trace_path.read_text(encoding="utf-8"))
+    assert value["classification"] == "PRIVATE_MODEL_TRACE"
+    assert value["step3_user_prompt"] == "choose safely"
+    assert value["step3_raw_response"] == '{"decision":"abstain"}'
+    assert value["reasoning_present"] is False
+    assert value["reasoning"] is None
+    assert value["reasoning_capture_status"].startswith("not_available")
+    assert value["wall_response_duration_ms"] == 0.00001
+    assert len(value["request"]["ordered_images"][0]["sha256"]) == 64
+    # Windows ACLs do not expose POSIX chmod bits faithfully.  The required
+    # 0600 invariant is exercised by the mandatory remote-Linux regression.
+    if sys.platform != "win32":
+        assert server.private_trace_path.stat().st_mode & 0o777 == 0o600

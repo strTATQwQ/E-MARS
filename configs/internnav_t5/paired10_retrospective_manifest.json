@@ -1,0 +1,216 @@
+{
+  "schema_version": 1,
+  "protocol_id": "t5_paired10_retrospective_v1",
+  "status": "FROZEN_FOR_EXECUTION",
+  "purpose": "Estimate the incremental effect of the bounded Step3 timeout advisor over the same InternVLA navigation stack while preserving lane-local episode pairing.",
+  "evidence_classification": {
+    "classification": "RETROSPECTIVE_DEVELOPMENT",
+    "held_out": false,
+    "promotion_evidence": false,
+    "disclosure": "All 20 episode keys have appeared in earlier T3/T5 development or evaluation work. Results are paired engineering evidence, not a held-out benchmark claim.",
+    "unique_episode_count": 20,
+    "execution_count": 40,
+    "same_episode_dual_arm_runs_are_not_additional_samples": true
+  },
+  "source_assets": {
+    "episode_source": "configs/internnav_t3/model_pilot_episode_manifest.json",
+    "source_gzip_sha256": "f09b11004d15d579620ba2b2769dcbf863efe4cf04d9e404f071f66244463f8b",
+    "materializer": "scripts/materialize_t5_final_pilot_split.py",
+    "prepare_wrapper": "coordination/run_t5_final_pilot_prepare_online.sh",
+    "lane_runner": "coordination/run_t5_fast_lane_online.sh",
+    "execution_profile": "final10"
+  },
+  "episode_sets": {
+    "paired10_a": {
+      "lane": "a",
+      "episode_keys": [
+        "6898_1741",
+        "6292_1573",
+        "5840_1474",
+        "6842_1720",
+        "1420_364",
+        "4084_1003",
+        "583_145",
+        "1803_448",
+        "6623_1657",
+        "2613_625"
+      ]
+    },
+    "paired10_b": {
+      "lane": "b",
+      "episode_keys": [
+        "5627_1417",
+        "4182_1027",
+        "4009_976",
+        "654_157",
+        "4943_1255",
+        "6982_1765",
+        "3542_877",
+        "6157_1561",
+        "2564_610",
+        "2853_703"
+      ]
+    }
+  },
+  "rounds": [
+    {
+      "round_id": "round1",
+      "launch": "parallel",
+      "lane_a": {
+        "pair_set": "paired10_a",
+        "evaluation_arm": "internvla_only",
+        "step3_timeout_advisor": false
+      },
+      "lane_b": {
+        "pair_set": "paired10_b",
+        "evaluation_arm": "internvla_step3",
+        "step3_timeout_advisor": true
+      }
+    },
+    {
+      "round_id": "round2",
+      "launch": "parallel",
+      "requires_round1_clean_release": true,
+      "lane_a": {
+        "pair_set": "paired10_a",
+        "evaluation_arm": "internvla_step3",
+        "step3_timeout_advisor": true
+      },
+      "lane_b": {
+        "pair_set": "paired10_b",
+        "evaluation_arm": "internvla_only",
+        "step3_timeout_advisor": false
+      }
+    }
+  ],
+  "pairing_contract": {
+    "episode_set_pinned_to_physical_lane_across_arms": true,
+    "arm_order_balanced_across_lanes": true,
+    "rounds_must_not_overlap": true,
+    "lanes_within_a_round_must_launch_in_parallel": true,
+    "round2_requires_both_round1_children_to_pass_and_release_their_leases": true,
+    "aggregate_primary_unit": "episode_key_within_pair_set",
+    "cross_lane_pooling_without_pair_set_stratification_forbidden": true
+  },
+  "runtime_profile": {
+    "candidate_profile": "recovery_a",
+    "rtf_ablation_profile": "navigation_fast",
+    "isaac_sensor_profile": "dual_lane_wp03_stop_shadow",
+    "termination_mode": "oracle_termination",
+    "system2_replan_policy": "observation_bound",
+    "strict_extension_profile": "off",
+    "nvblox_mode": "off",
+    "run_mode": "model",
+    "system1_queue_horizon": 0,
+    "system2_queue_horizon": 0,
+    "fault_injection_profile": "off"
+  },
+  "resource_contract": {
+    "lane_a": {
+      "dgx": "DGX_A",
+      "isaac_gpu": 0,
+      "isaac_logical_cpus": "0,2,4,6,8,10,12,14,16",
+      "resource_profile": "lane-a"
+    },
+    "lane_b": {
+      "dgx": "DGX_B",
+      "isaac_gpu": 1,
+      "isaac_logical_cpus": "1,3,5,7,9,11,13,15,17",
+      "resource_profile": "lane-b"
+    },
+    "all_lanes_global_lock": false,
+    "shared_asset_io_during_episode_execution": false,
+    "cleanup_deadline_sec": 60,
+    "cleanup_after_deadline": "KILL_THEN_PROVE_ZERO_RESIDUAL"
+  },
+  "capture_contract": {
+    "model_observations": {
+      "enabled": true,
+      "format": "PNG_PLUS_JSONL",
+      "role": "MODEL_OBSERVATION",
+      "maximum_hz": 5
+    },
+    "d435_rgb": {
+      "enabled": true,
+      "format": "PNG_PLUS_JSONL_AND_POSTRUN_MP4",
+      "independent_from_model_step": true,
+      "sim_hz": 5,
+      "resolution": [
+        640,
+        480
+      ]
+    },
+    "step3_snapshot": {
+      "enabled_when_step3_arm_active": true,
+      "same_render_tick": true,
+      "ordered_views": [
+        "front_left",
+        "front",
+        "front_right",
+        "rear"
+      ],
+      "format": "FOUR_PNG_PLUS_SIDECAR",
+      "third_person_observer": "BEST_EFFORT_SAME_PAUSED_RENDER_BARRIER",
+      "third_person_must_show_robot_body": true,
+      "third_person_fed_to_step3": false
+    },
+    "step3_trace": {
+      "save_exact_user_prompt": true,
+      "save_raw_model_response": true,
+      "save_parsed_decision": true,
+      "save_downstream_bounded_primitive": true,
+      "hidden_chain_of_thought_requested": false,
+      "reasoning_storage": "ONLY_EXPLICIT_MODEL_EMITTED_REASONING_IF_PRESENT_IN_PRIVATE_TRACE",
+      "public_timeline_must_not_copy_private_raw_trace": true
+    },
+    "unified_timeline": {
+      "authoritative_semantic_time": "ISAAC_X86_ROS_CLOCK_SIM_STAMP",
+      "identity_tuple": [
+        "lane",
+        "episode_id",
+        "reset_generation",
+        "sequence_id"
+      ],
+      "wall_and_monotonic_time_role": "LATENCY_AND_PROCESS_DIAGNOSTICS_ONLY",
+      "output": "replay/timeline.jsonl",
+      "index": "replay/timeline_index.json"
+    }
+  },
+  "latency_contract": {
+    "internvla": {
+      "timebase": "wall_monotonic",
+      "required_fields": [
+        "inference_latency_sec",
+        "action_round_trip_latency_sec",
+        "network_ros_residual_latency_sec"
+      ]
+    },
+    "step3": {
+      "timebase": "wall_monotonic",
+      "required_fields": [
+        "server_total_ms",
+        "end_to_end_ms",
+        "model_generate_ms",
+        "prefill_ttft_ms",
+        "decode_ms",
+        "wall_response_duration_ms"
+      ]
+    },
+    "required_aggregate_statistics": [
+      "count",
+      "p50",
+      "p95",
+      "max"
+    ],
+    "latency_values_must_remain_joinable_to_unified_timeline": true
+  },
+  "safety_and_exit_contract": {
+    "episode_reset_sequence_isolation": true,
+    "bounded_velocity_and_acceleration": true,
+    "stale_command_safe_stop": true,
+    "simulation_estop": true,
+    "raw_logs_and_code_config_sha_required": true,
+    "final_pid_pgid_socket_port_lock_zero": true,
+    "real_go2_claim_or_configuration": false
+  }
+}

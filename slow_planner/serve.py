@@ -4,6 +4,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import time
 from dataclasses import replace
 from pathlib import Path
@@ -16,6 +17,39 @@ from .mission import (
     MissionNormalizationRequest,
     normalization_response,
 )
+
+
+_PRIVATE_SECRET_PATTERNS = (
+    re.compile(r"(?i)\b(?:hf_|sk-)[A-Za-z0-9_-]{16,}\b"),
+    re.compile(r"(?i)\b(?:OPENAI_API_KEY|HF_TOKEN)\s*[:=]\s*\S+"),
+)
+
+
+def _private_trace_text(value: str) -> tuple[str, int]:
+    """Redact credential-shaped text without inspecting process state."""
+
+    redacted = str(value)
+    count = 0
+    for pattern in _PRIVATE_SECRET_PATTERNS:
+        redacted, replacements = pattern.subn("[REDACTED_CREDENTIAL]", redacted)
+        count += replacements
+    return redacted, count
+
+
+def _explicit_model_reasoning(raw_text: str) -> str | None:
+    """Return only rationale that the model explicitly emitted, if present."""
+
+    match = re.search(r"<think>(.*?)</think>", raw_text, flags=re.DOTALL)
+    if match is not None and match.group(1).strip():
+        return match.group(1).strip()
+    try:
+        value = json.loads(raw_text)
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return None
+    if isinstance(value, dict) and isinstance(value.get("reasoning"), str):
+        reasoning = value["reasoning"].strip()
+        return reasoning or None
+    return None
 
 
 def _load_config(path: Path) -> dict[str, Any]:
@@ -101,6 +135,15 @@ class SlowPlannerServer:
         self.redact_raw_text = bool(config.get("redact_raw_text", False))
         self.log_path = Path(_expand(config.get("log_path", "results/slow_planner_service.jsonl")))
         self.log_path.parent.mkdir(parents=True, exist_ok=True)
+        private_trace_text = os.environ.get("STEP3_PRIVATE_TRACE_PATH", "").strip()
+        self.private_trace_path: Path | None = None
+        if private_trace_text:
+            private_trace_path = Path(private_trace_text).expanduser()
+            if not private_trace_path.is_absolute():
+                raise ValueError("STEP3_PRIVATE_TRACE_PATH must be absolute")
+            private_trace_path.parent.mkdir(parents=True, exist_ok=False, mode=0o700)
+            os.chmod(private_trace_path.parent, 0o700)
+            self.private_trace_path = private_trace_path
         self.context = zmq.Context.instance()
         self.socket = self.context.socket(zmq.REP)
         self.socket.setsockopt(zmq.LINGER, 0)
@@ -152,6 +195,8 @@ class SlowPlannerServer:
             "batch_size": int(config.get("batch_size", 1)),
             "redact_raw_text": self.redact_raw_text,
             "normalization_only": bool(config.get("normalization_only", False)),
+            "private_trace_enabled": self.private_trace_path is not None,
+            "private_reasoning_capture": "model_emitted_only",
         }
 
     def _log(self, value: dict[str, Any]) -> None:
@@ -163,6 +208,90 @@ class SlowPlannerServer:
         if self.redact_raw_text:
             value.pop("raw_text", None)
         return value
+
+    def _write_private_trace(
+        self,
+        *,
+        request: SlowPlannerRequest,
+        prompt: str | None,
+        decision: PlannerDecision,
+        metrics: PlannerMetrics,
+        received_unix_ns: int,
+        completed_unix_ns: int,
+        received_monotonic_ns: int,
+        completed_monotonic_ns: int,
+    ) -> None:
+        path = getattr(self, "private_trace_path", None)
+        if path is None:
+            return
+        request_metadata = request.metadata()
+        image_metadata = []
+        for image, metadata in zip(request.ordered_images, request_metadata["ordered_images"]):
+            image_metadata.append(
+                {
+                    **metadata,
+                    "sha256": hashlib.sha256(image.jpeg).hexdigest(),
+                    "bytes": len(image.jpeg),
+                }
+            )
+        request_metadata["ordered_images"] = image_metadata
+        raw_text, raw_redactions = _private_trace_text(decision.raw_text)
+        sanitized_prompt, prompt_redactions = _private_trace_text(prompt or "")
+        reasoning = _explicit_model_reasoning(raw_text)
+        if reasoning is not None:
+            reasoning, reasoning_redactions = _private_trace_text(reasoning)
+        else:
+            reasoning_redactions = 0
+        parsed = decision.to_mapping()
+        parsed.pop("raw_text", None)
+        payload = {
+            "schema_version": 1,
+            "classification": "PRIVATE_MODEL_TRACE",
+            "episode_id": request.episode_id,
+            "snapshot_id": request.snapshot_id,
+            "request": request_metadata,
+            "step3_user_prompt": sanitized_prompt,
+            "step3_raw_response": raw_text,
+            "parsed_decision": parsed,
+            "metrics": metrics.to_mapping(),
+            "reasoning_present": reasoning is not None,
+            "reasoning": reasoning,
+            "reasoning_capture_status": (
+                "model_emitted_reasoning_captured"
+                if reasoning is not None
+                else "not_available_by_design_skip_private_reasoning"
+            ),
+            "credential_redaction_count": (
+                prompt_redactions + raw_redactions + reasoning_redactions
+            ),
+            "received_wall_time_unix_ns": received_unix_ns,
+            "completed_wall_time_unix_ns": completed_unix_ns,
+            "received_wall_monotonic_ns": received_monotonic_ns,
+            "completed_wall_monotonic_ns": completed_monotonic_ns,
+            "wall_response_duration_ms": (
+                completed_monotonic_ns - received_monotonic_ns
+            ) / 1_000_000.0,
+        }
+        encoded = (
+            json.dumps(
+                payload,
+                ensure_ascii=False,
+                separators=(",", ":"),
+                allow_nan=False,
+            )
+            + "\n"
+        ).encode("utf-8")
+        descriptor = os.open(
+            path,
+            os.O_WRONLY | os.O_CREAT | os.O_APPEND,
+            0o600,
+        )
+        try:
+            os.write(descriptor, encoded)
+            os.fsync(descriptor)
+        finally:
+            os.close(descriptor)
+        os.chmod(path, 0o600)
 
     @staticmethod
     def _stale_decision(request: SlowPlannerRequest, reason: str) -> PlannerDecision:
@@ -180,6 +309,8 @@ class SlowPlannerServer:
     def run(self) -> None:
         while True:
             parts = self.socket.recv_multipart()
+            received_unix_ns = time.time_ns()
+            received_monotonic_ns = time.monotonic_ns()
             started = time.perf_counter()
             try:
                 envelope = json.loads(parts[0].decode("utf-8"))
@@ -236,6 +367,14 @@ class SlowPlannerServer:
                 if envelope.get("type") != "decide":
                     raise ValueError("unknown request type")
                 request = SlowPlannerRequest.from_wire(envelope.get("request") or {}, parts[1:])
+                format_prompt = getattr(self.planner, "format_prompt", None)
+                trace_prompt = None
+                if callable(format_prompt):
+                    try:
+                        trace_prompt = str(format_prompt(request))
+                    except Exception:
+                        # Private evidence must never change the control result.
+                        trace_prompt = None
                 age_s = time.time() - request.timestamp
                 if abs(age_s) > self.max_request_age_s:
                     reason = "stale_request" if age_s > 0 else "clock_skew"
@@ -245,6 +384,18 @@ class SlowPlannerServer:
                     decision, metrics = self.runner.decide(request)
                 server_ms = (time.perf_counter() - started) * 1000.0
                 metrics = replace(metrics, end_to_end_ms=max(metrics.end_to_end_ms, server_ms))
+                completed_unix_ns = time.time_ns()
+                completed_monotonic_ns = time.monotonic_ns()
+                self._write_private_trace(
+                    request=request,
+                    prompt=trace_prompt,
+                    decision=decision,
+                    metrics=metrics,
+                    received_unix_ns=received_unix_ns,
+                    completed_unix_ns=completed_unix_ns,
+                    received_monotonic_ns=received_monotonic_ns,
+                    completed_monotonic_ns=completed_monotonic_ns,
+                )
                 decision_mapping = self._decision_mapping(decision)
                 response = {
                     "ok": True,

@@ -205,10 +205,11 @@ def test_distributed_runner_requires_explicit_lane_b_canary_profile() -> None:
     ready = text.index("write_health_state READY")
     assert 'isaac_sensor_profile="${INTERNNAV_T5_ISAAC_SENSOR_PROFILE:-baseline}"' in text
     assert 'test "${INTERNVLA_T5_REVC_ENABLE:-0}" = 0' in text
-    assert 'test "$lane" = b' in text[profile : profile + 300]
-    assert 'test "$mode" = model' in text[profile : profile + 300]
-    assert 'test "$engineering_canary_sec" = 60' in text[profile : profile + 300]
-    assert 'export INTERNVLA_T5_REVC_ENABLE=1' in text[profile : profile + 300]
+    profile_block = text[profile : profile + 420]
+    assert 'test "$lane" = b' in profile_block
+    assert 'test "$mode" = model' in profile_block
+    assert 'test "$engineering_canary_sec" = 60' in profile_block
+    assert 'export INTERNVLA_T5_REVC_ENABLE=1' in profile_block
     assert 'case "$rtf_ablation_profile" in off|navigation_fast)' in text
     assert probe < gate
     assert '--run-token "$run_token"' in text

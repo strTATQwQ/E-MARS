@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Default-off, observation-only RGB recorder for T5 completion_sim runs."""
+"""Default-off recorder for the RGB frames actually observed by InternVLA."""
 
 from __future__ import annotations
 
 import json
+import hashlib
 import os
 import struct
 import sys
@@ -47,7 +48,13 @@ def encode_rgb_png(rgb: np.ndarray) -> bytes:
 
 
 class T5RGBFrameRecorder:
-    """Sample evaluator RGB observations at 5 Hz in simulation time."""
+    """Record model-visible evaluator RGB, capped at 5 Hz in simulation time.
+
+    The evaluator does not necessarily ask the model for a new action at the
+    physical D435 cadence.  Consequently this stream is deliberately labelled
+    ``model_observation`` and must not be presented as the independent 5 Hz
+    D435 review stream.
+    """
 
     interval_ns = 200_000_000
 
@@ -92,11 +99,13 @@ class T5RGBFrameRecorder:
             ) / 1e9
             measured_hz = (self.frame_count - 1) / duration_sec
         payload = {
-            "schema_version": 1,
+            "schema_version": 2,
             "status": status,
-            "target_hz": 5.0,
+            "maximum_capture_hz": 5.0,
             "sampling_timebase": "x86_sim_stamp",
             "source": "evaluator_internvla_rgb",
+            "capture_role": "model_observation",
+            "independent_d435_5hz": False,
             "frame_count": self.frame_count,
             "source_frame_count": self.source_frame_count,
             "first_sim_stamp_ns": self.first_recorded_stamp_ns,
@@ -118,7 +127,14 @@ class T5RGBFrameRecorder:
         )
         os.replace(temporary, self.summary_path)
 
-    def record(self, observation: dict[str, Any]) -> None:
+    def record(
+        self,
+        observation: dict[str, Any],
+        *,
+        episode_id: str | None = None,
+        reset_generation: int | None = None,
+        sequence_id: int | None = None,
+    ) -> None:
         if self.disabled_error is not None:
             return
         metadata = observation.get("camera_sensor_metadata")
@@ -151,16 +167,23 @@ class T5RGBFrameRecorder:
         relative_path = Path("frames") / f"{frame_index:08d}.png"
         output = self.root / relative_path
         temporary = output.with_name(f".{output.name}.{os.getpid()}.tmp")
-        temporary.write_bytes(encode_rgb_png(rgb))
+        png = encode_rgb_png(rgb)
+        temporary.write_bytes(png)
         os.replace(temporary, output)
         event = {
-            "schema_version": 1,
+            "schema_version": 2,
+            "event_type": "internvla_model_observation_rgb",
             "frame_index": frame_index,
             "path": relative_path.as_posix(),
+            "sha256": hashlib.sha256(png).hexdigest(),
             "source_sequence": source_sequence,
             "sim_stamp_ns": source_stamp_ns,
+            "episode_id": episode_id,
+            "reset_generation": reset_generation,
+            "sequence_id": sequence_id,
             "height": int(rgb.shape[0]),
             "width": int(rgb.shape[1]),
+            "wall_time_unix_ns": time.time_ns(),
             "wall_monotonic_ns": time.monotonic_ns(),
         }
         with self.events_path.open("a", encoding="utf-8") as stream:
@@ -171,9 +194,21 @@ class T5RGBFrameRecorder:
         self.last_recorded_stamp_ns = source_stamp_ns
         self._write_summary("RUNNING")
 
-    def record_without_affecting_control(self, observation: dict[str, Any]) -> None:
+    def record_without_affecting_control(
+        self,
+        observation: dict[str, Any],
+        *,
+        episode_id: str | None = None,
+        reset_generation: int | None = None,
+        sequence_id: int | None = None,
+    ) -> None:
         try:
-            self.record(observation)
+            self.record(
+                observation,
+                episode_id=episode_id,
+                reset_generation=reset_generation,
+                sequence_id=sequence_id,
+            )
         except Exception as exc:  # capture is deliberately outside control safety
             self.disabled_error = f"{type(exc).__name__}: {exc}"
             try:

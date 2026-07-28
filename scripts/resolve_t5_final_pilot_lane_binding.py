@@ -107,11 +107,14 @@ def resolve_binding(
     output: Path,
     execution_profile: str = "final10",
     episode_key: str | None = None,
+    evaluation_arm: str = "internvla_only",
 ) -> dict[str, Any]:
     if lane not in {"a", "b"}:
         raise ValueError("lane must be a or b")
     if SHA40.fullmatch(code_sha) is None:
         raise ValueError("code SHA must be a full lowercase Git SHA")
+    if evaluation_arm not in {"internvla_only", "internvla_step3"}:
+        raise ValueError("evaluation arm must be internvla_only or internvla_step3")
     prepare_root = prepare_root.resolve()
     receipt_path = prepare_root / "final_pilot_prepare_receipt.json"
     receipt = _object(receipt_path, "final-pilot preparation receipt")
@@ -302,6 +305,8 @@ def resolve_binding(
         "execution_profile": execution_profile,
         "execution_episode_count": len(execution_episode_keys or []),
         "execution_episode_keys": execution_episode_keys,
+        "evaluation_arm": evaluation_arm,
+        "pair_set": "paired10_a" if lane == "a" else "paired10_b",
         "screen_episode_key": episode_key,
         "deployment_roots": {
             "dgx": roots.get(expected_dgx_key),
@@ -359,6 +364,11 @@ def main() -> int:
     parser.add_argument("--nvblox-mode", required=True)
     parser.add_argument("--run-mode", required=True)
     parser.add_argument(
+        "--evaluation-arm",
+        default="internvla_only",
+        choices=("internvla_only", "internvla_step3"),
+    )
+    parser.add_argument(
         "--execution-profile",
         choices=("final10", "pilot-screen1"),
         default="final10",
@@ -384,6 +394,7 @@ def main() -> int:
             output=arguments.output,
             execution_profile=arguments.execution_profile,
             episode_key=arguments.episode_key,
+            evaluation_arm=arguments.evaluation_arm,
         )
     except (OSError, ValueError) as error:
         print(f"final-pilot lane binding failed: {error}")
