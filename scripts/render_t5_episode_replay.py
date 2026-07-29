@@ -136,6 +136,28 @@ def _load_snapshots(evaluator: Path, episode_id: str) -> dict[tuple[int, int], d
     return snapshots
 
 
+def _load_instruction(evaluator: Path, episode_id: str) -> str:
+    task_state_root = evaluator / "task_state"
+    if not task_state_root.is_dir() or task_state_root.is_symlink():
+        raise ReplayError("task_state evidence directory is unavailable")
+    instructions: set[str] = set()
+    for state_path in sorted(task_state_root.glob("state-*.json")):
+        value = json.loads(
+            _regular_file(state_path, "task-state evidence").read_text(encoding="utf-8")
+        )
+        if value.get("episode_id") != episode_id:
+            continue
+        instruction = value.get("instruction")
+        if not isinstance(instruction, str) or not instruction.strip():
+            raise ReplayError(f"task-state instruction is invalid: {state_path}")
+        instructions.add(" ".join(instruction.split()))
+    if len(instructions) != 1:
+        raise ReplayError(
+            f"expected one frozen instruction for {episode_id}, found {len(instructions)}"
+        )
+    return instructions.pop()
+
+
 def _advice_events(
     evaluator: Path,
     episode_id: str,
@@ -225,6 +247,38 @@ def _draw_panel(
             y += 28
 
 
+def _draw_task_footer(
+    canvas: Image.Image,
+    instruction: str,
+    *,
+    font: ImageFont.ImageFont,
+) -> None:
+    lines = textwrap.wrap(
+        f"TASK: {instruction}",
+        width=112,
+        break_long_words=False,
+        break_on_hyphens=False,
+    )
+    if not lines:
+        raise ReplayError("task footer has no displayable instruction")
+    line_height = 25
+    footer_height = 14 + line_height * len(lines)
+    y0 = OUTPUT_SIZE[1] - footer_height
+    draw = ImageDraw.Draw(canvas)
+    draw.rectangle((0, y0, OUTPUT_SIZE[0], OUTPUT_SIZE[1]), fill=(0, 0, 0))
+    y = y0 + 6
+    for line in lines:
+        draw.text(
+            (14, y),
+            line,
+            fill=(255, 255, 255),
+            font=font,
+            stroke_width=1,
+            stroke_fill=(0, 0, 0),
+        )
+        y += line_height
+
+
 def _sha256(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as stream:
@@ -250,6 +304,7 @@ def render(args: argparse.Namespace) -> dict[str, Any]:
     frames.sort(key=lambda value: (int(value["sim_stamp_ns"]), int(value["frame_index"])))
     if any(int(b["sim_stamp_ns"]) <= int(a["sim_stamp_ns"]) for a, b in zip(frames, frames[1:])):
         raise ReplayError("episode D435 sim stamps are not strictly increasing")
+    instruction = _load_instruction(evaluator, args.episode_id)
     snapshots = _load_snapshots(evaluator, args.episode_id)
     events, response_count = _advice_events(evaluator, args.episode_id, snapshots)
     if args.require_step3 and not events:
@@ -276,6 +331,7 @@ def render(args: argparse.Namespace) -> dict[str, Any]:
     title_font = _font(23)
     body_font = _font(20)
     label_font = _font(20)
+    footer_font = _font(19)
     event_canvases: dict[tuple[int, int], Image.Image] = {}
     hold_ns = round(args.step3_hold_sec * 1e9)
     first_sim_ns = int(frames[0]["sim_stamp_ns"])
@@ -318,6 +374,7 @@ def render(args: argparse.Namespace) -> dict[str, Any]:
                 title_font=title_font,
                 body_font=body_font,
             )
+            _draw_task_footer(canvas, instruction, font=footer_font)
             _write_frame(process.stdin, canvas)
         process.stdin.close()
         return_code = process.wait()
@@ -349,6 +406,9 @@ def render(args: argparse.Namespace) -> dict[str, Any]:
         "step3_public_fields_only": True,
         "hidden_reasoning_rendered": False,
         "four_camera_switching": bool(events),
+        "instruction": instruction,
+        "instruction_sha256": hashlib.sha256(instruction.encode("utf-8")).hexdigest(),
+        "instruction_footer_always_visible": True,
         "output_mp4": str(output),
         "output_bytes": output.stat().st_size,
         "output_sha256": _sha256(output),
