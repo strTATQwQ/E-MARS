@@ -168,6 +168,7 @@ parser.add_argument("--third_person_record_fps", type=float, default=25.0)
 parser.add_argument("--third_person_record_duration_sec", type=float, default=0.0)
 parser.add_argument("--third_person_camera_width", type=int, default=960)
 parser.add_argument("--third_person_camera_height", type=int, default=540)
+parser.add_argument("--third_person_camera_focal_length", type=float, default=18.0)
 parser.add_argument(
     "--third_person_camera_eye",
     type=parse_vec3,
@@ -492,6 +493,8 @@ def configure_env() -> UnitreeGo2FlatEnvCfg_PLAY:
             raise ValueError("third-person recording FPS must be positive")
         if args_cli.third_person_record_duration_sec <= 0.0:
             raise ValueError("third-person recording duration must be positive")
+        if args_cli.third_person_camera_focal_length <= 0.0:
+            raise ValueError("third-person camera focal length must be positive")
         env_cfg.scene.third_person_camera = CameraCfg(
             prim_path="{ENV_REGEX_NS}/third_person_camera",
             update_period=1.0 / args_cli.third_person_record_fps,
@@ -499,7 +502,7 @@ def configure_env() -> UnitreeGo2FlatEnvCfg_PLAY:
             width=max(16, int(args_cli.third_person_camera_width)),
             data_types=["rgb"],
             spawn=sim_utils.PinholeCameraCfg(
-                focal_length=18.0,
+                focal_length=args_cli.third_person_camera_focal_length,
                 focus_distance=400.0,
                 horizontal_aperture=24.0,
                 clipping_range=(0.05, 30.0),
@@ -1586,6 +1589,7 @@ def main() -> int:
                     args_cli.third_person_camera_width,
                     args_cli.third_person_camera_height,
                 ],
+                "camera_focal_length_mm": args_cli.third_person_camera_focal_length,
                 "locomotion_fidelity": "isaaclab_go2_learned_policy",
                 "ideal_kinematic_base": False,
                 "physics_dt_sec": float(env.physics_dt),
