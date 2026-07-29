@@ -364,6 +364,12 @@ def test_cross_lane_pilot_summary_preserves_frozen_source_pair_set() -> None:
     assert '"source_lane":(binding or {}).get("source_lane",lane)' in text
 
 
+def test_lane_cleanup_does_not_treat_peer_dataset_reader_as_own_residual() -> None:
+    text = RUNNER.read_text(encoding="utf-8")
+    assert 'run_scope_absent "$x86_target" "$x86_run"' in text
+    assert 'run_scope_absent "$x86_target" "$x86_run|$x86_root"' not in text
+
+
 def test_summary_preserves_machine_readable_failure_before_x86_receipts_exist() -> None:
     text = source()
     assert 'and isinstance(x86_contract,dict)' in text

@@ -1506,7 +1506,10 @@ request_stop_and_audit() {
     supervisor_absent "$x86_target" "$x86_supervisor_ledger" "$x86_run" >/dev/null 2>&1 && x86_absent=true
   elif test "$x86_launch_attempted" = 0; then x86_absent=true; fi
   run_scope_absent "$dgx_target" "$dgx_run|$dgx_root" >/dev/null 2>&1 && dgx_scoped=true
-  run_scope_absent "$x86_target" "$x86_run|$x86_root" >/dev/null 2>&1 && x86_scoped=true
+  # A peer Lane may legitimately read this Lane's frozen episode dataset, so
+  # its argv can contain x86_root.  Cleanup ownership is the immutable run-root
+  # plus the supervisor/container/socket/port checks below.
+  run_scope_absent "$x86_target" "$x86_run" >/dev/null 2>&1 && x86_scoped=true
   remote "$x86_target" \
     "test \"\$(docker inspect -f '{{index .Config.Labels \"internnav.t5.deployment_root\"}}' '$container')\" = '$x86_root'; test \"\$(docker inspect -f '{{.State.Running}}' '$container')\" = false; test \"\$(docker inspect -f '{{.State.Pid}}' '$container')\" = 0" \
     >/dev/null 2>&1 && container_clean=true
