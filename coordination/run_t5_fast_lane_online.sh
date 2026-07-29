@@ -1745,7 +1745,9 @@ checks={
             or (
                 binding.get("evaluation_arm")==evaluation_arm
                 and binding.get("pair_set")==(
-                    "paired10_a" if lane=="a" else "paired10_b"
+                    "paired10_a"
+                    if binding.get("source_lane",lane)=="a"
+                    else "paired10_b"
                 )
             )
         )

@@ -362,6 +362,7 @@ def test_cross_lane_pilot_summary_preserves_frozen_source_pair_set() -> None:
     text = RUNNER.read_text(encoding="utf-8")
     assert '"pair_set":(binding or {}).get("pair_set")' in text
     assert '"source_lane":(binding or {}).get("source_lane",lane)' in text
+    assert 'if binding.get("source_lane",lane)=="a"' in text
 
 
 def test_lane_cleanup_does_not_treat_peer_dataset_reader_as_own_residual() -> None:
