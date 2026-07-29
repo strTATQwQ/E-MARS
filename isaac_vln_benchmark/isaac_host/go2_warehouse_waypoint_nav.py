@@ -54,6 +54,13 @@ def parse_waypoints(text: str) -> list[tuple[float, float]]:
     return waypoints
 
 
+def parse_vec3(text: str) -> tuple[float, float, float]:
+    pieces = [piece.strip() for piece in text.split(",")]
+    if len(pieces) != 3:
+        raise argparse.ArgumentTypeError(f"Invalid vector '{text}', expected x,y,z")
+    return (float(pieces[0]), float(pieces[1]), float(pieces[2]))
+
+
 def wrap_to_pi(angle: float) -> float:
     return (angle + math.pi) % (2.0 * math.pi) - math.pi
 
@@ -153,6 +160,25 @@ parser.add_argument("--camera_width", type=int, default=256, help="Front camera 
 parser.add_argument("--camera_height", type=int, default=144, help="Front camera render height.")
 parser.add_argument("--disable_camera_stream", action="store_true", help="Do not attach or stream the Isaac camera sensor.")
 parser.add_argument(
+    "--third_person_record_dir",
+    default="",
+    help="Optional directory for a fixed third-person RGB PNG sequence and timeline.",
+)
+parser.add_argument("--third_person_record_fps", type=float, default=25.0)
+parser.add_argument("--third_person_record_duration_sec", type=float, default=0.0)
+parser.add_argument("--third_person_camera_width", type=int, default=960)
+parser.add_argument("--third_person_camera_height", type=int, default=540)
+parser.add_argument(
+    "--third_person_camera_eye",
+    type=parse_vec3,
+    default=parse_vec3("2.6,-3.2,1.45"),
+)
+parser.add_argument(
+    "--third_person_camera_target",
+    type=parse_vec3,
+    default=parse_vec3("1.1,0.0,0.35"),
+)
+parser.add_argument(
     "--control_udp_host",
     default="127.0.0.1",
     help="UDP bind host for benchmark control packets; empty disables control.",
@@ -177,6 +203,7 @@ simulation_app = app_launcher.app
 
 import omni.usd
 import torch
+from PIL import Image
 from pxr import Gf, Usd, UsdGeom, UsdLux, UsdPhysics
 
 
@@ -458,6 +485,29 @@ def configure_env() -> UnitreeGo2FlatEnvCfg_PLAY:
                 pos=(0.35, 0.0, 0.20),
                 rot=(0.5, -0.5, 0.5, -0.5),
                 convention="ros",
+            ),
+        )
+    if args_cli.third_person_record_dir:
+        if args_cli.third_person_record_fps <= 0.0:
+            raise ValueError("third-person recording FPS must be positive")
+        if args_cli.third_person_record_duration_sec <= 0.0:
+            raise ValueError("third-person recording duration must be positive")
+        env_cfg.scene.third_person_camera = CameraCfg(
+            prim_path="{ENV_REGEX_NS}/third_person_camera",
+            update_period=1.0 / args_cli.third_person_record_fps,
+            height=max(16, int(args_cli.third_person_camera_height)),
+            width=max(16, int(args_cli.third_person_camera_width)),
+            data_types=["rgb"],
+            spawn=sim_utils.PinholeCameraCfg(
+                focal_length=18.0,
+                focus_distance=400.0,
+                horizontal_aperture=24.0,
+                clipping_range=(0.05, 30.0),
+            ),
+            offset=CameraCfg.OffsetCfg(
+                pos=(0.0, 0.0, 1.0),
+                rot=(1.0, 0.0, 0.0, 0.0),
+                convention="world",
             ),
         )
     if args_cli.disable_base_contact_termination:
@@ -1095,6 +1145,7 @@ def main() -> int:
     print("CREATE_ENV_DONE", flush=True)
     robot = env.scene["robot"]
     front_camera = None
+    third_person_camera = None
     if not args_cli.disable_camera_stream and args_cli.camera_udp_host and args_cli.camera_udp_port > 0:
         try:
             front_camera = env.scene["front_camera"]
@@ -1105,6 +1156,17 @@ def main() -> int:
             )
         except Exception as exc:
             print(f"CAMERA_UNAVAILABLE {type(exc).__name__}: {exc!r}", flush=True)
+    if args_cli.third_person_record_dir:
+        third_person_camera = env.scene["third_person_camera"]
+        print(
+            "THIRD_PERSON_CAMERA_READY "
+            f"width={args_cli.third_person_camera_width} "
+            f"height={args_cli.third_person_camera_height} "
+            f"fps={args_cli.third_person_record_fps:.3f} "
+            f"eye={args_cli.third_person_camera_eye} "
+            f"target={args_cli.third_person_camera_target}",
+            flush=True,
+        )
     if args_cli.control_mode == "waypoint":
         add_waypoint_markers(args_cli.waypoints)
         print("MARKERS_DONE", flush=True)
@@ -1145,6 +1207,24 @@ def main() -> int:
     writer.writeheader()
 
     obs, _ = env.reset()
+    third_person_root = None
+    third_person_manifest = None
+    third_person_frame_count = 0
+    third_person_next_sim_sec = 0.0
+    third_person_recording_completed = False
+    if third_person_camera is not None:
+        third_person_root = Path(args_cli.third_person_record_dir).expanduser().resolve()
+        third_person_root.mkdir(parents=True, exist_ok=False)
+        third_person_manifest = (third_person_root / "frames.jsonl").open("w", encoding="utf-8")
+        eye = torch.tensor(
+            [list(args_cli.third_person_camera_eye)], dtype=torch.float32, device=robot.device
+        )
+        target = torch.tensor(
+            [list(args_cli.third_person_camera_target)], dtype=torch.float32, device=robot.device
+        )
+        third_person_camera.set_world_poses_from_view(eye, target)
+        env.sim.render()
+        third_person_next_sim_sec = 1.0 / args_cli.third_person_record_fps
     ideal_state = None
     if args_cli.ideal_kinematic_base:
         ideal_state = IdealKinematicBase(
@@ -1349,6 +1429,47 @@ def main() -> int:
                 )
             if benchmark_camera is not None:
                 benchmark_camera.maybe_send(camera=front_camera, step=step)
+            if third_person_camera is not None:
+                sim_elapsed_sec = (step + 1) * float(env.step_dt)
+                if sim_elapsed_sec + 1.0e-9 >= third_person_next_sim_sec:
+                    rgb_raw, rgb_width, rgb_height = UdpBenchmarkCameraTelemetry._rgb_bytes(
+                        third_person_camera
+                    )
+                    frame_name = f"third_person_{third_person_frame_count:06d}.png"
+                    assert third_person_root is not None
+                    assert third_person_manifest is not None
+                    Image.frombytes("RGB", (rgb_width, rgb_height), rgb_raw).save(
+                        third_person_root / frame_name,
+                        format="PNG",
+                    )
+                    third_person_manifest.write(
+                        json.dumps(
+                            {
+                                "frame_index": third_person_frame_count,
+                                "path": frame_name,
+                                "sim_time_sec": sim_elapsed_sec,
+                                "physics_fidelity": "isaaclab_go2_learned_policy",
+                                "ideal_kinematic_base": False,
+                            },
+                            sort_keys=True,
+                        )
+                        + "\n"
+                    )
+                    third_person_manifest.flush()
+                    third_person_frame_count += 1
+                    third_person_next_sim_sec = (
+                        third_person_frame_count + 1
+                    ) / args_cli.third_person_record_fps
+                if sim_elapsed_sec + 1.0e-9 >= args_cli.third_person_record_duration_sec:
+                    third_person_recording_completed = True
+                    success = True
+                    print(
+                        "THIRD_PERSON_RECORD_COMPLETE "
+                        f"sim_duration_sec={sim_elapsed_sec:.6f} "
+                        f"frames={third_person_frame_count}",
+                        flush=True,
+                    )
+                    break
 
             if args_cli.trace_every > 0 and step % args_cli.trace_every == 0:
                 trace_info = info
@@ -1447,6 +1568,34 @@ def main() -> int:
     finally:
         trace_file.close()
         final_pos = robot.data.root_pos_w.torch[0].detach().cpu().tolist()
+        if third_person_manifest is not None:
+            third_person_manifest.close()
+        if third_person_root is not None:
+            summary = {
+                "schema_version": 1,
+                "status": "PASS" if third_person_recording_completed else "INCOMPLETE",
+                "frame_count": third_person_frame_count,
+                "fps": args_cli.third_person_record_fps,
+                "requested_duration_sec": args_cli.third_person_record_duration_sec,
+                "video_duration_sec": (
+                    third_person_frame_count / args_cli.third_person_record_fps
+                ),
+                "camera_eye": list(args_cli.third_person_camera_eye),
+                "camera_target": list(args_cli.third_person_camera_target),
+                "resolution": [
+                    args_cli.third_person_camera_width,
+                    args_cli.third_person_camera_height,
+                ],
+                "locomotion_fidelity": "isaaclab_go2_learned_policy",
+                "ideal_kinematic_base": False,
+                "physics_dt_sec": float(env.physics_dt),
+                "control_dt_sec": float(env.step_dt),
+                "final_root_position": [float(value) for value in final_pos],
+            }
+            (third_person_root / "capture_summary.json").write_text(
+                json.dumps(summary, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
         hold_forever = bool(args_cli.hold_open and not loop_failed)
         hold_until = time.time() + max(0.0, args_cli.hold_seconds)
         if hold_forever or args_cli.hold_seconds > 0.0:
