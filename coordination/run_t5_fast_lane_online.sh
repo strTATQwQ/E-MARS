@@ -182,6 +182,9 @@ step3_live_advisor="${INTERNNAV_T5_STEP3_LIVE_ADVISOR:-0}"
 case "$step3_live_advisor" in 0|1) ;; *) usage ;; esac
 step3_timeout_advisor="${INTERNVLA_T5_STEP3_TIMEOUT_ADVISOR:-0}"
 case "$step3_timeout_advisor" in 0|1) ;; *) usage ;; esac
+step3_task_state_control="${INTERNVLA_T5_STEP3_TASK_STATE_CONTROL:-0}"
+case "$step3_task_state_control" in 0|1) ;; *) usage ;; esac
+test "$step3_task_state_control" != 1 || test "$step3_timeout_advisor" = 1
 evaluation_arm=internvla_only
 test "$step3_timeout_advisor" != 1 || evaluation_arm=internvla_step3
 full_rgb_capture="${INTERNVLA_T5_FULL_RGB_CAPTURE:-0}"
@@ -393,6 +396,7 @@ if [[ "${INTERNNAV_T5_INSIDE_FAST_LANE:-0}" != 1 ]]; then
       INTERNNAV_T5_ISAAC_SENSOR_PROFILE="$isaac_sensor_profile" \
       INTERNNAV_T5_STEP3_LIVE_ADVISOR="$step3_live_advisor" \
       INTERNVLA_T5_STEP3_TIMEOUT_ADVISOR="$step3_timeout_advisor" \
+      INTERNVLA_T5_STEP3_TASK_STATE_CONTROL="$step3_task_state_control" \
       INTERNVLA_T5_FULL_RGB_CAPTURE="$full_rgb_capture" \
       INTERNVLA_T5_D435_5HZ_CAPTURE="$d435_5hz_capture" \
       INTERNVLA_T5_TERMINATION_MODE="$termination_mode" \
@@ -1580,7 +1584,8 @@ finish() {
     "$rtf_ablation_profile" "$isaac_sensor_profile" "$nvblox_mode" \
     "$run_mode" "$fault_injection_profile" "$live_frontier_capture" \
     "$live_frontier_ready_required" "$evaluation_arm" \
-    "$full_rgb_capture" "$d435_5hz_capture" <<'PY'
+    "$full_rgb_capture" "$d435_5hz_capture" \
+    "$step3_task_state_control" <<'PY'
 import hashlib, json, sys, time
 from pathlib import Path
 
@@ -1598,6 +1603,7 @@ live_frontier_ready_required = sys.argv[17] == "1"
 evaluation_arm = sys.argv[18]
 full_rgb_capture = sys.argv[19] == "1"
 d435_5hz_capture = sys.argv[20] == "1"
+step3_task_state_control = sys.argv[21] == "1"
 def load(relative):
     path=result/relative
     try: return json.loads(path.read_text(encoding="utf-8"))
@@ -2085,6 +2091,7 @@ payload={"schema_version":1,"status":"PASS" if all(checks.values()) else "FAIL",
  "lane":lane,"profile":profile,"run_id":run_id,"code_ref_sha":code_sha,
  "candidate_profile":candidate_profile,
  "evaluation_arm":evaluation_arm,
+ "step3_task_state_control":step3_task_state_control,
  "pair_set":"paired10_a" if lane=="a" else "paired10_b",
  "capture":{
    "model_observations":full_rgb_capture,
@@ -2193,7 +2200,7 @@ IFS= read -r HF_ENDPOINT
 [[ "$HF_TOKEN" =~ ^hf_[A-Za-z0-9]{20,}$ ]]
 exec {hf_token_fd}<<<"$HF_TOKEN"
 unset HF_TOKEN
-deployment="$1"; lane="$2"; result="$3"; map="$4"; lease="$5"; domain="$6"; ledger="$7"; candidate="$8"; isaac_ip="$9"; candidate_resolution_sha256="${10}"; strict_extension_profile="${11}"; nvblox_mode="${12}"; run_mode="${13}"; fault_injection_profile="${14}"; step3_live_advisor="${15}"; live_frontier_capture="${16}"; system2_replan_policy="${17}"; step3_timeout_advisor="${18}"; termination_mode="${19}"; oracle_dataset="${20}"; system2_queue_horizon="${21}"; system1_queue_horizon="${22}"
+deployment="$1"; lane="$2"; result="$3"; map="$4"; lease="$5"; domain="$6"; ledger="$7"; candidate="$8"; isaac_ip="$9"; candidate_resolution_sha256="${10}"; strict_extension_profile="${11}"; nvblox_mode="${12}"; run_mode="${13}"; fault_injection_profile="${14}"; step3_live_advisor="${15}"; live_frontier_capture="${16}"; system2_replan_policy="${17}"; step3_timeout_advisor="${18}"; termination_mode="${19}"; oracle_dataset="${20}"; system2_queue_horizon="${21}"; system1_queue_horizon="${22}"; step3_task_state_control="${23}"
 [[ "$candidate_resolution_sha256" =~ ^[0-9a-f]{64}$ ]]
 case "$strict_extension_profile" in off|cuvslam_shadow) ;; *) exit 64 ;; esac
 case "$nvblox_mode" in off|shadow|active_local_gt) ;; *) exit 64 ;; esac
@@ -2205,6 +2212,8 @@ case "$system2_replan_policy" in strict|observation_bound|raw_wire_warn) ;; *) e
 case "$system2_queue_horizon" in 0|1) ;; *) exit 64 ;; esac
 case "$system1_queue_horizon" in 0|1) ;; *) exit 64 ;; esac
 case "$step3_timeout_advisor" in 0|1) ;; *) exit 64 ;; esac
+case "$step3_task_state_control" in 0|1) ;; *) exit 64 ;; esac
+test "$step3_task_state_control" != 1 || test "$step3_timeout_advisor" = 1
 case "$termination_mode" in model_stop|oracle_termination) ;; *) exit 64 ;; esac
 test "$termination_mode" != oracle_termination || test -f "$oracle_dataset"
 test "$live_frontier_capture" != 1 || test "$lane" = b
@@ -2233,6 +2242,7 @@ env INTERNNAV_T5_RESOURCE_LEASE_ACK="$lease" INTERNVLA_HF_TOKEN_FD="$hf_token_fd
  INTERNNAV_T5_FAULT_INJECTION_PROFILE="$fault_injection_profile" \
  INTERNNAV_T5_STEP3_LIVE_ADVISOR="$step3_live_advisor" \
  INTERNVLA_T5_STEP3_TIMEOUT_ADVISOR="$step3_timeout_advisor" \
+ INTERNVLA_T5_STEP3_TASK_STATE_CONTROL="$step3_task_state_control" \
  INTERNVLA_T5_TERMINATION_MODE="$termination_mode" \
  INTERNVLA_T5_ORACLE_DATASET_FILE="$oracle_dataset" \
  INTERNNAV_T5_LIVE_FRONTIER_CAPTURE="$live_frontier_capture" \
@@ -2246,7 +2256,7 @@ env INTERNNAV_T5_RESOURCE_LEASE_ACK="$lease" INTERNVLA_HF_TOKEN_FD="$hf_token_fd
  "$lane" "$run_mode" "$result" "$map"
 REMOTE_DGX
 dgx_runtime_b64="$(printf '%s' "$dgx_runtime_program"|base64|tr -d '\r\n')"
-dgx_command="exec setsid --wait bash -c \"\$(printf '%s' '$dgx_runtime_b64'|base64 -d)\" fast-dgx '$dgx_root' '$lane' '$dgx_run' '$map_manifest' '$resource_profile' '$ros_domain_id' '$dgx_supervisor_ledger' '$candidate_profile' '$x86_ip' '$candidate_resolution_sha256' '$strict_extension_profile' '$nvblox_mode' '$run_mode' '$fault_injection_profile' '$step3_live_advisor' '$live_frontier_capture' '$system2_replan_policy' '$step3_timeout_advisor' '$termination_mode' '$oracle_dataset' '$system2_queue_horizon' '$system1_queue_horizon'"
+dgx_command="exec setsid --wait bash -c \"\$(printf '%s' '$dgx_runtime_b64'|base64 -d)\" fast-dgx '$dgx_root' '$lane' '$dgx_run' '$map_manifest' '$resource_profile' '$ros_domain_id' '$dgx_supervisor_ledger' '$candidate_profile' '$x86_ip' '$candidate_resolution_sha256' '$strict_extension_profile' '$nvblox_mode' '$run_mode' '$fault_injection_profile' '$step3_live_advisor' '$live_frontier_capture' '$system2_replan_policy' '$step3_timeout_advisor' '$termination_mode' '$oracle_dataset' '$system2_queue_horizon' '$system1_queue_horizon' '$step3_task_state_control'"
 dgx_launch_attempted=1
 printf '%s\n%s\n' "$HF_TOKEN" "$HF_ENDPOINT" | \
   ssh "${ssh_options[@]}" "$dgx_target" "$dgx_command" \

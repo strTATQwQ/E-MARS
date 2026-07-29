@@ -798,6 +798,7 @@ _CLAUSE_LANDMARK_STOPWORDS = {
 }
 _DISTANT_EVIDENCE_CUES = (
     " ahead",
+    "extends forward",
     "far ",
     "farther",
     "in front",

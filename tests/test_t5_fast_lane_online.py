@@ -169,6 +169,11 @@ def test_candidate_profile_is_bound_forwarded_and_reported() -> None:
     assert 'binding.get("candidate_profile")==candidate_profile' in text
     assert 'dgx_ready.get("candidate_profile")==candidate_profile' in text
     assert 'dgx_status.get("candidate_profile")==candidate_profile' in text
+    assert (
+        'INTERNVLA_T5_STEP3_TASK_STATE_CONTROL="$step3_task_state_control"'
+        in text
+    )
+    assert '"step3_task_state_control":step3_task_state_control' in text
 
 
 def test_oracle_does_not_require_model_only_episode_order_manifest() -> None:

@@ -1100,7 +1100,7 @@ def test_timeout_advisor_has_one_escape_per_measured_motion_burst() -> None:
     ).read_text(encoding="utf-8")
     assert 'INTERNVLA_T5_STEP3_TIMEOUT_MAX_INTERVENTIONS", "12"' in client
     assert "1 <= self._step3_timeout_max_interventions <= 12" in client
-    assert "STEP3_MODEL_STOP_ESCAPE_BURST_MAX = 1" in client
+    assert "STEP3_MODEL_STOP_ESCAPE_BURST_MAX = 2" in client
     assert "escape_count=self._step3_model_stop_escape_burst_count" in client
     assert "self._step3_model_stop_escape_burst_count += 1" in client
     assert (
@@ -1125,6 +1125,7 @@ def test_timeout_advisor_has_one_escape_per_measured_motion_burst() -> None:
         "def _install_post_reset_sensor_barrier", maxsplit=1
     )[1].split("def _reset_motion_gate", maxsplit=1)[0]
     assert "self._step3_timeout_interventions = 0" in post_reset
+    assert "self._step3_task_state_checks = 0" in post_reset
     assert "self._step3_arrival_completed_actions = 0" in post_reset
     assert "self._step3_arrival_checks = 0" in post_reset
     assert "self._step3_last_completed_action = None" in post_reset

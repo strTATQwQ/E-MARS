@@ -34,7 +34,7 @@ TASK_STATE_KEYS = frozenset(
 )
 _SEQUENCE_CUE = re.compile(
     r"(?:[.;。；！？!?](?=\s*\S)\s*|"
-    r"\b(?:then|and then|after that|next)\b|"
+    r"\b(?:then|and then|after that|next(?!\s+to\b))\b|"
     r"(?:然后|接着|随后|之后|再))",
     flags=re.IGNORECASE,
 )
