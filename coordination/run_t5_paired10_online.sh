@@ -269,6 +269,7 @@ fi
 
 round2_rc=125
 if test "$round1_rc" = 0; then
+  round2_rc=0
   run_round round2 1 0 "$round2_a_id" "$round2_b_id" \
     "$round2_a_relative" "$round2_b_relative" || round2_rc=$?
 fi

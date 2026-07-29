@@ -48,6 +48,7 @@ def test_paired10_runner_launches_lanes_in_parallel_then_requires_release() -> N
     assert text.index('run_lane b "$advisor_b"') < text.index('wait "$a_pid"')
     assert "verify_clean_release" in text
     assert text.index("run_round round1 0 1") < text.index("run_round round2 1 0")
+    assert 'round2_rc=0\n  run_round round2 1 0' in text
     assert "INTERNVLA_T5_FULL_RGB_CAPTURE=1" in text
     assert "INTERNVLA_T5_D435_5HZ_CAPTURE=1" in text
     assert "INTERNVLA_T5_TERMINATION_MODE=oracle_termination" in text
