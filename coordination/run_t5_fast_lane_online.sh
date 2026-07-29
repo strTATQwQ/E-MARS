@@ -120,6 +120,11 @@ case "$profile" in
   *) screen_episode_count=0 ;;
 esac
 screen_episode_key="${INTERNNAV_T5_SCREEN_EPISODE_KEY:-}"
+pilot_source_lane="${INTERNNAV_T5_PILOT_SOURCE_LANE:-$lane}"
+case "$pilot_source_lane" in a|b) ;; *) usage ;; esac
+if test "$pilot_source_lane" != "$lane"; then
+  test "$profile" = pilot-screen1 || usage
+fi
 if test -n "$screen_episode_key"; then
   case "$profile" in screen1|pilot-screen1) ;; *) usage ;; esac
   [[ "$screen_episode_key" =~ ^[A-Za-z0-9_.-]+$ ]] || usage
@@ -406,6 +411,7 @@ if [[ "${INTERNNAV_T5_INSIDE_FAST_LANE:-0}" != 1 ]]; then
       INTERNNAV_T5_RUN_MODE="$run_mode" \
       INTERNNAV_T5_FAULT_INJECTION_PROFILE="$fault_injection_profile" \
       INTERNNAV_T5_SCREEN_EPISODE_KEY="$screen_episode_key" \
+      INTERNNAV_T5_PILOT_SOURCE_LANE="$pilot_source_lane" \
       INTERNVLA_T5_SYSTEM2_REPLAN_POLICY="$system2_replan_policy" \
       INTERNVLA_T5_SYSTEM2_QUEUE_HORIZON="$system2_queue_horizon" \
       INTERNVLA_T5_SYSTEM1_QUEUE_HORIZON="$system1_queue_horizon" \
@@ -511,6 +517,7 @@ python3 "$root/scripts/resolve_t5_lane_a_candidate.py" \
   --output "$validation_tmp/candidate_resolution.json" --format none
 if [[ "$profile" == final10 || "$profile" == pilot-screen1 ]]; then
   final_pilot_selection_args=(--execution-profile "$profile")
+  final_pilot_selection_args+=(--source-lane "$pilot_source_lane")
   if test "$profile" = pilot-screen1; then
     final_pilot_selection_args+=(--episode-key "$screen_episode_key")
   fi
@@ -2092,7 +2099,8 @@ payload={"schema_version":1,"status":"PASS" if all(checks.values()) else "FAIL",
  "candidate_profile":candidate_profile,
  "evaluation_arm":evaluation_arm,
  "step3_task_state_control":step3_task_state_control,
- "pair_set":"paired10_a" if lane=="a" else "paired10_b",
+ "pair_set":(binding or {}).get("pair_set"),
+ "source_lane":(binding or {}).get("source_lane",lane),
  "capture":{
    "model_observations":full_rgb_capture,
    "independent_d435_5hz":d435_5hz_capture,

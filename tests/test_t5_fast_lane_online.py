@@ -308,6 +308,8 @@ def test_screen_profiles_materialize_a_frozen_first_n_dataset() -> None:
     assert 'screen_episode_key="${INTERNNAV_T5_SCREEN_EPISODE_KEY:-}"' in text
     assert 'if test "$profile" = pilot-screen1; then' in text
     assert 'final_pilot_selection_args=(--execution-profile "$profile")' in text
+    assert 'pilot_source_lane="${INTERNNAV_T5_PILOT_SOURCE_LANE:-$lane}"' in text
+    assert 'final_pilot_selection_args+=(--source-lane "$pilot_source_lane")' in text
     assert 'final_pilot_selection_args+=(--episode-key "$screen_episode_key")' in text
     assert 'screen_key_args=(--episode-key "$screen_episode_key")' in text
     assert '"screen_episode_key_exact_scope"' in text
@@ -353,6 +355,13 @@ def test_screen_episode_key_crosses_the_resource_lease_boundary() -> None:
     assert (
         'INTERNNAV_T5_SCREEN_EPISODE_KEY="$screen_episode_key"' in text
     )
+    assert 'INTERNNAV_T5_PILOT_SOURCE_LANE="$pilot_source_lane"' in text
+
+
+def test_cross_lane_pilot_summary_preserves_frozen_source_pair_set() -> None:
+    text = RUNNER.read_text(encoding="utf-8")
+    assert '"pair_set":(binding or {}).get("pair_set")' in text
+    assert '"source_lane":(binding or {}).get("source_lane",lane)' in text
 
 
 def test_summary_preserves_machine_readable_failure_before_x86_receipts_exist() -> None:

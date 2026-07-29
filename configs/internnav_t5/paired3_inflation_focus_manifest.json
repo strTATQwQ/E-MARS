@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "protocol_id": "t5_paired3_inflation_focus_v1",
+  "status": "FROZEN_FOR_EXECUTION",
+  "purpose": "Rerun the three A10 episodes with high or very high estimated local-costmap inflation sensitivity under the same current candidate, with and without bounded Step3 task-state control.",
+  "evidence_classification": {
+    "classification": "TARGETED_DEVELOPMENT_DIAGNOSTIC",
+    "held_out": false,
+    "promotion_evidence": false,
+    "unique_episode_count": 3,
+    "execution_count": 6,
+    "same_episode_dual_arm_runs_are_not_additional_samples": true
+  },
+  "source": {
+    "pair_set": "paired10_a",
+    "source_lane": "a",
+    "episode_keys": [
+      "5840_1474",
+      "2613_625",
+      "6623_1657"
+    ]
+  },
+  "arms": {
+    "lane_a": {
+      "evaluation_arm": "internvla_only",
+      "step3_timeout_advisor": false,
+      "step3_task_state_control": false
+    },
+    "lane_b": {
+      "evaluation_arm": "internvla_step3",
+      "step3_timeout_advisor": true,
+      "step3_task_state_control": true
+    }
+  },
+  "runtime_profile": {
+    "candidate_profile": "recovery_a",
+    "rtf_ablation_profile": "navigation_fast",
+    "isaac_sensor_profile": "dual_lane_wp03_stop_shadow",
+    "termination_mode": "oracle_termination",
+    "system2_replan_policy": "observation_bound",
+    "strict_extension_profile": "off",
+    "nvblox_mode": "off",
+    "run_mode": "model",
+    "system1_queue_horizon": 0,
+    "system2_queue_horizon": 0,
+    "fault_injection_profile": "off"
+  },
+  "resource_contract": {
+    "lane_a": "DGX_A + Isaac GPU0 + even logical CPUs",
+    "lane_b": "DGX_B + Isaac GPU1 + odd logical CPUs",
+    "episodes_sequential_pairs": true,
+    "arms_within_each_episode_launch_in_parallel": true,
+    "cleanup_deadline_sec": 60
+  },
+  "capture_contract": {
+    "model_observations_png_jsonl": true,
+    "d435_rgb_5hz_png_jsonl": true,
+    "d435_postrun_mp4": true,
+    "step3_ordered_views": [
+      "front_left",
+      "front",
+      "front_right",
+      "rear"
+    ],
+    "step3_four_png_plus_sidecar": true,
+    "third_person_same_render_barrier": true,
+    "step3_prompt_response_and_bounded_primitive": true,
+    "internvla_and_step3_wall_latency": true,
+    "unified_timeline_required": true
+  }
+}

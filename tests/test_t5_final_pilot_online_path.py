@@ -378,6 +378,51 @@ def test_pilot_screen1_selects_one_frozen_lane_episode_without_rebinding_source(
     assert payload["split_audit_sha256"] == receipt["split"]["audit_sha256"]
 
 
+def test_pilot_screen1_can_replay_one_frozen_source_episode_on_peer_lane(
+    tmp_path, monkeypatch
+):
+    _common, pilot, receipt = _fixture(tmp_path, monkeypatch)
+    candidate = _recovery_candidate(tmp_path / "paired-screen-candidate.json")
+    selected = LANE_KEYS["a"][4]
+    payload = binding_resolver.resolve_binding(
+        prepare_root=pilot,
+        lane="b",
+        source_lane="a",
+        code_sha=CODE_SHA,
+        candidate_resolution_path=candidate,
+        runtime_profile=dict(binding_resolver.WP03_STOP_SHADOW_PROFILE),
+        output=tmp_path / "peer-pilot-screen1-binding.json",
+        execution_profile="pilot-screen1",
+        episode_key=selected,
+        evaluation_arm="internvla_step3",
+    )
+    source_receipt = receipt["split"]["lanes"]["a"]
+    assert payload["status"] == "PASS"
+    assert payload["lane"] == "b"
+    assert payload["source_lane"] == "a"
+    assert payload["pair_set"] == "paired10_a"
+    assert payload["evaluation_arm"] == "internvla_step3"
+    assert payload["execution_episode_keys"] == [selected]
+    assert payload["episode_keys"] == LANE_KEYS["a"]
+    assert payload["dataset_root"] == source_receipt["remote_dataset_root"]
+    assert payload["deployment_roots"]["x86"] == receipt["deployment_roots"]["x86_b"]
+
+
+def test_cross_lane_source_is_rejected_for_full_final10(tmp_path, monkeypatch):
+    _common, pilot, _receipt = _fixture(tmp_path, monkeypatch)
+    candidate = _recovery_candidate(tmp_path / "cross-final-candidate.json")
+    with pytest.raises(ValueError, match="cross-lane source"):
+        binding_resolver.resolve_binding(
+            prepare_root=pilot,
+            lane="b",
+            source_lane="a",
+            code_sha=CODE_SHA,
+            candidate_resolution_path=candidate,
+            runtime_profile=dict(binding_resolver.WP03_STOP_SHADOW_PROFILE),
+            output=tmp_path / "cross-final10-binding.json",
+        )
+
+
 @pytest.mark.parametrize(
     "episode_key",
     [None, LANE_KEYS["b"][0], "external_episode", "../ta0_ea0"],

@@ -108,9 +108,15 @@ def resolve_binding(
     execution_profile: str = "final10",
     episode_key: str | None = None,
     evaluation_arm: str = "internvla_only",
+    source_lane: str | None = None,
 ) -> dict[str, Any]:
     if lane not in {"a", "b"}:
         raise ValueError("lane must be a or b")
+    source_lane = lane if source_lane is None else source_lane
+    if source_lane not in {"a", "b"}:
+        raise ValueError("source lane must be a or b")
+    if source_lane != lane and execution_profile != "pilot-screen1":
+        raise ValueError("cross-lane source is limited to pilot-screen1")
     if SHA40.fullmatch(code_sha) is None:
         raise ValueError("code SHA must be a full lowercase Git SHA")
     if evaluation_arm not in {"internvla_only", "internvla_step3"}:
@@ -123,11 +129,19 @@ def resolve_binding(
         raise ValueError(
             f"Lane {lane} was not prepared by the {prepare_scope} final-pilot receipt"
         )
+    if source_lane not in prepared_lanes:
+        raise ValueError(
+            f"Source Lane {source_lane} was not prepared by the "
+            f"{prepare_scope} final-pilot receipt"
+        )
     candidate = _object(candidate_resolution_path.resolve(), "candidate resolution")
     split = receipt.get("split") if isinstance(receipt.get("split"), dict) else {}
     lanes = split.get("lanes") if isinstance(split.get("lanes"), dict) else {}
     lane_receipt = lanes.get(lane) if isinstance(lanes.get(lane), dict) else {}
-    lane_episode_keys = lane_receipt.get("episode_keys")
+    source_lane_receipt = (
+        lanes.get(source_lane) if isinstance(lanes.get(source_lane), dict) else {}
+    )
+    lane_episode_keys = source_lane_receipt.get("episode_keys")
     if execution_profile == "final10":
         if episode_key is not None:
             raise ValueError("final10 does not accept an episode key")
@@ -152,7 +166,9 @@ def resolve_binding(
         prepare_root, split.get("audit_relative_path"), "split audit"
     )
     lane_dataset_path = _resolved_relative(
-        prepare_root, lane_receipt.get("dataset_relative_path"), "lane dataset"
+        prepare_root,
+        source_lane_receipt.get("dataset_relative_path"),
+        "source lane dataset",
     )
     map_manifest_path = _resolved_relative(
         prepare_root, maps.get("manifest_relative_path"), "map manifest"
@@ -166,13 +182,14 @@ def resolve_binding(
     is_wp03_stop_shadow = runtime_profile == WP03_STOP_SHADOW_PROFILE
     expected_dgx_key = "dgx_a" if lane == "a" else "dgx_b"
     expected_x86_key = "x86_a" if lane == "a" else "x86_b"
+    expected_source_x86_key = "x86_a" if source_lane == "a" else "x86_b"
     expected_root_keys = {
         root_key
         for active_lane in prepared_lanes
         for root_key in (f"dgx_{active_lane}", f"x86_{active_lane}")
     }
     expected_remote_map = lane_receipt.get("remote_map_manifest")
-    expected_remote_dataset = lane_receipt.get("remote_dataset_root")
+    expected_remote_dataset = source_lane_receipt.get("remote_dataset_root")
     remote_receipts = receipt.get("remote_receipts")
     remote_receipts = remote_receipts if isinstance(remote_receipts, dict) else {}
     remote_dgx_maps = remote_receipts.get("dgx_maps")
@@ -202,7 +219,14 @@ def resolve_binding(
         "prepare_receipt_pass": receipt.get("status") == "PASS"
         and _checks_pass(receipt.get("checks")),
         "prepare_scope_exact": prepare_scope in {"dual", "lane-a"}
-        and lane in prepared_lanes,
+        and lane in prepared_lanes
+        and source_lane in prepared_lanes,
+        "cross_lane_source_exact": source_lane == lane
+        or (
+            execution_profile == "pilot-screen1"
+            and prepare_scope == "dual"
+            and set(prepared_lanes) == {"a", "b"}
+        ),
         "prepare_exact_code": receipt.get("code_ref_sha") == code_sha,
         # The preparation receipt freezes the disjoint A10/B10 assets.  The
         # WP-03 shadow run intentionally reuses only those assets while keeping
@@ -247,8 +271,8 @@ def resolve_binding(
         "split_audit_sha_binding": _sha256(split_audit_path)
         == split.get("audit_sha256"),
         "lane_dataset_file_binding": _sha256(lane_dataset_path)
-        == lane_receipt.get("dataset_sha256")
-        and lane_receipt.get("episode_count") == 10
+        == source_lane_receipt.get("dataset_sha256")
+        and source_lane_receipt.get("episode_count") == 10
         and isinstance(lane_episode_keys, list)
         and len(lane_episode_keys) == 10
         and len(set(lane_episode_keys)) == 10,
@@ -274,7 +298,9 @@ def resolve_binding(
         == set(prepared_lanes),
         "remote_dataset_root_safe": isinstance(expected_remote_dataset, str)
         and SAFE_REMOTE.fullmatch(expected_remote_dataset) is not None
-        and expected_remote_dataset.startswith(str(roots.get(expected_x86_key, "")) + "/"),
+        and expected_remote_dataset.startswith(
+            str(roots.get(expected_source_x86_key, "")) + "/"
+        ),
         "remote_map_manifest_safe": isinstance(expected_remote_map, str)
         and SAFE_REMOTE.fullmatch(expected_remote_map) is not None
         and expected_remote_map.startswith(str(roots.get(expected_dgx_key, "")) + "/")
@@ -287,6 +313,7 @@ def resolve_binding(
         "schema_version": 2,
         "status": "PASS" if all(checks.values()) else "FAIL",
         "lane": lane,
+        "source_lane": source_lane,
         "prepare_scope": prepare_scope,
         "prepared_lanes": list(prepared_lanes),
         "code_ref_sha": code_sha,
@@ -306,17 +333,17 @@ def resolve_binding(
         "execution_episode_count": len(execution_episode_keys or []),
         "execution_episode_keys": execution_episode_keys,
         "evaluation_arm": evaluation_arm,
-        "pair_set": "paired10_a" if lane == "a" else "paired10_b",
+        "pair_set": "paired10_a" if source_lane == "a" else "paired10_b",
         "screen_episode_key": episode_key,
         "deployment_roots": {
             "dgx": roots.get(expected_dgx_key),
             "x86": roots.get(expected_x86_key),
         },
         "dataset_root": expected_remote_dataset,
-        "dataset_sha256": lane_receipt.get("dataset_sha256"),
+        "dataset_sha256": source_lane_receipt.get("dataset_sha256"),
         "static_map_manifest_sha256": maps.get("manifest_sha256"),
         "static_map_manifest_path": expected_remote_map,
-        "episode_count": lane_receipt.get("episode_count"),
+        "episode_count": source_lane_receipt.get("episode_count"),
         "episode_keys": lane_episode_keys,
         "split_audit_sha256": split.get("audit_sha256"),
         "source_receipts": source_receipts,
@@ -374,6 +401,7 @@ def main() -> int:
         default="final10",
     )
     parser.add_argument("--episode-key")
+    parser.add_argument("--source-lane", choices=("a", "b"))
     parser.add_argument("--output", required=True, type=Path)
     arguments = parser.parse_args()
     runtime_profile = {
@@ -395,6 +423,7 @@ def main() -> int:
             execution_profile=arguments.execution_profile,
             episode_key=arguments.episode_key,
             evaluation_arm=arguments.evaluation_arm,
+            source_lane=arguments.source_lane,
         )
     except (OSError, ValueError) as error:
         print(f"final-pilot lane binding failed: {error}")
