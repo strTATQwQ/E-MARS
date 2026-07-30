@@ -134,6 +134,16 @@ def test_paired30_binding_reuses_deployment_but_replaces_dataset(tmp_path: Path)
     assert value["dataset_root"] == "/home/song/deployment/inputs/paired30_frozen_v1"
 
 
+def test_fast_lane_accepts_a_fully_validated_paired30_binding() -> None:
+    text = (ROOT / "coordination/run_t5_fast_lane_online.sh").read_text(
+        encoding="utf-8"
+    )
+    assert 'profile=="pilot-screen1"' in text
+    assert '(binding or {}).get("pair_set")=="paired30"' in text
+    assert "all(value is True for value in paired30_checks.values())" in text
+    assert "or paired30_binding" in text
+
+
 def test_coordinator_uses_two_balanced_rounds_and_hard_limits() -> None:
     text = COORDINATOR.read_text(encoding="utf-8")
     assert "for index in $(seq 0 14); do run_pair round1" in text

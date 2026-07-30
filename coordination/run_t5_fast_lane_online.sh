@@ -1769,6 +1769,14 @@ revc_fixed5_seal={
 cleanup=load("audits/coordinator_cleanup_receipt.json")
 dgx_clear=load("audits/dgx_quarantine_clear.json")
 x86_clear=load("audits/x86_quarantine_clear.json")
+paired30_checks=(binding or {}).get("paired30_checks",{})
+paired30_binding=(
+    profile=="pilot-screen1"
+    and (binding or {}).get("pair_set")=="paired30"
+    and isinstance(paired30_checks,dict)
+    and bool(paired30_checks)
+    and all(value is True for value in paired30_checks.values())
+)
 checks={
     "command_path_completed": incoming == 0 and run_completed == 1,
     "input_binding": isinstance(binding,dict) and binding.get("status")=="PASS"
@@ -1783,10 +1791,13 @@ checks={
             profile not in final_pilot_profiles
             or (
                 binding.get("evaluation_arm")==evaluation_arm
-                and binding.get("pair_set")==(
-                    "paired10_a"
-                    if binding.get("source_lane",lane)=="a"
-                    else "paired10_b"
+                and (
+                    binding.get("pair_set")==(
+                        "paired10_a"
+                        if binding.get("source_lane",lane)=="a"
+                        else "paired10_b"
+                    )
+                    or paired30_binding
                 )
             )
         )
