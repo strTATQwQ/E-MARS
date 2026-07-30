@@ -152,6 +152,31 @@ def test_distant_landmark_evidence_does_not_advance_clause() -> None:
     assert state["active_clause_semantic_confirmations"] == 0
 
 
+def test_negated_landmark_evidence_does_not_advance_clause() -> None:
+    state, _ = _fallback_decomposed_task_state(
+        _new_task_state(context()), context()
+    )
+    for sequence_id, evidence in (
+        (7, "couch not visible in any view"),
+        (8, "there is no couch visible from the front"),
+    ):
+        state, _ = _apply_task_state_decision(
+            state,
+            context(sequence_id=sequence_id),
+            decision(
+                snapshot_id=f"a::a::121::0::{sequence_id}",
+                task_clauses=(),
+                clause_transition="recover",
+                confidence=0.80,
+                evidence=(evidence,),
+            ),
+            snapshot_sim_stamp_ns=(sequence_id + 2) * 1_000_000_000,
+            transition_minimum_confidence=0.70,
+        )
+    assert state["active_clause_id"] == 1
+    assert state["active_clause_semantic_confirmations"] == 0
+
+
 def test_final_clause_completion_is_candidate_not_terminal_stop() -> None:
     state, _ = _apply_task_state_decision(
         _new_task_state(context()),

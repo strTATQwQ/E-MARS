@@ -805,6 +805,9 @@ _DISTANT_EVIDENCE_CUES = (
     "toward",
     "through the doorway",
 )
+_NEGATED_EVIDENCE_TOKENS = frozenset(
+    {"no", "not", "without", "absent", "missing", "cannot", "cant", "isnt"}
+)
 
 
 def _active_clause_semantically_present(
@@ -823,8 +826,15 @@ def _active_clause_semantically_present(
         normalized = " ".join(item.lower().split())
         if any(cue in f" {normalized}" for cue in _DISTANT_EVIDENCE_CUES):
             continue
-        evidence_tokens = set(re.findall(r"[a-z0-9]+", normalized))
-        if clause_tokens & evidence_tokens:
+        evidence_tokens = re.findall(r"[a-z0-9]+", normalized)
+        for index, token in enumerate(evidence_tokens):
+            if token not in clause_tokens:
+                continue
+            local_context = evidence_tokens[
+                max(0, index - 3) : min(len(evidence_tokens), index + 4)
+            ]
+            if _NEGATED_EVIDENCE_TOKENS.intersection(local_context):
+                continue
             return True
     return False
 
