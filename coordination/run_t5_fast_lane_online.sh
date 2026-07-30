@@ -536,7 +536,15 @@ if [[ "$profile" == final10 || "$profile" == pilot-screen1 ]]; then
   final_pilot_selection_args=(--execution-profile "$profile")
   final_pilot_selection_args+=(--source-lane "$pilot_source_lane")
   if test "$profile" = pilot-screen1; then
-    final_pilot_selection_args+=(--episode-key "$screen_episode_key")
+    binding_episode_key="$screen_episode_key"
+    if test -n "$paired30_manifest_relative"; then
+      if test "$lane" = a; then
+        binding_episode_key=6898_1741
+      else
+        binding_episode_key=5627_1417
+      fi
+    fi
+    final_pilot_selection_args+=(--episode-key "$binding_episode_key")
   fi
   python3 "$root/scripts/resolve_t5_final_pilot_lane_binding.py" \
     --prepare-root "$prep_dir" --lane "$lane" --code-sha "$code_sha" \

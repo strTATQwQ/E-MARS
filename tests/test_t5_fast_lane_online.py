@@ -310,7 +310,7 @@ def test_screen_profiles_materialize_a_frozen_first_n_dataset() -> None:
     assert 'final_pilot_selection_args=(--execution-profile "$profile")' in text
     assert 'pilot_source_lane="${INTERNNAV_T5_PILOT_SOURCE_LANE:-$lane}"' in text
     assert 'final_pilot_selection_args+=(--source-lane "$pilot_source_lane")' in text
-    assert 'final_pilot_selection_args+=(--episode-key "$screen_episode_key")' in text
+    assert 'final_pilot_selection_args+=(--episode-key "$binding_episode_key")' in text
     assert 'screen_key_args=(--episode-key "$screen_episode_key")' in text
     assert '"screen_episode_key_exact_scope"' in text
     assert 'print(",".join(value["episode_keys"]))' in text
@@ -354,6 +354,8 @@ def test_completion_sim_oracle_termination_supports_exact_dual_lane_shadow_profi
     assert 'INTERNNAV_T5_FAST_SCREEN_TIMEOUT_SEC="$screen_timeout_override"' in text
     assert 'scripts/bind_t5_paired30_screen.py' in text
     assert 'scripts/materialize_t5_frozen_subset.py' in text
+    assert 'binding_episode_key=6898_1741' in text
+    assert 'binding_episode_key=5627_1417' in text
 
 
 def test_screen_episode_key_crosses_the_resource_lease_boundary() -> None:
