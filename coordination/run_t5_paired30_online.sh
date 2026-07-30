@@ -172,8 +172,11 @@ PY
 
 write_progress() {
   local round="$1" index="$2" status="$3" a_episode="$4" b_episode="$5"
+  local a_result="$6" b_result="$7" a_rc="$8" b_rc="$9"
+  local advisor_a="${10}" advisor_b="${11}"
   python3 - "$progress" "$run_id" "$code_sha" "$round" "$index" "$status" \
-    "$a_episode" "$b_episode" <<'PY'
+    "$a_episode" "$b_episode" "$a_result" "$b_result" "$a_rc" "$b_rc" \
+    "$advisor_a" "$advisor_b" <<'PY'
 import json,os,sys,time
 from pathlib import Path
 path=Path(sys.argv[1])
@@ -182,6 +185,10 @@ rows=old.get("completed_pairs",[])
 identity=[sys.argv[4],int(sys.argv[5])]
 row={"round":identity[0],"index":identity[1],"status":sys.argv[6],
      "lane_a_episode":sys.argv[7],"lane_b_episode":sys.argv[8],
+     "lane_a_result":sys.argv[9],"lane_b_result":sys.argv[10],
+     "lane_a_rc":int(sys.argv[11]),"lane_b_rc":int(sys.argv[12]),
+     "lane_a_arm":"internvla_step3" if sys.argv[13]=="1" else "internvla_only",
+     "lane_b_arm":"internvla_step3" if sys.argv[14]=="1" else "internvla_only",
      "recorded_unix":time.time()}
 rows=[item for item in rows if [item.get("round"),item.get("index")]!=identity]
 rows.append(row)
@@ -208,7 +215,8 @@ run_pair() {
     b_rc="$(cat "$result_root/${round}_${index}_lane_b.rc")"
     verify_release "$root/$a_relative" "$a_rc" a "$a_episode"
     verify_release "$root/$b_relative" "$b_rc" b "$b_episode"
-    write_progress "$round" "$index" RESUMED "$a_episode" "$b_episode"
+    write_progress "$round" "$index" RESUMED "$a_episode" "$b_episode" \
+      "$a_relative" "$b_relative" "$a_rc" "$b_rc" "$advisor_a" "$advisor_b"
     return
   fi
   test ! -e "$root/$a_relative" && test ! -e "$root/$b_relative"
@@ -226,7 +234,8 @@ run_pair() {
   printf '%s\n' "$b_rc" >"$result_root/${round}_${index}_lane_b.rc"
   verify_release "$root/$a_relative" "$a_rc" a "$a_episode"
   verify_release "$root/$b_relative" "$b_rc" b "$b_episode"
-  write_progress "$round" "$index" PASS "$a_episode" "$b_episode"
+  write_progress "$round" "$index" PASS "$a_episode" "$b_episode" \
+    "$a_relative" "$b_relative" "$a_rc" "$b_rc" "$advisor_a" "$advisor_b"
 }
 
 for index in $(seq 0 14); do run_pair round1 "$index" 0 1; done

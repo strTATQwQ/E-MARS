@@ -140,5 +140,7 @@ def test_coordinator_uses_two_balanced_rounds_and_hard_limits() -> None:
     assert "for index in $(seq 0 14); do run_pair round2" in text
     assert "INTERNNAV_T5_PILOT_MAX_STEP=8000" in text
     assert "INTERNNAV_T5_FAST_SCREEN_TIMEOUT_SEC=1800" in text
+    assert '"lane_a_result":sys.argv[9]' in text
+    assert '"lane_b_arm":"internvla_step3"' in text
     assert "deadline=$((SECONDS + 60))" in text
     assert "kill -KILL" in text
