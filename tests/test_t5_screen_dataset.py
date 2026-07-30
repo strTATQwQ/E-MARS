@@ -161,6 +161,40 @@ def test_materializes_one_exact_episode_from_sealed_lane_ten(tmp_path: Path) -> 
     assert audit["source_sha256"] == hashlib.sha256(source.read_bytes()).hexdigest()
 
 
+def test_materializes_one_exact_episode_from_frozen_paired_thirty(
+    tmp_path: Path,
+) -> None:
+    source_root = tmp_path / "source"
+    source, source_sha, keys = write_source(source_root, count=30)
+    output_root = tmp_path / "paired30-screen-key"
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(SCRIPT),
+            "--source-root",
+            str(source_root),
+            "--output-root",
+            str(output_root),
+            "--count",
+            "1",
+            "--episode-key",
+            keys[23],
+            "--expected-source-sha256",
+            source_sha,
+            "--expected-episode-keys",
+            ",".join(keys),
+        ],
+        text=True,
+        capture_output=True,
+        check=True,
+    )
+    audit = json.loads(completed.stdout)
+    assert audit["source_episode_count"] == 30
+    assert audit["source_episode_keys"] == keys
+    assert audit["selected_episode_keys"] == [keys[23]]
+    assert audit["source_sha256"] == hashlib.sha256(source.read_bytes()).hexdigest()
+
+
 def test_verifies_staged_oracle_dataset_order_and_attribution(
     tmp_path: Path,
 ) -> None:

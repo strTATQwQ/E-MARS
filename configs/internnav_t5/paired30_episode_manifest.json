@@ -1,0 +1,104 @@
+{
+  "schema_version": 1,
+  "status": "FROZEN_FOR_EXECUTION",
+  "purpose": "paired InternVLA-only versus InternVLA+Step3 completion_sim comparison",
+  "source_revision": "7b05993b21813c3787f2f7f604bfc22b80c48c8e",
+  "source_sha256": "853673f8faadb26f883d57d71828cf895345c89fa594a7b918a78862318aeb31",
+  "clearance_audit_sha256": "f06556daa91b741af23f8cb6fa483b02e7b1a6d03af64d4e1888c426ac274886",
+  "dataset_sha256": "4359052e459758e6b75f093d2354d4a50c2540da1b6fc0a603a8e4820c64e9b6",
+  "episode_count": 30,
+  "episode_keys": [
+    "5971_1522",
+    "433_121",
+    "5203_1339",
+    "4391_1087",
+    "2776_676",
+    "1036_259",
+    "668_166",
+    "2617_628",
+    "1317_337",
+    "1660_415",
+    "6898_1741",
+    "6292_1573",
+    "5840_1474",
+    "6842_1720",
+    "1420_364",
+    "4084_1003",
+    "583_145",
+    "3555_880",
+    "4510_1129",
+    "1803_448",
+    "6623_1657",
+    "2613_625",
+    "5627_1417",
+    "4182_1027",
+    "4268_1060",
+    "4009_976",
+    "654_157",
+    "4943_1255",
+    "6982_1765",
+    "3542_877"
+  ],
+  "lane_sets": {
+    "a": [
+      "5971_1522", "433_121", "5203_1339", "4391_1087", "2776_676",
+      "1036_259", "668_166", "2617_628", "1317_337", "1660_415",
+      "6898_1741", "6292_1573", "5840_1474", "6842_1720", "1420_364"
+    ],
+    "b": [
+      "4084_1003", "583_145", "3555_880", "4510_1129", "1803_448",
+      "6623_1657", "2613_625", "5627_1417", "4182_1027", "4268_1060",
+      "4009_976", "654_157", "4943_1255", "6982_1765", "3542_877"
+    ]
+  },
+  "rounds": [
+    {
+      "round_id": "round1",
+      "lane_a_arm": "internvla_only",
+      "lane_b_arm": "internvla_step3"
+    },
+    {
+      "round_id": "round2",
+      "lane_a_arm": "internvla_step3",
+      "lane_b_arm": "internvla_only"
+    }
+  ],
+  "scene_ids": [
+    "mp3d/2azQ1b91cZZ/2azQ1b91cZZ.glb",
+    "mp3d/QUCTc6BB5sX/QUCTc6BB5sX.glb",
+    "mp3d/TbHJrupSAjP/TbHJrupSAjP.glb",
+    "mp3d/Z6MFQCViBuw/Z6MFQCViBuw.glb",
+    "mp3d/zsNo4HB9uLZ/zsNo4HB9uLZ.glb"
+  ],
+  "selection": {
+    "official_filter_stairs": true,
+    "single_floor": true,
+    "geodesic_range_m": [3.2, 12.0],
+    "minimum_prefix_clearance_m": 0.30,
+    "minimum_prefix_length_m": 0.50,
+    "oracle_stop_distance_m": 2.5,
+    "duplicate_authored_start_count": 0,
+    "geometry_intrusion_fraction": 0.0
+  },
+  "per_execution_limits": {
+    "wall_seconds_after_ready": 1800,
+    "configured_max_step": 8000,
+    "observed_evaluator_step_limit": 8100,
+    "termination": "earlier_of_wall_or_physics_steps"
+  },
+  "runtime_profile": {
+    "candidate_profile": "recovery_a",
+    "rtf_ablation_profile": "navigation_fast",
+    "isaac_sensor_profile": "dual_lane_wp03_stop_shadow",
+    "termination_mode": "oracle_termination",
+    "system2_replan_policy": "observation_bound",
+    "inflation_radius_m": 0.25
+  },
+  "evidence": {
+    "full_rgb_capture": true,
+    "d435_capture_hz": 5,
+    "step3_four_camera_snapshots": true,
+    "latency_wall_clock": true,
+    "held_out": false
+  }
+}

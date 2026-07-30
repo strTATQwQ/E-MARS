@@ -121,6 +121,13 @@ case "$profile" in
 esac
 screen_episode_key="${INTERNNAV_T5_SCREEN_EPISODE_KEY:-}"
 pilot_source_lane="${INTERNNAV_T5_PILOT_SOURCE_LANE:-$lane}"
+paired30_manifest_relative="${INTERNNAV_T5_PAIRED30_MANIFEST:-}"
+pilot_max_step_override="${INTERNNAV_T5_PILOT_MAX_STEP:-16000}"
+screen_timeout_override="${INTERNNAV_T5_FAST_SCREEN_TIMEOUT_SEC:-10800}"
+[[ "$pilot_max_step_override" =~ ^[1-9][0-9]*$ ]]
+[[ "$screen_timeout_override" =~ ^[1-9][0-9]*$ ]]
+((pilot_max_step_override >= 100 && pilot_max_step_override <= 16000))
+((screen_timeout_override >= 60 && screen_timeout_override <= 10800))
 case "$pilot_source_lane" in a|b) ;; *) usage ;; esac
 if test "$pilot_source_lane" != "$lane"; then
   test "$profile" = pilot-screen1 || usage
@@ -131,6 +138,13 @@ if test -n "$screen_episode_key"; then
 fi
 if test "$profile" = pilot-screen1; then
   test -n "$screen_episode_key" || usage
+fi
+if test -n "$paired30_manifest_relative"; then
+  test "$paired30_manifest_relative" = \
+    configs/internnav_t5/paired30_episode_manifest.json || usage
+  test "$profile" = pilot-screen1 || usage
+  test "$pilot_source_lane" = "$lane" || usage
+  test -f "$root/$paired30_manifest_relative" || usage
 fi
 if [[ -v INTERNNAV_T5_CANDIDATE_PROFILE ]]; then
   candidate_profile="$INTERNNAV_T5_CANDIDATE_PROFILE"
@@ -412,6 +426,9 @@ if [[ "${INTERNNAV_T5_INSIDE_FAST_LANE:-0}" != 1 ]]; then
       INTERNNAV_T5_FAULT_INJECTION_PROFILE="$fault_injection_profile" \
       INTERNNAV_T5_SCREEN_EPISODE_KEY="$screen_episode_key" \
       INTERNNAV_T5_PILOT_SOURCE_LANE="$pilot_source_lane" \
+      INTERNNAV_T5_PAIRED30_MANIFEST="$paired30_manifest_relative" \
+      INTERNNAV_T5_PILOT_MAX_STEP="$pilot_max_step_override" \
+      INTERNNAV_T5_FAST_SCREEN_TIMEOUT_SEC="$screen_timeout_override" \
       INTERNVLA_T5_SYSTEM2_REPLAN_POLICY="$system2_replan_policy" \
       INTERNVLA_T5_SYSTEM2_QUEUE_HORIZON="$system2_queue_horizon" \
       INTERNVLA_T5_SYSTEM1_QUEUE_HORIZON="$system1_queue_horizon" \
@@ -889,6 +906,14 @@ if payload["status"] != "PASS":
 PY
 fi
 
+if test -n "$paired30_manifest_relative"; then
+  python3 "$root/scripts/bind_t5_paired30_screen.py" \
+    --input-binding "$validation_tmp/input_binding.json" \
+    --manifest "$root/$paired30_manifest_relative" \
+    --episode-key "$screen_episode_key" --lane "$lane" \
+    --output "$validation_tmp/input_binding.json"
+fi
+
 mapfile -t binding < <(python3 - "$validation_tmp/input_binding.json" <<'PY'
 import json, sys
 value=json.load(open(sys.argv[1],encoding="utf-8"))
@@ -963,6 +988,12 @@ source "$root/scripts/t5_remote_compute_audit_common.sh"
 ssh_options=(-T -i "${INTERNNAV_T5_SSH_IDENTITY_FILE:-$HOME/.ssh/id_ed25519_internnav_runtime}" -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=8 -o ServerAliveInterval=5 -o ServerAliveCountMax=2)
 x86_target="song@$x86_ip"
 remote() { local target="$1"; shift; ssh "${ssh_options[@]}" "$target" "$@"; }
+
+if test -n "$paired30_manifest_relative"; then
+  remote "$x86_target" \
+    "python3 '$x86_root/scripts/materialize_t5_frozen_subset.py' --source-root '/home/song/internnav-t0/data/InternData-N1/vln_pe/raw_data/r2r' --manifest '$x86_root/$paired30_manifest_relative' --output-root '$dataset_root'" \
+    >"$result_dir/audits/paired30_materialization.json"
+fi
 
 dgx_quarantine_file=/tmp/internnav_dgx.quarantine
 x86_quarantine_file="/tmp/internnav_isaac_gpu${gpu}.quarantine"
@@ -2294,7 +2325,7 @@ remote "$x86_target" \
 container_started=1
 read -r -d '' x86_runtime_program <<'REMOTE_X86' || true
 set -euo pipefail
-deployment="$1"; lane="$2"; result="$3"; dataset="$4"; lease="$5"; domain="$6"; gpu="$7"; ledger="$8"; canary_sec="$9"; canary_ack="${10}"; rtf_ablation_profile="${11}"; cpuset="${12}"; screen_count="${13}"; source_dataset_sha256="${14}"; frozen_episode_keys_csv="${15}"; isaac_sensor_profile="${16}"; strict_extension_profile="${17}"; run_mode="${18}"; canary_timebase="${19}"; execution_count="${20}"; final_pilot_lane="${21}"; fault_injection_profile="${22}"; nvblox_mode="${23}"; step3_live_advisor="${24}"; step3_timeout_advisor="${25}"; screen_episode_key="${26}"; full_rgb_capture="${27}"; d435_5hz_capture="${28}"
+deployment="$1"; lane="$2"; result="$3"; dataset="$4"; lease="$5"; domain="$6"; gpu="$7"; ledger="$8"; canary_sec="$9"; canary_ack="${10}"; rtf_ablation_profile="${11}"; cpuset="${12}"; screen_count="${13}"; source_dataset_sha256="${14}"; frozen_episode_keys_csv="${15}"; isaac_sensor_profile="${16}"; strict_extension_profile="${17}"; run_mode="${18}"; canary_timebase="${19}"; execution_count="${20}"; final_pilot_lane="${21}"; fault_injection_profile="${22}"; nvblox_mode="${23}"; step3_live_advisor="${24}"; step3_timeout_advisor="${25}"; screen_episode_key="${26}"; full_rgb_capture="${27}"; d435_5hz_capture="${28}"; pilot_max_step="${29}"
 [[ "$cpuset" =~ ^[0-9,-]+$ ]]
 case "$canary_timebase" in wall|sim) ;; *) exit 64 ;; esac
 if test "$canary_timebase" = sim; then test "$canary_sec" = 600; fi
@@ -2348,14 +2379,15 @@ else
   test "$step3_live_advisor" = 0
   test "$step3_timeout_advisor" = 0
 fi
-pilot_max_step=16000
 # WP-03's frozen 5/5 successes completed between 2231 and 5831 evaluator
 # steps.  Do not truncate the STOP-shadow pilot below the navigation contract:
 # process liveness remains bounded by the outer wall-time timeout, while episode
-# completion is governed by the same 16000-step budget as the WP-03 baseline.
+# completion normally uses the WP-03 16000-step budget.  A frozen benchmark
+# may lower it through the validated positional value above.
 [[ "$source_dataset_sha256" =~ ^[0-9a-f]{64}$ ]]
 [[ "$execution_count" =~ ^[1-9][0-9]*$ ]]
 [[ "$pilot_max_step" =~ ^[1-9][0-9]*$ ]]
+((pilot_max_step >= 100 && pilot_max_step <= 16000))
 python3 - "$frozen_episode_keys_csv" "$execution_count" "$screen_count" <<'PY'
 import re,sys
 keys=sys.argv[1].split(",")
@@ -2479,7 +2511,7 @@ case "$profile" in
     ;;
   pilot-screen1|final10) final_pilot_lane="$lane" ;;
 esac
-x86_command="exec setsid --wait bash -c \"\$(printf '%s' '$x86_runtime_b64'|base64 -d)\" fast-x86 '$x86_root' '$lane' '$x86_run' '$dataset_root' '$resource_profile' '$ros_domain_id' '$gpu' '$x86_supervisor_ledger' '$engineering_canary_sec' '$engineering_canary_ack' '$rtf_ablation_profile' '$cpuset' '$screen_episode_count' '$dataset_sha256' '$episode_keys_csv' '$isaac_sensor_profile' '$strict_extension_profile' '$run_mode' '$engineering_canary_timebase' '$execution_episode_count' '$final_pilot_lane' '$fault_injection_profile' '$nvblox_mode' '$step3_live_advisor' '$step3_timeout_advisor' '$screen_episode_key' '$full_rgb_capture' '$d435_5hz_capture'"
+x86_command="exec setsid --wait bash -c \"\$(printf '%s' '$x86_runtime_b64'|base64 -d)\" fast-x86 '$x86_root' '$lane' '$x86_run' '$dataset_root' '$resource_profile' '$ros_domain_id' '$gpu' '$x86_supervisor_ledger' '$engineering_canary_sec' '$engineering_canary_ack' '$rtf_ablation_profile' '$cpuset' '$screen_episode_count' '$dataset_sha256' '$episode_keys_csv' '$isaac_sensor_profile' '$strict_extension_profile' '$run_mode' '$engineering_canary_timebase' '$execution_episode_count' '$final_pilot_lane' '$fault_injection_profile' '$nvblox_mode' '$step3_live_advisor' '$step3_timeout_advisor' '$screen_episode_key' '$full_rgb_capture' '$d435_5hz_capture' '$pilot_max_step_override'"
 x86_launch_attempted=1
 remote "$x86_target" "$x86_command" >"$result_dir/logs/x86_runtime_ssh.log" 2>&1 &
 x86_ssh_pid=$!

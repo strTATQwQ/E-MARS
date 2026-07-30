@@ -575,6 +575,40 @@ def test_motion_timeout_advice_invalidates_only_its_stale_action_queue() -> None
     }
 
 
+def test_motion_timeout_same_action_is_recorded_without_intervention() -> None:
+    client = _task_state_advice_client(
+        kind="motion_timeout_after_confirmed_safe_stop"
+    )
+    client._step3_timeout_advice["advised_action"] = 1
+    events: list[tuple[str, dict[str, object]]] = []
+    client._record_motion_gate_event = (  # type: ignore[method-assign]
+        lambda event, _token, payload: events.append((event, payload))
+    )
+    motion = _command(sequence=17, action=1)
+
+    client._apply_step3_timeout_advice(motion)
+
+    assert motion.discrete_action == 1
+    assert motion.action_source == 3
+    assert client._step3_timeout_interventions == 0
+    assert client._step3_timeout_override is None
+    assert client._step3_model_refresh_pending is None
+    assert events == [
+        (
+            "step3_timeout_advice_noop",
+            {
+                "episode_id": "a::259",
+                "reset_generation": 1,
+                "sequence_id": 17,
+                "retained_action": 1,
+                "confidence": 0.8,
+                "snapshot_id": "a::259::1::16",
+                "control_effect": "same_bounded_primitive",
+            },
+        )
+    ]
+
+
 def test_task_state_checkpoint_retains_normal_internvla_motion() -> None:
     client = _task_state_advice_client()
     events: list[tuple[str, dict[str, object]]] = []

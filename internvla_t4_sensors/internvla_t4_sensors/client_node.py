@@ -1779,6 +1779,21 @@ class T4OdometryClientNode(InternVLAClientNode):
             return
         advised_action = int(advice["advised_action"])
         original_action = int(command.discrete_action)
+        if task_state_advice and advised_action == original_action:
+            self._record_motion_gate_event(
+                "step3_timeout_advice_noop",
+                str(pending.get("stop_token", "")),
+                {
+                    "episode_id": str(command.episode_id),
+                    "reset_generation": int(command.reset_generation),
+                    "sequence_id": int(command.sequence_id),
+                    "retained_action": original_action,
+                    "confidence": float(advice["confidence"]),
+                    "snapshot_id": str(advice.get("snapshot_id", "")),
+                    "control_effect": "same_bounded_primitive",
+                },
+            )
+            return
         if task_state_control and advised_action == original_action:
             self._record_motion_gate_event(
                 "step3_task_state_checkpoint_control_noop",

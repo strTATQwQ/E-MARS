@@ -67,8 +67,8 @@ def main() -> None:
     with gzip.open(source, "rt", encoding="utf-8") as stream:
         payload = json.load(stream)
     episodes = payload.get("episodes") if isinstance(payload, dict) else None
-    if not isinstance(episodes, list) or len(episodes) not in {5, 10}:
-        raise SystemExit("screen source must contain five or ten sealed episodes")
+    if not isinstance(episodes, list) or len(episodes) not in {5, 10, 30}:
+        raise SystemExit("screen source must contain five, ten, or thirty sealed episodes")
     source_keys = [episode_key(episode) for episode in episodes]
     expected_keys = args.expected_episode_keys.split(",")
     if (
