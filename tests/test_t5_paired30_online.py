@@ -142,6 +142,13 @@ def test_fast_lane_accepts_a_fully_validated_paired30_binding() -> None:
     assert '(binding or {}).get("pair_set")=="paired30"' in text
     assert "all(value is True for value in paired30_checks.values())" in text
     assert "or paired30_binding" in text
+    sensor_gate = (ROOT / "scripts" / "run_t4_sensor_gate.sh").read_text(
+        encoding="utf-8"
+    )
+    assert (
+        'INTERNVLA_T3_STATIC_CLEARANCE_GATE_M="${INTERNVLA_T3_STATIC_CLEARANCE_GATE_M:-0.30}"'
+        in sensor_gate
+    )
 
 
 def test_coordinator_uses_two_balanced_rounds_and_hard_limits() -> None:
