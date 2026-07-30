@@ -136,6 +136,7 @@ run_lane() {
     export INTERNNAV_T5_PAIRED30_MANIFEST="$manifest_relative"
     export INTERNNAV_T5_PILOT_MAX_STEP=8000
     export INTERNNAV_T5_FAST_SCREEN_TIMEOUT_SEC=1800
+    export INTERNVLA_T3_STATIC_CLEARANCE_GATE_M=0.25
     exec bash "$root/coordination/run_t5_fast_lane_online.sh" \
       "$lane" pilot-screen1 "$lane_run_id" "$code_sha" \
       "$prepare_relative" "$lane_result"

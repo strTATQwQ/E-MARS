@@ -346,12 +346,14 @@ def test_completion_sim_oracle_termination_supports_exact_dual_lane_shadow_profi
     assert 'INTERNVLA_T5_ORACLE_DATASET_FILE="$oracle_dataset"' in text
     assert text.count('INTERNVLA_T5_TERMINATION_MODE="$termination_mode"') == 2
     assert 'pilot_max_step="${29}"' in text
+    assert 'static_map_clearance_gate="${30}"' in text
     assert 'pilot_max_step=1200' not in text
     assert '((pilot_max_step >= 100 && pilot_max_step <= 16000))' in text
     assert 'INTERNVLA_T4_MAX_STEP="$pilot_max_step"' in text
     assert 'INTERNNAV_T5_PAIRED30_MANIFEST="$paired30_manifest_relative"' in text
     assert 'INTERNNAV_T5_PILOT_MAX_STEP="$pilot_max_step_override"' in text
     assert 'INTERNNAV_T5_FAST_SCREEN_TIMEOUT_SEC="$screen_timeout_override"' in text
+    assert 'INTERNVLA_T3_STATIC_CLEARANCE_GATE_M="$static_map_clearance_gate"' in text
     assert 'scripts/bind_t5_paired30_screen.py' in text
     assert 'scripts/materialize_t5_frozen_subset.py' in text
     assert 'binding_episode_key=6898_1741' in text

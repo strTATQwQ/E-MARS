@@ -124,10 +124,12 @@ pilot_source_lane="${INTERNNAV_T5_PILOT_SOURCE_LANE:-$lane}"
 paired30_manifest_relative="${INTERNNAV_T5_PAIRED30_MANIFEST:-}"
 pilot_max_step_override="${INTERNNAV_T5_PILOT_MAX_STEP:-16000}"
 screen_timeout_override="${INTERNNAV_T5_FAST_SCREEN_TIMEOUT_SEC:-10800}"
+static_map_clearance_gate="${INTERNVLA_T3_STATIC_CLEARANCE_GATE_M:-0.30}"
 [[ "$pilot_max_step_override" =~ ^[1-9][0-9]*$ ]]
 [[ "$screen_timeout_override" =~ ^[1-9][0-9]*$ ]]
 ((pilot_max_step_override >= 100 && pilot_max_step_override <= 16000))
 ((screen_timeout_override >= 60 && screen_timeout_override <= 10800))
+case "$static_map_clearance_gate" in 0.25|0.30|0.40) ;; *) usage ;; esac
 case "$pilot_source_lane" in a|b) ;; *) usage ;; esac
 if test "$pilot_source_lane" != "$lane"; then
   test "$profile" = pilot-screen1 || usage
@@ -429,6 +431,7 @@ if [[ "${INTERNNAV_T5_INSIDE_FAST_LANE:-0}" != 1 ]]; then
       INTERNNAV_T5_PAIRED30_MANIFEST="$paired30_manifest_relative" \
       INTERNNAV_T5_PILOT_MAX_STEP="$pilot_max_step_override" \
       INTERNNAV_T5_FAST_SCREEN_TIMEOUT_SEC="$screen_timeout_override" \
+      INTERNVLA_T3_STATIC_CLEARANCE_GATE_M="$static_map_clearance_gate" \
       INTERNVLA_T5_SYSTEM2_REPLAN_POLICY="$system2_replan_policy" \
       INTERNVLA_T5_SYSTEM2_QUEUE_HORIZON="$system2_queue_horizon" \
       INTERNVLA_T5_SYSTEM1_QUEUE_HORIZON="$system1_queue_horizon" \
@@ -2344,7 +2347,7 @@ remote "$x86_target" \
 container_started=1
 read -r -d '' x86_runtime_program <<'REMOTE_X86' || true
 set -euo pipefail
-deployment="$1"; lane="$2"; result="$3"; dataset="$4"; lease="$5"; domain="$6"; gpu="$7"; ledger="$8"; canary_sec="$9"; canary_ack="${10}"; rtf_ablation_profile="${11}"; cpuset="${12}"; screen_count="${13}"; source_dataset_sha256="${14}"; frozen_episode_keys_csv="${15}"; isaac_sensor_profile="${16}"; strict_extension_profile="${17}"; run_mode="${18}"; canary_timebase="${19}"; execution_count="${20}"; final_pilot_lane="${21}"; fault_injection_profile="${22}"; nvblox_mode="${23}"; step3_live_advisor="${24}"; step3_timeout_advisor="${25}"; screen_episode_key="${26}"; full_rgb_capture="${27}"; d435_5hz_capture="${28}"; pilot_max_step="${29}"
+deployment="$1"; lane="$2"; result="$3"; dataset="$4"; lease="$5"; domain="$6"; gpu="$7"; ledger="$8"; canary_sec="$9"; canary_ack="${10}"; rtf_ablation_profile="${11}"; cpuset="${12}"; screen_count="${13}"; source_dataset_sha256="${14}"; frozen_episode_keys_csv="${15}"; isaac_sensor_profile="${16}"; strict_extension_profile="${17}"; run_mode="${18}"; canary_timebase="${19}"; execution_count="${20}"; final_pilot_lane="${21}"; fault_injection_profile="${22}"; nvblox_mode="${23}"; step3_live_advisor="${24}"; step3_timeout_advisor="${25}"; screen_episode_key="${26}"; full_rgb_capture="${27}"; d435_5hz_capture="${28}"; pilot_max_step="${29}"; static_map_clearance_gate="${30}"
 [[ "$cpuset" =~ ^[0-9,-]+$ ]]
 case "$canary_timebase" in wall|sim) ;; *) exit 64 ;; esac
 if test "$canary_timebase" = sim; then test "$canary_sec" = 600; fi
@@ -2407,6 +2410,7 @@ fi
 [[ "$execution_count" =~ ^[1-9][0-9]*$ ]]
 [[ "$pilot_max_step" =~ ^[1-9][0-9]*$ ]]
 ((pilot_max_step >= 100 && pilot_max_step <= 16000))
+case "$static_map_clearance_gate" in 0.25|0.30|0.40) ;; *) exit 64 ;; esac
 python3 - "$frozen_episode_keys_csv" "$execution_count" "$screen_count" <<'PY'
 import re,sys
 keys=sys.argv[1].split(",")
@@ -2506,6 +2510,7 @@ env INTERNNAV_T5_RESOURCE_LEASE_ACK="$lease" INTERNNAV_RUNTIME_POLICY=completion
  INTERNNAV_T5_FINAL_PILOT_LANE="$final_pilot_lane" \
  INTERNNAV_T5_FAULT_INJECTION_PROFILE="$fault_injection_profile" \
  INTERNVLA_T4_MAX_STEP="$pilot_max_step" \
+ INTERNVLA_T3_STATIC_CLEARANCE_GATE_M="$static_map_clearance_gate" \
  INTERNNAV_T1_CONTROL_ROOT="$deployment" INTERNVLA_ROS_WS=/home/song/internnav-t4/isaac_ros_ws_45 \
  INTERNVLA_T5_ISAAC_WORKER_ROOT=/home/song/internnav-t1-t2/runtime/t5_isaac_workers \
  bash "$deployment/scripts/run_t5_distributed_isaac.sh" "$lane" "$run_mode" "$result" "$dataset"
@@ -2530,7 +2535,7 @@ case "$profile" in
     ;;
   pilot-screen1|final10) final_pilot_lane="$lane" ;;
 esac
-x86_command="exec setsid --wait bash -c \"\$(printf '%s' '$x86_runtime_b64'|base64 -d)\" fast-x86 '$x86_root' '$lane' '$x86_run' '$dataset_root' '$resource_profile' '$ros_domain_id' '$gpu' '$x86_supervisor_ledger' '$engineering_canary_sec' '$engineering_canary_ack' '$rtf_ablation_profile' '$cpuset' '$screen_episode_count' '$dataset_sha256' '$episode_keys_csv' '$isaac_sensor_profile' '$strict_extension_profile' '$run_mode' '$engineering_canary_timebase' '$execution_episode_count' '$final_pilot_lane' '$fault_injection_profile' '$nvblox_mode' '$step3_live_advisor' '$step3_timeout_advisor' '$screen_episode_key' '$full_rgb_capture' '$d435_5hz_capture' '$pilot_max_step_override'"
+x86_command="exec setsid --wait bash -c \"\$(printf '%s' '$x86_runtime_b64'|base64 -d)\" fast-x86 '$x86_root' '$lane' '$x86_run' '$dataset_root' '$resource_profile' '$ros_domain_id' '$gpu' '$x86_supervisor_ledger' '$engineering_canary_sec' '$engineering_canary_ack' '$rtf_ablation_profile' '$cpuset' '$screen_episode_count' '$dataset_sha256' '$episode_keys_csv' '$isaac_sensor_profile' '$strict_extension_profile' '$run_mode' '$engineering_canary_timebase' '$execution_episode_count' '$final_pilot_lane' '$fault_injection_profile' '$nvblox_mode' '$step3_live_advisor' '$step3_timeout_advisor' '$screen_episode_key' '$full_rgb_capture' '$d435_5hz_capture' '$pilot_max_step_override' '$static_map_clearance_gate'"
 x86_launch_attempted=1
 remote "$x86_target" "$x86_command" >"$result_dir/logs/x86_runtime_ssh.log" 2>&1 &
 x86_ssh_pid=$!
