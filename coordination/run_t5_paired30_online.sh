@@ -309,9 +309,10 @@ assert checks.get("wrapped_group_absent_before_release") is True
 assert checks.get("exact_lane_resources") is True
 if rc==0:
     final=json.loads((root/"fast_lane_final_summary.json").read_text(encoding="utf-8"))
-    binding=final.get("input_binding") or {}
+    runtime=final.get("runtime_summary") or {}
+    binding=runtime.get("input_binding") or {}
     assert final.get("status")=="PASS"
-    assert final.get("lane")==sys.argv[3]
+    assert runtime.get("lane")==sys.argv[3]
     assert binding.get("pair_set")=="paired30"
     assert binding.get("execution_episode_keys")==[sys.argv[4]]
 elif rc==124:

@@ -183,5 +183,8 @@ def test_coordinator_uses_two_balanced_rounds_and_hard_limits() -> None:
     assert 'mkdir -p "$stage/dataset"' not in text
     assert '"lane_a_result":sys.argv[9]' in text
     assert '"lane_b_arm":"internvla_step3"' in text
+    assert 'runtime=final.get("runtime_summary") or {}' in text
+    assert 'binding=runtime.get("input_binding") or {}' in text
+    assert 'assert runtime.get("lane")==sys.argv[3]' in text
     assert "deadline=$((SECONDS + 60))" in text
     assert "kill -KILL" in text
