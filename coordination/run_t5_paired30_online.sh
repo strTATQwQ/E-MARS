@@ -155,7 +155,7 @@ set -euo pipefail
 stage="$1"; deployment="$2"; code="$3"; manifest_rel="$4"
 test "$(cat "$deployment/T5_DEPLOYMENT_REF")" = "$code"
 test ! -e "$stage"
-mkdir -p "$stage/dataset" "$stage/cache" "$stage/maps"
+mkdir -p "$stage/cache" "$stage/maps"
 python3 "$deployment/scripts/materialize_t5_frozen_subset.py" \
   --source-root /home/song/internnav-t0/data/InternData-N1/vln_pe/raw_data/r2r \
   --manifest "$deployment/$manifest_rel" --output-root "$stage/dataset" \

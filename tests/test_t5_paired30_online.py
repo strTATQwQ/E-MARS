@@ -169,6 +169,8 @@ def test_coordinator_uses_two_balanced_rounds_and_hard_limits() -> None:
     assert "INTERNNAV_T5_PILOT_MAX_STEP=8000" in text
     assert "INTERNNAV_T5_FAST_SCREEN_TIMEOUT_SEC=1800" in text
     assert "INTERNVLA_T3_STATIC_CLEARANCE_GATE_M=0.25" in text
+    assert 'mkdir -p "$stage/cache" "$stage/maps"' in text
+    assert 'mkdir -p "$stage/dataset"' not in text
     assert '"lane_a_result":sys.argv[9]' in text
     assert '"lane_b_arm":"internvla_step3"' in text
     assert "deadline=$((SECONDS + 60))" in text
