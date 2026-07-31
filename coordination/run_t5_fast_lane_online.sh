@@ -122,6 +122,8 @@ esac
 screen_episode_key="${INTERNNAV_T5_SCREEN_EPISODE_KEY:-}"
 pilot_source_lane="${INTERNNAV_T5_PILOT_SOURCE_LANE:-$lane}"
 paired30_manifest_relative="${INTERNNAV_T5_PAIRED30_MANIFEST:-}"
+paired30_static_map_manifest_path="${INTERNNAV_T5_PAIRED30_STATIC_MAP_MANIFEST_PATH:-}"
+paired30_static_map_manifest_sha256="${INTERNNAV_T5_PAIRED30_STATIC_MAP_MANIFEST_SHA256:-}"
 pilot_max_step_override="${INTERNNAV_T5_PILOT_MAX_STEP:-16000}"
 screen_timeout_override="${INTERNNAV_T5_FAST_SCREEN_TIMEOUT_SEC:-10800}"
 static_map_clearance_gate="${INTERNVLA_T3_STATIC_CLEARANCE_GATE_M:-0.30}"
@@ -147,6 +149,11 @@ if test -n "$paired30_manifest_relative"; then
   test "$profile" = pilot-screen1 || usage
   test "$pilot_source_lane" = "$lane" || usage
   test -f "$root/$paired30_manifest_relative" || usage
+  [[ "$paired30_static_map_manifest_path" =~ ^/[A-Za-z0-9._/-]+/manifest\.json$ ]] || usage
+  [[ "$paired30_static_map_manifest_sha256" =~ ^[0-9a-f]{64}$ ]] || usage
+else
+  test -z "$paired30_static_map_manifest_path" || usage
+  test -z "$paired30_static_map_manifest_sha256" || usage
 fi
 if [[ -v INTERNNAV_T5_CANDIDATE_PROFILE ]]; then
   candidate_profile="$INTERNNAV_T5_CANDIDATE_PROFILE"
@@ -429,6 +436,8 @@ if [[ "${INTERNNAV_T5_INSIDE_FAST_LANE:-0}" != 1 ]]; then
       INTERNNAV_T5_SCREEN_EPISODE_KEY="$screen_episode_key" \
       INTERNNAV_T5_PILOT_SOURCE_LANE="$pilot_source_lane" \
       INTERNNAV_T5_PAIRED30_MANIFEST="$paired30_manifest_relative" \
+      INTERNNAV_T5_PAIRED30_STATIC_MAP_MANIFEST_PATH="$paired30_static_map_manifest_path" \
+      INTERNNAV_T5_PAIRED30_STATIC_MAP_MANIFEST_SHA256="$paired30_static_map_manifest_sha256" \
       INTERNNAV_T5_PILOT_MAX_STEP="$pilot_max_step_override" \
       INTERNNAV_T5_FAST_SCREEN_TIMEOUT_SEC="$screen_timeout_override" \
       INTERNVLA_T3_STATIC_CLEARANCE_GATE_M="$static_map_clearance_gate" \
@@ -922,6 +931,8 @@ if test -n "$paired30_manifest_relative"; then
     --input-binding "$validation_tmp/input_binding.json" \
     --manifest "$root/$paired30_manifest_relative" \
     --episode-key "$screen_episode_key" --lane "$lane" \
+    --static-map-manifest-path "$paired30_static_map_manifest_path" \
+    --static-map-manifest-sha256 "$paired30_static_map_manifest_sha256" \
     --output "$validation_tmp/input_binding.json"
 fi
 

@@ -22,6 +22,9 @@ result_relative="$4"
 root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
 manifest_relative=configs/internnav_t5/paired30_episode_manifest.json
 manifest="$root/$manifest_relative"
+x86_target=song@10.100.120.123
+dgx_a_target=railgun@10.100.100.128
+dgx_b_target=rail@10.100.120.122
 
 [[ "$run_id" =~ ^[a-z0-9][a-z0-9._-]{7,63}$ ]] || usage
 [[ "$code_sha" =~ ^[0-9a-f]{40}$ ]] || usage
@@ -83,9 +86,150 @@ PY
 test "${#lane_a_episodes[@]}" = 15
 test "${#lane_b_episodes[@]}" = 15
 
+mapfile -t deployment_roots < <(python3 - "$receipt" "$code_sha" <<'PY'
+import json,re,sys
+from pathlib import Path
+value=json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+roots=value.get("deployment_roots") or {}
+checks={
+ "status":value.get("status")=="PASS",
+ "code":value.get("code_ref_sha")==sys.argv[2],
+ "scope":value.get("prepare_scope")=="dual" and value.get("prepared_lanes")==["a","b"],
+ "keys":set(roots)=={"dgx_a","dgx_b","x86_a","x86_b"},
+ "paths":all(re.fullmatch(r"/[A-Za-z0-9._/-]+",str(item)) for item in roots.values()),
+}
+if not all(checks.values()): raise SystemExit(f"paired30 deployment binding failed: {checks}")
+for key in ("dgx_a","dgx_b","x86_a","x86_b"): print(roots[key])
+PY
+)
+dgx_a_root="${deployment_roots[0]}"
+dgx_b_root="${deployment_roots[1]}"
+x86_a_root="${deployment_roots[2]}"
+x86_b_root="${deployment_roots[3]}"
+test "${#deployment_roots[@]}" = 4
+
+ssh_options=(-T -i "${INTERNNAV_T5_SSH_IDENTITY_FILE:-$HOME/.ssh/id_ed25519_internnav_runtime}" -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=8 -o ServerAliveInterval=5 -o ServerAliveCountMax=2)
+remote() { local target="$1"; shift; ssh "${ssh_options[@]}" "$target" "$@"; }
+
 umask 077
 mkdir -p "$result_root/logs"
 progress="$result_root/progress.json"
+
+prepare_paired30_static_maps() {
+  local receipt_path="$result_root/static_map_prepare_receipt.json"
+  local maps_dir="$result_root/static_maps" archive="$result_root/paired30_static_maps.tar.gz"
+  local stage="/home/song/internnav-t1-t2/.t5-paired30-static-maps/${run_id}-${code_sha:0:12}"
+  local destination_a="$dgx_a_root/inputs/paired30_${run_id}_static_maps"
+  local destination_b="$dgx_b_root/inputs/paired30_${run_id}_static_maps"
+  local map_sha remote_program remote_program_b64
+  mkdir -p "$maps_dir"
+  if test -f "$receipt_path"; then
+    mapfile -t prepared_map < <(python3 - "$receipt_path" "$code_sha" <<'PY'
+import json,re,sys
+from pathlib import Path
+value=json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+checks={
+ "status":value.get("status")=="PASS",
+ "code":value.get("code_ref_sha")==sys.argv[2],
+ "episode_count":value.get("episode_count")==30,
+ "dataset":value.get("dataset_sha256")=="4359052e459758e6b75f093d2354d4a50c2540da1b6fc0a603a8e4820c64e9b6",
+ "sha":re.fullmatch(r"[0-9a-f]{64}",str(value.get("manifest_sha256",""))) is not None,
+}
+paths=value.get("remote_manifest_paths") or {}
+checks["lanes"]=set(paths)=={"a","b"}
+if not all(checks.values()): raise SystemExit(f"paired30 map receipt failed: {checks}")
+print(value["manifest_sha256"]); print(paths["a"]); print(paths["b"])
+PY
+)
+    map_sha="${prepared_map[0]}"
+    lane_a_map_manifest="${prepared_map[1]}"
+    lane_b_map_manifest="${prepared_map[2]}"
+    remote "$dgx_a_target" "test \"\$(cat '$dgx_a_root/T5_DEPLOYMENT_REF')\" = '$code_sha'; test \"\$(sha256sum '$lane_a_map_manifest'|cut -d' ' -f1)\" = '$map_sha'"
+    remote "$dgx_b_target" "test \"\$(cat '$dgx_b_root/T5_DEPLOYMENT_REF')\" = '$code_sha'; test \"\$(sha256sum '$lane_b_map_manifest'|cut -d' ' -f1)\" = '$map_sha'"
+    paired30_map_manifest_sha="$map_sha"
+    return
+  fi
+
+  read -r -d '' remote_program <<'REMOTE_X86' || true
+set -euo pipefail
+stage="$1"; deployment="$2"; code="$3"; manifest_rel="$4"
+test "$(cat "$deployment/T5_DEPLOYMENT_REF")" = "$code"
+test ! -e "$stage"
+mkdir -p "$stage/dataset" "$stage/cache" "$stage/maps"
+python3 "$deployment/scripts/materialize_t5_frozen_subset.py" \
+  --source-root /home/song/internnav-t0/data/InternData-N1/vln_pe/raw_data/r2r \
+  --manifest "$deployment/$manifest_rel" --output-root "$stage/dataset" \
+  >"$stage/materialization.json"
+dataset="$stage/dataset/val_unseen/val_unseen.json.gz"
+python3 "$deployment/scripts/build_t3_static_maps.py" \
+  --dataset "$dataset" \
+  --scene-root "$HOME/internnav-t0/InternNav/data/scene_data/mp3d_pe" \
+  --output-root "$stage/cache" --minimum-required-prefix-clearance-m 0.25 \
+  >"$stage/map_build.json"
+cp "$stage/cache"/*.bin "$stage/maps/"
+python3 "$deployment/scripts/build_t4_truth_isolated_static_manifest.py" \
+  --manifest "$stage/cache/manifest.json" --dataset "$dataset" \
+  --output "$stage/maps/manifest.json" >"$stage/truth_isolation.json"
+python3 - "$stage/maps/manifest.json" "$deployment/$manifest_rel" <<'PY'
+import hashlib,json,sys
+from pathlib import Path
+maps=json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+contract=json.loads(Path(sys.argv[2]).read_text(encoding="utf-8"))
+keys=[f"{item['trajectory_id']}_{item['episode_id']}" for item in maps.get("generations",[])]
+raw=maps.get("maps",{})
+records=raw.values() if isinstance(raw,dict) else raw
+scans={item.get("scan") for item in records if isinstance(item,dict)}
+checks={
+ "dataset":maps.get("dataset_sha256")==contract.get("dataset_sha256"),
+ "episodes":maps.get("episode_count")==30 and keys==contract.get("episode_keys"),
+ "scenes":scans=={"2azQ1b91cZZ","QUCTc6BB5sX","TbHJrupSAjP","Z6MFQCViBuw","zsNo4HB9uLZ"},
+ "clearance":maps.get("required_prefix_minimum_clearance_gate_m")==0.25,
+ "truth":maps.get("t4_truth_isolation",{}).get("status")=="PASS",
+}
+if not all(checks.values()): raise SystemExit(f"paired30 static map validation failed: {checks}")
+for item in records:
+ path=Path(sys.argv[1]).parent/item["file"]
+ assert hashlib.sha256(path.read_bytes()).hexdigest()==item["sha256"]
+PY
+tar -C "$stage/maps" -czf "$stage/paired30_static_maps.tar.gz" .
+sha256sum "$stage/maps/manifest.json" | cut -d' ' -f1 >"$stage/manifest.sha256"
+REMOTE_X86
+  remote_program_b64="$(printf '%s' "$remote_program" | base64 | tr -d '\r\n')"
+  remote "$x86_target" \
+    "flock -x -w 1800 /tmp/internnav_t5_isaac_shared_assets.lock bash -c \"\$(printf '%s' '$remote_program_b64'|base64 -d)\" paired30-map '$stage' '$x86_a_root' '$code_sha' '$manifest_relative'" \
+    >"$result_root/logs/paired30_static_map_build.log" 2>&1
+  remote "$x86_target" "cat '$stage/paired30_static_maps.tar.gz'" >"$archive"
+  remote "$x86_target" "cat '$stage/manifest.sha256'" >"$result_root/paired30_static_map_manifest.sha256"
+  map_sha="$(tr -d '\r\n' <"$result_root/paired30_static_map_manifest.sha256")"
+  [[ "$map_sha" =~ ^[0-9a-f]{64}$ ]]
+  tar -C "$maps_dir" -xzf "$archive"
+  test "$(sha256sum "$maps_dir/manifest.json" | cut -d' ' -f1)" = "$map_sha"
+
+  deploy_map() {
+    local target="$1" deployment="$2" destination="$3" temporary="$3.tmp-${code_sha:0:12}"
+    remote "$target" "set -euo pipefail; test \"\$(cat '$deployment/T5_DEPLOYMENT_REF')\" = '$code_sha'; test ! -e '$destination'; test ! -e '$temporary'; mkdir -p '$temporary'"
+    gzip -dc "$archive" | ssh "${ssh_options[@]}" "$target" "tar -C '$temporary' -xf -"
+    remote "$target" "set -euo pipefail; test \"\$(sha256sum '$temporary/manifest.json'|cut -d' ' -f1)\" = '$map_sha'; mv '$temporary' '$destination'"
+  }
+  deploy_map "$dgx_a_target" "$dgx_a_root" "$destination_a"
+  deploy_map "$dgx_b_target" "$dgx_b_root" "$destination_b"
+  lane_a_map_manifest="$destination_a/manifest.json"
+  lane_b_map_manifest="$destination_b/manifest.json"
+  paired30_map_manifest_sha="$map_sha"
+  python3 - "$receipt_path" "$code_sha" "$map_sha" "$lane_a_map_manifest" "$lane_b_map_manifest" <<'PY'
+import json,sys,time
+from pathlib import Path
+Path(sys.argv[1]).write_text(json.dumps({
+ "schema_version":1,"status":"PASS","code_ref_sha":sys.argv[2],
+ "episode_count":30,"dataset_sha256":"4359052e459758e6b75f093d2354d4a50c2540da1b6fc0a603a8e4820c64e9b6",
+ "minimum_required_prefix_clearance_m":0.25,"manifest_sha256":sys.argv[3],
+ "remote_manifest_paths":{"a":sys.argv[4],"b":sys.argv[5]},
+ "recorded_unix":time.time(),
+},indent=2,sort_keys=True)+"\n",encoding="utf-8")
+PY
+}
+
+prepare_paired30_static_maps
 active_pids=()
 terminate_active_children() {
   local deadline pid any_alive
@@ -109,6 +253,12 @@ trap terminate_active_children INT TERM HUP
 run_lane() {
   local lane="$1" advisor="$2" episode="$3" lane_run_id="$4"
   local lane_result="$5" log="$6"
+  local static_map_manifest
+  if test "$lane" = a; then
+    static_map_manifest="$lane_a_map_manifest"
+  else
+    static_map_manifest="$lane_b_map_manifest"
+  fi
   (
     unset INTERNVLA_T4_VIEW_MODE INTERNVLA_T4_HISTORY_MODE
     unset INTERNVLA_T5_TRAJECTORY_RERANK INTERNVLA_T4_PROGRESS_HORIZON_SEC
@@ -134,6 +284,8 @@ run_lane() {
     export INTERNNAV_T5_SCREEN_EPISODE_KEY="$episode"
     export INTERNNAV_T5_PILOT_SOURCE_LANE="$lane"
     export INTERNNAV_T5_PAIRED30_MANIFEST="$manifest_relative"
+    export INTERNNAV_T5_PAIRED30_STATIC_MAP_MANIFEST_PATH="$static_map_manifest"
+    export INTERNNAV_T5_PAIRED30_STATIC_MAP_MANIFEST_SHA256="$paired30_map_manifest_sha"
     export INTERNNAV_T5_PILOT_MAX_STEP=8000
     export INTERNNAV_T5_FAST_SCREEN_TIMEOUT_SEC=1800
     export INTERNVLA_T3_STATIC_CLEARANCE_GATE_M=0.25

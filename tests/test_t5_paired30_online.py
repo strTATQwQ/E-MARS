@@ -105,6 +105,8 @@ def test_paired30_binding_reuses_deployment_but_replaces_dataset(tmp_path: Path)
                     "dgx": "/home/railgun/deployment",
                     "x86": "/home/song/deployment",
                 },
+                "static_map_manifest_path": "/home/railgun/deployment/inputs/old/manifest.json",
+                "static_map_manifest_sha256": "0" * 64,
             }
         ),
         encoding="utf-8",
@@ -122,6 +124,10 @@ def test_paired30_binding_reuses_deployment_but_replaces_dataset(tmp_path: Path)
             manifest["lane_sets"]["a"][3],
             "--lane",
             "a",
+            "--static-map-manifest-path",
+            "/home/railgun/deployment/inputs/paired30_run/static_maps/manifest.json",
+            "--static-map-manifest-sha256",
+            "a" * 64,
             "--output",
             str(output),
         ],
@@ -132,6 +138,11 @@ def test_paired30_binding_reuses_deployment_but_replaces_dataset(tmp_path: Path)
     assert value["episode_keys"] == manifest["episode_keys"]
     assert value["execution_episode_keys"] == [manifest["lane_sets"]["a"][3]]
     assert value["dataset_root"] == "/home/song/deployment/inputs/paired30_frozen_v1"
+    assert value["static_map_manifest_path"] == (
+        "/home/railgun/deployment/inputs/paired30_run/static_maps/manifest.json"
+    )
+    assert value["static_map_manifest_sha256"] == "a" * 64
+    assert value["paired30_checks"]["static_map_path"] is True
 
 
 def test_fast_lane_accepts_a_fully_validated_paired30_binding() -> None:

@@ -351,6 +351,8 @@ def test_completion_sim_oracle_termination_supports_exact_dual_lane_shadow_profi
     assert '((pilot_max_step >= 100 && pilot_max_step <= 16000))' in text
     assert 'INTERNVLA_T4_MAX_STEP="$pilot_max_step"' in text
     assert 'INTERNNAV_T5_PAIRED30_MANIFEST="$paired30_manifest_relative"' in text
+    assert 'INTERNNAV_T5_PAIRED30_STATIC_MAP_MANIFEST_PATH="$paired30_static_map_manifest_path"' in text
+    assert 'INTERNNAV_T5_PAIRED30_STATIC_MAP_MANIFEST_SHA256="$paired30_static_map_manifest_sha256"' in text
     assert 'INTERNNAV_T5_PILOT_MAX_STEP="$pilot_max_step_override"' in text
     assert 'INTERNNAV_T5_FAST_SCREEN_TIMEOUT_SEC="$screen_timeout_override"' in text
     assert 'INTERNVLA_T3_STATIC_CLEARANCE_GATE_M="$static_map_clearance_gate"' in text
