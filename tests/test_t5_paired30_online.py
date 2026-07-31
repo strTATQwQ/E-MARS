@@ -38,6 +38,16 @@ def test_frozen_paired30_contract_is_balanced_and_bounded() -> None:
         "termination": "earlier_of_wall_or_physics_steps",
     }
     assert len(value["scene_ids"]) == len(set(value["scene_ids"])) == 5
+    assert value["selection"]["static_grid_clearance_m"] == 0.25
+    assert value["selection"]["duplicate_authored_start_count"] == 3
+    assert set(value["selection"]["static_grid_corrections"]) == {
+        "668_166",
+        "1317_337",
+        "3555_880",
+        "4510_1129",
+    }
+    assert not set(value["selection"]["static_grid_corrections"]).intersection(keys)
+    assert set(value["selection"]["static_grid_corrections"].values()).issubset(keys)
 
 
 def test_materializer_copies_official_objects_in_frozen_order(tmp_path: Path) -> None:

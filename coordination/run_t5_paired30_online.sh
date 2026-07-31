@@ -132,7 +132,7 @@ checks={
  "status":value.get("status")=="PASS",
  "code":value.get("code_ref_sha")==sys.argv[2],
  "episode_count":value.get("episode_count")==30,
- "dataset":value.get("dataset_sha256")=="4359052e459758e6b75f093d2354d4a50c2540da1b6fc0a603a8e4820c64e9b6",
+ "dataset":value.get("dataset_sha256")=="b4de2a6be2c37c1ad160aa83d062acd7ad7671534df76df478ec7c495fed61f5",
  "sha":re.fullmatch(r"[0-9a-f]{64}",str(value.get("manifest_sha256",""))) is not None,
 }
 paths=value.get("remote_manifest_paths") or {}
@@ -221,7 +221,7 @@ import json,sys,time
 from pathlib import Path
 Path(sys.argv[1]).write_text(json.dumps({
  "schema_version":1,"status":"PASS","code_ref_sha":sys.argv[2],
- "episode_count":30,"dataset_sha256":"4359052e459758e6b75f093d2354d4a50c2540da1b6fc0a603a8e4820c64e9b6",
+ "episode_count":30,"dataset_sha256":"b4de2a6be2c37c1ad160aa83d062acd7ad7671534df76df478ec7c495fed61f5",
  "minimum_required_prefix_clearance_m":0.25,"manifest_sha256":sys.argv[3],
  "remote_manifest_paths":{"a":sys.argv[4],"b":sys.argv[5]},
  "recorded_unix":time.time(),
