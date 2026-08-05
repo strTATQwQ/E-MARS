@@ -40,6 +40,9 @@ def test_t5_nav2_tolerances_are_stricly_inside_action_gate_slack() -> None:
     assert 0.0 < checker["xy_goal_tolerance"] < 0.05
     assert 0.0 < checker["yaw_goal_tolerance"] < math.radians(3.0)
     assert 0.0 < dwb["xy_goal_tolerance"] < 0.05
+    local_costmap = config["local_costmap"]["local_costmap"]["ros__parameters"]
+    assert local_costmap["robot_radius"] == 0.30
+    assert local_costmap["inflation_layer"]["inflation_radius"] == 0.25
 
 
 def test_t5_system2_turns_in_place_but_t4_retains_arc() -> None:

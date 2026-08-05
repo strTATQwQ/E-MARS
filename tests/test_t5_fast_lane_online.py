@@ -169,6 +169,11 @@ def test_candidate_profile_is_bound_forwarded_and_reported() -> None:
     assert 'binding.get("candidate_profile")==candidate_profile' in text
     assert 'dgx_ready.get("candidate_profile")==candidate_profile' in text
     assert 'dgx_status.get("candidate_profile")==candidate_profile' in text
+    assert (
+        'INTERNVLA_T5_STEP3_TASK_STATE_CONTROL="$step3_task_state_control"'
+        in text
+    )
+    assert '"step3_task_state_control":step3_task_state_control' in text
 
 
 def test_oracle_does_not_require_model_only_episode_order_manifest() -> None:
@@ -303,7 +308,9 @@ def test_screen_profiles_materialize_a_frozen_first_n_dataset() -> None:
     assert 'screen_episode_key="${INTERNNAV_T5_SCREEN_EPISODE_KEY:-}"' in text
     assert 'if test "$profile" = pilot-screen1; then' in text
     assert 'final_pilot_selection_args=(--execution-profile "$profile")' in text
-    assert 'final_pilot_selection_args+=(--episode-key "$screen_episode_key")' in text
+    assert 'pilot_source_lane="${INTERNNAV_T5_PILOT_SOURCE_LANE:-$lane}"' in text
+    assert 'final_pilot_selection_args+=(--source-lane "$pilot_source_lane")' in text
+    assert 'final_pilot_selection_args+=(--episode-key "$binding_episode_key")' in text
     assert 'screen_key_args=(--episode-key "$screen_episode_key")' in text
     assert '"screen_episode_key_exact_scope"' in text
     assert 'print(",".join(value["episode_keys"]))' in text
@@ -338,9 +345,21 @@ def test_completion_sim_oracle_termination_supports_exact_dual_lane_shadow_profi
     assert "verify_t5_oracle_termination_dataset.py" in text
     assert 'INTERNVLA_T5_ORACLE_DATASET_FILE="$oracle_dataset"' in text
     assert text.count('INTERNVLA_T5_TERMINATION_MODE="$termination_mode"') == 2
-    assert 'pilot_max_step=16000' in text
+    assert 'pilot_max_step="${29}"' in text
+    assert 'static_map_clearance_gate="${30}"' in text
     assert 'pilot_max_step=1200' not in text
+    assert '((pilot_max_step >= 100 && pilot_max_step <= 16000))' in text
     assert 'INTERNVLA_T4_MAX_STEP="$pilot_max_step"' in text
+    assert 'INTERNNAV_T5_PAIRED30_MANIFEST="$paired30_manifest_relative"' in text
+    assert 'INTERNNAV_T5_PAIRED30_STATIC_MAP_MANIFEST_PATH="$paired30_static_map_manifest_path"' in text
+    assert 'INTERNNAV_T5_PAIRED30_STATIC_MAP_MANIFEST_SHA256="$paired30_static_map_manifest_sha256"' in text
+    assert 'INTERNNAV_T5_PILOT_MAX_STEP="$pilot_max_step_override"' in text
+    assert 'INTERNNAV_T5_FAST_SCREEN_TIMEOUT_SEC="$screen_timeout_override"' in text
+    assert 'INTERNVLA_T3_STATIC_CLEARANCE_GATE_M="$static_map_clearance_gate"' in text
+    assert 'scripts/bind_t5_paired30_screen.py' in text
+    assert 'scripts/materialize_t5_frozen_subset.py' in text
+    assert 'binding_episode_key=6898_1741' in text
+    assert 'binding_episode_key=5627_1417' in text
 
 
 def test_screen_episode_key_crosses_the_resource_lease_boundary() -> None:
@@ -348,6 +367,20 @@ def test_screen_episode_key_crosses_the_resource_lease_boundary() -> None:
     assert (
         'INTERNNAV_T5_SCREEN_EPISODE_KEY="$screen_episode_key"' in text
     )
+    assert 'INTERNNAV_T5_PILOT_SOURCE_LANE="$pilot_source_lane"' in text
+
+
+def test_cross_lane_pilot_summary_preserves_frozen_source_pair_set() -> None:
+    text = RUNNER.read_text(encoding="utf-8")
+    assert '"pair_set":(binding or {}).get("pair_set")' in text
+    assert '"source_lane":(binding or {}).get("source_lane",lane)' in text
+    assert 'if binding.get("source_lane",lane)=="a"' in text
+
+
+def test_lane_cleanup_does_not_treat_peer_dataset_reader_as_own_residual() -> None:
+    text = RUNNER.read_text(encoding="utf-8")
+    assert 'run_scope_absent "$x86_target" "$x86_run"' in text
+    assert 'run_scope_absent "$x86_target" "$x86_run|$x86_root"' not in text
 
 
 def test_summary_preserves_machine_readable_failure_before_x86_receipts_exist() -> None:
@@ -386,6 +419,14 @@ def test_cleanup_is_owned_and_strictly_lane_scoped() -> None:
     assert "other_container" not in text
     assert "other_ports" not in text
     assert "assert_other_lane_quiet" not in text
+
+
+def test_x86_supervisor_ledger_parent_is_materialized_inside_deployment() -> None:
+    text = source()
+    assert 'test "$ledger_parent" = "$result_parent"' in text
+    assert 'test "$ledger_parent" = "$deployment/results"' in text
+    assert 'mkdir -p "$ledger_parent"' in text
+    assert 'test ! -L "$ledger_parent"' in text
 
 
 def test_cleanup_has_child_ledger_fallback_and_one_shared_budget() -> None:

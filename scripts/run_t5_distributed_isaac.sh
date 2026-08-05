@@ -153,11 +153,16 @@ step3_live_advisor="${INTERNNAV_T5_STEP3_LIVE_ADVISOR:-0}"
 step3_direct_high_level="${INTERNNAV_T5_STEP3_DIRECT_HIGH_LEVEL:-0}"
 step3_timeout_advisor="${INTERNVLA_T5_STEP3_TIMEOUT_ADVISOR:-0}"
 full_rgb_capture="${INTERNVLA_T5_FULL_RGB_CAPTURE:-0}"
+d435_5hz_capture="${INTERNVLA_T5_D435_5HZ_CAPTURE:-0}"
+if [[ -v INTERNVLA_T5_REVC_OBSERVER_ENABLE ]]; then
+  echo "Rev-C observer must be selected only by the T5 sensor profile" >&2
+  exit 64
+fi
 case "$step3_live_advisor" in 0|1) ;; *) exit 64 ;; esac
 case "$step3_direct_high_level" in 0|1) ;; *) exit 64 ;; esac
 case "$step3_timeout_advisor" in 0|1) ;; *) exit 64 ;; esac
 case "$full_rgb_capture" in 0|1) ;; *) exit 64 ;; esac
-test "$full_rgb_capture" != 1 || test "$lane" = a
+case "$d435_5hz_capture" in 0|1) ;; *) exit 64 ;; esac
 case "$isaac_sensor_profile" in
   baseline)
     test "$step3_live_advisor" = 0
@@ -165,6 +170,7 @@ case "$isaac_sensor_profile" in
     test "$step3_timeout_advisor" = 0
     test "${INTERNVLA_T5_REVC_ENABLE:-0}" = 0
     export INTERNVLA_T5_REVC_ENABLE=0
+    export INTERNVLA_T5_REVC_OBSERVER_ENABLE=0
     ;;
   lane_b_revc_smoke)
     test "$step3_live_advisor" = 0
@@ -175,6 +181,7 @@ case "$isaac_sensor_profile" in
     test "$execution_profile" = engineering_canary
     test "$engineering_canary_sec" = 60
     export INTERNVLA_T5_REVC_ENABLE=1
+    export INTERNVLA_T5_REVC_OBSERVER_ENABLE=1
     ;;
   lane_b_revc_fixed5_capture)
     test "$step3_live_advisor" = 0
@@ -184,6 +191,7 @@ case "$isaac_sensor_profile" in
     test "$mode" = model
     test "$execution_profile" = fixed_dataset
     export INTERNVLA_T5_REVC_ENABLE=1
+    export INTERNVLA_T5_REVC_OBSERVER_ENABLE=0
     ;;
   lane_b_step3_live_canary)
     test "$step3_live_advisor" = 1
@@ -194,6 +202,7 @@ case "$isaac_sensor_profile" in
     test "$execution_profile" = fixed_dataset
     test "$fault_injection_profile" = off
     export INTERNVLA_T5_REVC_ENABLE=1
+    export INTERNVLA_T5_REVC_OBSERVER_ENABLE=0
     ;;
   lane_b_step3_direct_fixed5)
     test "$step3_live_advisor" = 0
@@ -204,6 +213,7 @@ case "$isaac_sensor_profile" in
     test "$execution_profile" = fixed_dataset
     test "$fault_injection_profile" = off
     export INTERNVLA_T5_REVC_ENABLE=1
+    export INTERNVLA_T5_REVC_OBSERVER_ENABLE=0
     ;;
   lane_a_step3_timeout_advisor)
     test "$step3_live_advisor" = 0
@@ -214,15 +224,19 @@ case "$isaac_sensor_profile" in
     test "$execution_profile" = fixed_dataset
     test "$fault_injection_profile" = off
     export INTERNVLA_T5_REVC_ENABLE=1
+    export INTERNVLA_T5_REVC_OBSERVER_ENABLE=0
     ;;
   dual_lane_wp03_stop_shadow)
     test "$step3_live_advisor" = 0
     test "$step3_direct_high_level" = 0
-    test "$step3_timeout_advisor" = 1
     test "$mode" = model
     test "$execution_profile" = fixed_dataset
     test "$fault_injection_profile" = off
     export INTERNVLA_T5_REVC_ENABLE=1
+    # Paired-10 review evidence requires the robot-following observer on the
+    # exact same paused render barrier as every Step3 four-camera snapshot.
+    # It remains review-only and is never included in the Step3 request.
+    export INTERNVLA_T5_REVC_OBSERVER_ENABLE=1
     ;;
   *) echo "unsupported T5 Isaac sensor profile: $isaac_sensor_profile" >&2; exit 64 ;;
 esac
@@ -234,6 +248,13 @@ if test "$full_rgb_capture" = 1; then
   test ! -e "$INTERNVLA_T5_FULL_RGB_CAPTURE_ROOT"
 else
   unset INTERNVLA_T5_FULL_RGB_CAPTURE_ROOT
+fi
+export INTERNVLA_T5_D435_5HZ_CAPTURE="$d435_5hz_capture"
+if test "$d435_5hz_capture" = 1; then
+  export INTERNVLA_T5_D435_5HZ_CAPTURE_ROOT="$result_root/evaluator/d435_rgb_5hz"
+  test ! -e "$INTERNVLA_T5_D435_5HZ_CAPTURE_ROOT"
+else
+  unset INTERNVLA_T5_D435_5HZ_CAPTURE_ROOT
 fi
 # The promoted navigation-fast profile is usable for functional evidence.
 # Other named profiles remain diagnostic-only single-Lane ablations.
@@ -1398,6 +1419,10 @@ if profile == "lane_b_revc_smoke":
         not isinstance(value.get("external_preview_max_hz"), bool),
         0.0 < float(value.get("external_preview_max_hz", 0.0)) <= 1.0,
         isinstance(value.get("images"), list) and len(value.get("images")) == 4,
+        isinstance(value.get("observer"), dict),
+        value.get("observer", {}).get("status") == "CAPTURED",
+        value.get("observer", {}).get("resolution") == [500, 500],
+        value.get("observer", {}).get("fed_to_step3") is False,
     )
 elif profile == "lane_b_revc_fixed5_capture":
     snapshots = value.get("snapshots")
@@ -1598,6 +1623,15 @@ Path(sys.argv[1]).write_text(json.dumps({
     "shared_assets_lock_mode": "shared_read",
     "isaac_sensor_profile": os.environ["INTERNNAV_T5_ISAAC_SENSOR_PROFILE"],
     "revc_enabled": os.environ.get("INTERNVLA_T5_REVC_ENABLE") == "1",
+    "revc_observer_enabled": (
+        os.environ.get("INTERNVLA_T5_REVC_OBSERVER_ENABLE") == "1"
+    ),
+    "model_observation_capture_enabled": (
+        os.environ.get("INTERNVLA_T5_FULL_RGB_CAPTURE") == "1"
+    ),
+    "independent_d435_5hz_capture_enabled": (
+        os.environ.get("INTERNVLA_T5_D435_5HZ_CAPTURE") == "1"
+    ),
     "full_mp4_encoding_allowed": False,
     "video_policy": "jsonl_keyframes_only",
     "owners": ["isaac_sim", "go2_physics", "simulated_sensors",
@@ -1953,7 +1987,10 @@ Path(sys.argv[1]).write_text(json.dumps({
     "isaac_sensor_profile": {
         "profile": os.environ["INTERNNAV_T5_ISAAC_SENSOR_PROFILE"],
         "revc_enabled": os.environ.get("INTERNVLA_T5_REVC_ENABLE") == "1",
-        "scope": "lane_b_snapshot_evidence_only"
+        "observer_enabled": (
+            os.environ.get("INTERNVLA_T5_REVC_OBSERVER_ENABLE") == "1"
+        ),
+        "scope": "t5_snapshot_evidence_only"
             if os.environ["INTERNNAV_T5_ISAAC_SENSOR_PROFILE"] != "baseline"
             else "disabled",
         "external_preview_max_hz": 1.0
@@ -2002,6 +2039,12 @@ Path(sys.argv[1]).write_text(json.dumps({
     },
     "full_mp4_encoding_allowed": False,
     "video_policy": "jsonl_keyframes_only",
+    "model_observation_capture_enabled": (
+        os.environ.get("INTERNVLA_T5_FULL_RGB_CAPTURE") == "1"
+    ),
+    "independent_d435_5hz_capture_enabled": (
+        os.environ.get("INTERNVLA_T5_D435_5HZ_CAPTURE") == "1"
+    ),
     "started_unix": time.time(),
 }, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 PY
@@ -2212,8 +2255,7 @@ elif test "$isaac_sensor_profile" = lane_b_revc_fixed5_capture; then
   revc_probe_pid=$!
   record_pid_event revc_snapshot_probe "$revc_probe_pid" started \
     "$revc_probe_log"
-elif test "$isaac_sensor_profile" = lane_a_step3_timeout_advisor || \
-    test "$isaac_sensor_profile" = dual_lane_wp03_stop_shadow; then
+elif test "$step3_timeout_advisor" = 1; then
   test ! -e "$INTERNVLA_T5_REVC_SNAPSHOT_REQUEST_PATH"
   test ! -e "$INTERNVLA_T5_REVC_SNAPSHOT_ACK_PATH"
   test "$INTERNVLA_T4_RESULT_ROOT" = "$result_root/evaluator"

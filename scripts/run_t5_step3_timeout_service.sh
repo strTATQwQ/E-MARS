@@ -87,6 +87,7 @@ trap 'exit 143' TERM HUP
 
 export STEP3_VL_10B_MODEL_PATH="$model_path"
 export SLOW_BENCHMARK_RESULTS="$result_root/step3"
+export STEP3_PRIVATE_TRACE_PATH="$result_root/private_trace/step3_generations.jsonl"
 export STEP3_TIMEOUT_BIND="tcp://$lane_ip:8200"
 export PYTHONPATH="$root${PYTHONPATH:+:$PYTHONPATH}"
 setsid env CUDA_VISIBLE_DEVICES=0 "$python" -m slow_planner.serve \

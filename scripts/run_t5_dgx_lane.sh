@@ -129,6 +129,9 @@ step3_live_advisor="${INTERNNAV_T5_STEP3_LIVE_ADVISOR:-0}"
 case "$step3_live_advisor" in 0|1) ;; *) usage ;; esac
 step3_timeout_advisor="${INTERNVLA_T5_STEP3_TIMEOUT_ADVISOR:-0}"
 case "$step3_timeout_advisor" in 0|1) ;; *) usage ;; esac
+step3_task_state_control="${INTERNVLA_T5_STEP3_TASK_STATE_CONTROL:-0}"
+case "$step3_task_state_control" in 0|1) ;; *) usage ;; esac
+test "$step3_task_state_control" != 1 || test "$step3_timeout_advisor" = 1
 live_frontier_capture="${INTERNNAV_T5_LIVE_FRONTIER_CAPTURE:-$step3_live_advisor}"
 case "$live_frontier_capture" in 0|1) ;; *) usage ;; esac
 if test "$live_frontier_capture" = 1; then
@@ -934,7 +937,8 @@ python3 - "$result_dir/lane_contract.json" "$lane" "$mode" "$ros_domain_id" \
   "$candidate_config" "$nvblox_mode" "$nvblox_contract" \
   "$live_frontier_capture" "$system2_replan_policy" "$termination_mode" \
   "$termination_overlay" "$termination_dataset" \
-  "$system2_queue_horizon" "$system1_queue_horizon" <<'PY'
+  "$system2_queue_horizon" "$system1_queue_horizon" \
+  "$step3_task_state_control" <<'PY'
 import hashlib, json, os, sys, time
 from pathlib import Path
 
@@ -1011,6 +1015,7 @@ Path(sys.argv[1]).write_text(json.dumps({
         "raw_wire_warn_only": sys.argv[23] == "raw_wire_warn",
         "system2_queue_horizon": int(sys.argv[27]),
         "system1_queue_horizon": int(sys.argv[28]),
+        "step3_task_state_control": sys.argv[29] == "1",
     },
     "nvblox": {
         "mode": sys.argv[20],
@@ -1059,6 +1064,7 @@ common_env=(
   INTERNNAV_T5_FAULT_EVENT_PATH="$fault_event_path"
   INTERNNAV_T5_STEP3_LIVE_ADVISOR="$step3_live_advisor"
   INTERNVLA_T5_STEP3_TIMEOUT_ADVISOR="$step3_timeout_advisor"
+  INTERNVLA_T5_STEP3_TASK_STATE_CONTROL="$step3_task_state_control"
   INTERNNAV_T5_LIVE_FRONTIER_CAPTURE="$live_frontier_capture"
   INTERNVLA_T5_SYSTEM2_REPLAN_POLICY="$system2_replan_policy"
   INTERNVLA_T5_SYSTEM2_QUEUE_HORIZON="$system2_queue_horizon"

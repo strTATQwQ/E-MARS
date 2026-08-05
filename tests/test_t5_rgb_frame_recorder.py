@@ -50,7 +50,9 @@ def test_recorder_samples_unique_source_observations_at_five_hz(
     summary = json.loads(
         (tmp_path / "capture" / "capture_summary.json").read_text()
     )
-    assert summary["target_hz"] == 5.0
+    assert summary["maximum_capture_hz"] == 5.0
+    assert summary["capture_role"] == "model_observation"
+    assert summary["independent_d435_5hz"] is False
     assert summary["frame_count"] == 3
     assert summary["source_frame_count"] == 4
     assert summary["sim_duration_sec"] == 0.41
@@ -68,3 +70,25 @@ def test_capture_error_is_nonfatal_and_disables_later_writes(tmp_path: Path) -> 
     assert summary["status"] == "ERROR"
     assert summary["frame_count"] == 1
     assert "did not advance" in summary["disabled_error"]
+
+
+def test_recorder_binds_model_observation_to_execution_identity(
+    tmp_path: Path,
+) -> None:
+    recorder = T5RGBFrameRecorder(tmp_path / "capture")
+    recorder.record(
+        _observation(1, 1_000_000_000),
+        episode_id="a::433",
+        reset_generation=2,
+        sequence_id=7,
+    )
+
+    event = json.loads(
+        (tmp_path / "capture" / "frames.jsonl").read_text(encoding="utf-8")
+    )
+    assert event["event_type"] == "internvla_model_observation_rgb"
+    assert event["episode_id"] == "a::433"
+    assert event["reset_generation"] == 2
+    assert event["sequence_id"] == 7
+    assert len(event["sha256"]) == 64
+    assert isinstance(event["wall_time_unix_ns"], int)

@@ -1,0 +1,122 @@
+{
+  "schema_version": 1,
+  "manifest_id": "t5-d0-symmetric-lanes-v1",
+  "golden_bundle_canonical_sha256": "b36e4f97c70ff195a325e0aed3d9bf220f847cad0340f10e49bba0201c632381",
+  "stage_order": [
+    "d0_0_online_prepare",
+    "d0_1_lane_a_fixed_5",
+    "d0_2_lane_b_same_fixed_5",
+    "d0_3_dual_lane_same_fixed_5",
+    "d0_4_paired_reproducibility_report"
+  ],
+  "fixed_input": {
+    "dataset_remote_path": "/home/song/internnav-t1-t2/episodes/t3_model_canary_go2_clear_v2",
+    "dataset_file_sha256": "c568e33a55b6668f7669ddc5beef1af0967a674f4712eef29a3cf3151fba94d4",
+    "episode_manifest": "configs/internnav_t3/model_canary_episode_manifest.json",
+    "episode_manifest_canonical_sha256": "6b2a61f051684be0056125e1eee838edcc97fc5cca9258d891d155a6879d586e",
+    "episode_count": 5,
+    "episode_keys": [
+      "433_121",
+      "5203_1339",
+      "2776_676",
+      "1036_259",
+      "2617_628"
+    ],
+    "same_episode_on_two_lanes_counts_once": true
+  },
+  "lanes": {
+    "a": {
+      "resource_profile": "lane-a",
+      "dgx": "railgun@10.100.100.128",
+      "dgx_cuda_visible_devices": "0",
+      "isaac": "song@10.100.120.111",
+      "isaac_cuda_visible_devices": "0",
+      "isaac_render_gpu_physical": 0,
+      "isaac_physics_gpu_logical": 0,
+      "kit_gpu_foundation_log_audit_required": true,
+      "ros_domain_id": 75,
+      "namespace": "/t5/lane_a",
+      "identity_prefix": "a::",
+      "controller_port": 25137,
+      "model_client_port": 25139,
+      "oracle_port": 25140,
+      "clock_port": 25141,
+      "cpuset": "0-7,16-23",
+      "isaac_ros_container": "internnav_t5_isaac_a",
+      "ipc_alias": "/tmp/internnav_t5_a_ipc"
+    },
+    "b": {
+      "resource_profile": "lane-b",
+      "dgx": "rail@10.100.120.116",
+      "dgx_cuda_visible_devices": "0",
+      "isaac": "song@10.100.120.111",
+      "isaac_cuda_visible_devices": "1",
+      "isaac_render_gpu_physical": 1,
+      "isaac_physics_gpu_logical": 0,
+      "kit_gpu_foundation_log_audit_required": true,
+      "ros_domain_id": 76,
+      "namespace": "/t5/lane_b",
+      "identity_prefix": "b::",
+      "controller_port": 25138,
+      "model_client_port": 25239,
+      "oracle_port": 25240,
+      "clock_port": 25241,
+      "cpuset": "8-15,24-31",
+      "isaac_ros_container": "internnav_t5_isaac_b",
+      "ipc_alias": "/tmp/internnav_t5_b_ipc"
+    }
+  },
+  "dds": {
+    "automatic_discovery_range": "LOCALHOST",
+    "static_peer_is_the_paired_host_only": true,
+    "cross_lane_discovery_forbidden": true
+  },
+  "x86_host_inventory": {
+    "logical_cpu_count": 32,
+    "physical_core_count": 16,
+    "memory_total_kib": 32707372,
+    "memory_available_kib_at_audit": 29225104,
+    "filesystem_available_bytes_at_audit": 504016089088,
+    "gpu_count": 2,
+    "gpu_model": "NVIDIA GeForce RTX 5060 Ti",
+    "gpu_memory_mib_each": 16311,
+    "prior_t4_single_isaac_increment_bytes": 4809515008,
+    "prior_t4_second_instance_required_remaining_bytes": 9104482304,
+    "prior_t4_memory_admission": "PASS",
+    "d0_dual_runtime_recheck_required": true
+  },
+  "shared_x86_policy": {
+    "asset_conversion_serial": true,
+    "shader_prewarm_serial_unless_lane_local_read_only": true,
+    "large_archive_serial": true,
+    "full_mp4_encoding_concurrent": false,
+    "parallel_outputs": [
+      "jsonl",
+      "metrics_json",
+      "critical_frames",
+      "gate_required_video_only"
+    ]
+  },
+  "acceptance": {
+    "each_lane_episode_count": 5,
+    "each_lane_must_complete": true,
+    "metrics_required": [
+      "SR",
+      "OS",
+      "SPL",
+      "NE"
+    ],
+    "cross_lane_ros_or_reset_count": 0,
+    "port_conflict_count": 0,
+    "cache_pollution_count": 0,
+    "residual_pid_pgid_socket_lock_count": 0,
+    "maximum_simultaneous_slowdown_fraction": 0.2,
+    "metric_difference_requires_explanation": true
+  },
+  "prohibited": [
+    "step_3_7",
+    "nvfp4",
+    "model_finetuning",
+    "real_go2_motion"
+  ]
+}

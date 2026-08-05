@@ -125,7 +125,11 @@ local_costmap:
         plugin: nav2_costmap_2d::InflationLayer
         enabled: true
         cost_scaling_factor: 3.0
-        inflation_radius: 0.40
+        # The physical 0.30 m robot radius remains authoritative.  The smaller
+        # completion_sim-only comfort margin prevents DWB from collapsing to
+        # near-zero velocity in visually and geometrically clear furniture
+        # gaps.  Frozen T4 and real-Go2 profiles retain 0.40 m inflation.
+        inflation_radius: 0.25
       always_send_full_costmap: true
 
 global_costmap:

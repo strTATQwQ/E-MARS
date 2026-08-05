@@ -48,8 +48,14 @@ def test_soak_wrapper_delegates_all_resource_ownership_to_fast_lane() -> None:
 
 def test_soak_profile_reuses_engineering_canary_for_600_sim_seconds() -> None:
     runner = RUNNER.read_text(encoding="utf-8")
-    assert "PROFILE: canary60 | soak600 | screen1 | screen3 | fixed5 | final10" in runner
-    assert 'case "$profile" in canary60|soak600|screen1|screen3|fixed5|final10)' in runner
+    assert (
+        "PROFILE: canary60 | soak600 | screen1 | screen3 | fixed5 | "
+        "pilot-screen1 | final10"
+    ) in runner
+    assert (
+        'case "$profile" in '
+        "canary60|soak600|screen1|screen3|fixed5|pilot-screen1|final10)"
+    ) in runner
     assert "soak600)" in runner
     assert "engineering_canary_sec=600" in runner
     assert "engineering_canary_timebase=sim" in runner

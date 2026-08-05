@@ -29,7 +29,13 @@ from t5_revc_sensor_contract import (  # noqa: E402
 )
 
 
-def _build_runtime(tmp_path: Path, *, revc_enabled: bool) -> tuple[str, dict[str, Any]]:
+def _build_runtime(
+    tmp_path: Path,
+    *,
+    revc_enabled: bool,
+    observer_enabled: bool = False,
+    d435_capture_enabled: bool = False,
+) -> tuple[str, dict[str, Any]]:
     output = tmp_path / "runtime.py"
     manifest = tmp_path / "manifest.json"
     env = os.environ.copy()
@@ -41,15 +47,24 @@ def _build_runtime(tmp_path: Path, *, revc_enabled: bool) -> tuple[str, dict[str
         "INTERNNAV_T5_ID_PREFIX",
         "INTERNVLA_T4_RESULT_ROOT",
         "INTERNVLA_T5_REVC_CAMERA_CONFIG",
+        "INTERNVLA_T5_REVC_OBSERVER_ENABLE",
         "INTERNVLA_T4_R3_ENABLE_D435I",
         "INTERNVLA_T4_R3_ENABLE_LIDAR",
         "INTERNVLA_T4_R3_LIDAR_RAY_COUNT",
         "INTERNVLA_T4_R3_ENABLE_RGB_IPC",
+        "INTERNVLA_T5_D435_5HZ_CAPTURE",
+        "INTERNVLA_T5_D435_5HZ_CAPTURE_ROOT",
     ):
         env.pop(name, None)
+    env["INTERNVLA_T5_REVC_OBSERVER_ENABLE"] = (
+        "1" if observer_enabled else "0"
+    )
+    env["INTERNVLA_T5_D435_5HZ_CAPTURE"] = (
+        "1" if d435_capture_enabled else "0"
+    )
     if revc_enabled:
         result_root = tmp_path / "lane-a-result"
-        result_root.mkdir()
+        result_root.mkdir(parents=True)
         env.update(
             {
                 "INTERNNAV_RUNTIME_POLICY": "completion_sim",
@@ -95,6 +110,7 @@ def _build_direct_runtime(tmp_path: Path) -> tuple[str, dict[str, Any]]:
     env = {
         **os.environ,
         "INTERNVLA_T5_REVC_ENABLE": "1",
+        "INTERNVLA_T5_REVC_OBSERVER_ENABLE": "0",
         "INTERNNAV_RUNTIME_POLICY": "completion_sim",
         "INTERNNAV_SIMULATION_TARGET": "isaac",
         "INTERNNAV_T5_LANE": "b",
@@ -339,6 +355,7 @@ def test_runtime_builder_rejects_feature_flag_outside_exact_scope(
     env.update(
         {
             "INTERNVLA_T5_REVC_ENABLE": "1",
+            "INTERNVLA_T5_REVC_OBSERVER_ENABLE": "0",
             "INTERNNAV_RUNTIME_POLICY": "strict_evidence",
             "INTERNNAV_SIMULATION_TARGET": "isaac",
             "INTERNNAV_T5_LANE": "a",
@@ -537,6 +554,193 @@ def test_generated_runtime_enables_four_dedicated_cameras_without_stereo_alias(
     assert '"revc_snapshot_status": "RATE_LIMITED"' in generated
 
 
+def test_t5_observer_registration_is_explicit_scoped_and_manifested(
+    tmp_path: Path,
+) -> None:
+    generated, manifest = _build_runtime(
+        tmp_path, revc_enabled=True, observer_enabled=True
+    )
+    assert generated.count("name='topdown_camera_500'") == 1
+    assert generated.count("prim_path='topdown_camera_500'") == 1
+    assert "resolution=[500, 500]" in generated
+    assert manifest["revc_four_camera"]["observer"] == {
+        "enabled": True,
+        "sensor_name": "topdown_camera_500",
+        "prim_path": "topdown_camera_500",
+        "resolution": [500, 500],
+        "purpose": "review_only_robot_localization",
+        "fed_to_step3": False,
+    }
+    assert "t5_only_revc_snapshot_third_person_observer" in manifest["changes"]
+
+    generated_without_observer, manifest_without_observer = _build_runtime(
+        tmp_path / "without-observer", revc_enabled=True
+    )
+    assert "name='topdown_camera_500'" not in generated_without_observer
+    assert "observer" not in manifest_without_observer["revc_four_camera"]
+
+
+def test_t5_observer_fails_closed_without_revc_scope(tmp_path: Path) -> None:
+    with pytest.raises(
+        AssertionError,
+        match="T5 Rev-C observer requires the exact completion_sim Rev-C scope",
+    ):
+        _build_runtime(tmp_path, revc_enabled=False, observer_enabled=True)
+
+
+def test_independent_d435_capture_survives_disabled_review_rgb_ipc(
+    tmp_path: Path,
+) -> None:
+    output = tmp_path / "d435_capture_runtime.py"
+    manifest_path = tmp_path / "d435_capture_manifest.json"
+    result_root = tmp_path / "lane-a-result"
+    result_root.mkdir()
+    env = os.environ.copy()
+    env.update(
+        {
+            "INTERNVLA_T5_REVC_ENABLE": "0",
+            "INTERNVLA_T5_REVC_OBSERVER_ENABLE": "0",
+            "INTERNVLA_T5_D435_5HZ_CAPTURE": "1",
+            "INTERNVLA_T4_R3_ENABLE_RGB_IPC": "0",
+            "INTERNNAV_RUNTIME_POLICY": "completion_sim",
+            "INTERNNAV_SIMULATION_TARGET": "isaac",
+            "INTERNNAV_T5_LANE": "a",
+            "INTERNVLA_T4_RESULT_ROOT": str(result_root.resolve()),
+        }
+    )
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(SCRIPTS / "build_t4_r3_sensor_runtime_overlay.py"),
+            "--source",
+            str(SCRIPTS / "internnav_go2_runtime.py"),
+            "--output",
+            str(output),
+            "--manifest",
+            str(manifest_path),
+        ],
+        cwd=ROOT,
+        env=env,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    generated = output.read_text(encoding="utf-8")
+    ast.parse(generated)
+    sampler = _function_source(generated, "_sample_r3_images_and_imu")
+    assert "_record_t5_d435_rgb(" in sampler
+    assert "if not rgb_ipc_enabled:" in sampler
+    assert sampler.index("_record_t5_d435_rgb(") < sampler.index(
+        "if not rgb_ipc_enabled:"
+    )
+    assert "rgb_ipc_enabled =" in sampler
+    assert "INTERNVLA_T4_R3_ENABLE_RGB_IPC" not in sampler
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    assert manifest["frozen_geometry_sources"]["rgb_ipc"] is False
+    assert manifest["frozen_geometry_sources"]["d435_rgb_5hz_capture"] is True
+    assert "independent_d435_rgb_5hz_archival_capture" in manifest["changes"]
+    recorder = _function_source(generated, "_record_t5_d435_rgb")
+    assert "import sys" in generated
+    assert "InternUtopia recreates the controller at an episode" in recorder
+    assert 'summary.get("status") != "RUNNING"' in recorder
+    assert 'previous.get("sha256")' in recorder
+    assert '"bytes": len(png)' in recorder
+
+    invalid = subprocess.run(
+        [
+            sys.executable,
+            str(SCRIPTS / "build_t4_r3_sensor_runtime_overlay.py"),
+            "--source",
+            str(SCRIPTS / "internnav_go2_runtime.py"),
+            "--output",
+            str(tmp_path / "strict-must-not-exist.py"),
+            "--manifest",
+            str(tmp_path / "strict-must-not-exist.json"),
+        ],
+        cwd=ROOT,
+        env={**env, "INTERNNAV_RUNTIME_POLICY": "strict_evidence"},
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert invalid.returncode != 0
+    assert "restricted to an isolated T5 completion_sim lane" in invalid.stderr
+
+
+def test_independent_d435_capture_resumes_after_episode_controller_reset(
+    tmp_path: Path, monkeypatch: Any
+) -> None:
+    generated, _ = _build_runtime(
+        tmp_path, revc_enabled=True, d435_capture_enabled=True
+    )
+    result_root = (tmp_path / "lane-a-result").resolve()
+    capture_root = result_root / "d435_rgb_5hz"
+    monkeypatch.setenv("INTERNVLA_T4_RESULT_ROOT", str(result_root))
+    monkeypatch.setenv("INTERNVLA_T5_D435_5HZ_CAPTURE_ROOT", str(capture_root))
+    class CaptureRgb:
+        shape = (480, 640, 3)
+
+    class CaptureNumpy:
+        uint8 = "uint8"
+
+        @staticmethod
+        def ascontiguousarray(value: Any, dtype: Any = None) -> Any:
+            assert dtype == CaptureNumpy.uint8
+            return value
+
+    probe_type = _runtime_probe_class(
+        generated,
+        ("_encode_t5_capture_png", "_record_t5_d435_rgb"),
+        {
+            "Path": Path,
+            "hashlib": hashlib,
+            "json": json,
+            "np": CaptureNumpy,
+            "os": os,
+            "struct": struct,
+            "sys": sys,
+            "time": time,
+            "zlib": zlib,
+        },
+    )
+    probe_type._encode_t5_capture_png = staticmethod(
+        lambda _frame: b"\x89PNG\r\n\x1a\nresume-test"
+    )
+    rgb = CaptureRgb()
+    first = probe_type()
+    first._record_t5_d435_rgb(
+        rgb,
+        episode_id="a::145",
+        reset_generation=0,
+        sequence_id=123,
+        sim_stamp_ns=10_000_000_000,
+    )
+    second = probe_type()
+    second._record_t5_d435_rgb(
+        rgb,
+        episode_id="a::1720",
+        reset_generation=1,
+        sequence_id=0,
+        sim_stamp_ns=10_200_000_000,
+    )
+    rows = [
+        json.loads(line)
+        for line in (capture_root / "frames.jsonl").read_text(
+            encoding="utf-8"
+        ).splitlines()
+    ]
+    assert [row["frame_index"] for row in rows] == [0, 1]
+    assert [row["episode_id"] for row in rows] == ["a::145", "a::1720"]
+    assert all(row["bytes"] > 0 for row in rows)
+    summary = json.loads(
+        (capture_root / "capture_summary.json").read_text(encoding="utf-8")
+    )
+    assert summary["frame_count"] == 2
+    assert summary["first_sim_stamp_ns"] == 10_000_000_000
+    assert summary["last_sim_stamp_ns"] == 10_200_000_000
+
+
 def test_revc_snapshot_aggregator_has_one_tick_identity_sidecar_and_rate_limit(
     tmp_path: Path,
 ) -> None:
@@ -564,6 +768,10 @@ def test_revc_snapshot_aggregator_has_one_tick_identity_sidecar_and_rate_limit(
     assert '"camera_order": expected_order' in sampler
     assert 'snapshot_dir / "snapshot.json"' in sampler
     assert 'hashlib.sha256(png).hexdigest()' in sampler
+    assert 'snapshot_dir / "04_third_person_topdown.png"' in sampler
+    assert '"observer": observer_metadata' in sampler
+    assert '"fed_to_step3": False' in sampler
+    assert '"same_paused_render_barrier_and_sim_stamp"' in sampler
     assert '"revc_snapshot_status": "RATE_LIMITED"' in sampler
     assert "1.0 / preview_hz" in sampler
     assert "def scoped_path(candidate: Path, label: str) -> Path:" in sampler
@@ -980,3 +1188,13 @@ def test_x86_lane_resource_mapping_is_even_gpu0_and_odd_gpu1() -> None:
     assert f'test "$cpuset" = {even}' in run
     assert f'test "$cpuset" = {odd}' in run
     assert "container_cuda_visible_devices=0" in run
+
+
+def test_paired10_profile_registers_review_only_observer() -> None:
+    run = (SCRIPTS / "run_t5_distributed_isaac.sh").read_text(encoding="utf-8")
+    profile = run.split("  dual_lane_wp03_stop_shadow)", 1)[1].split(
+        "  *) echo", 1
+    )[0]
+    assert "export INTERNVLA_T5_REVC_ENABLE=1" in profile
+    assert "export INTERNVLA_T5_REVC_OBSERVER_ENABLE=1" in profile
+    assert "never included in the Step3 request" in profile

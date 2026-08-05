@@ -81,6 +81,10 @@ class ContinuousROS2IPCAgentClient(ROS2IPCAgentClient):
     def __init__(self, config: Any):
         super().__init__(config)
         self.full_rgb_recorder = T5RGBFrameRecorder.from_environment()
+        self.capture_episode_id = str(self.handshake_response["episode_id"])
+        self.capture_reset_generation = int(
+            self.handshake_response["reset_generation"]
+        )
         _, self.scenario_by_instruction_digest = _scenario_manifest()
         episode_id = str(self.handshake_response["episode_id"])
         reset_generation = int(self.handshake_response["reset_generation"])
@@ -89,7 +93,15 @@ class ContinuousROS2IPCAgentClient(ROS2IPCAgentClient):
 
     def step(self, obs: list[dict[str, Any]]) -> list[dict[str, Any]]:
         if self.full_rgb_recorder is not None:
-            self.full_rgb_recorder.record_without_affecting_control(obs[0])
+            self.full_rgb_recorder.record_without_affecting_control(
+                obs[0],
+                episode_id=self.capture_episode_id,
+                reset_generation=self.capture_reset_generation,
+                # The model request has not been issued yet.  Do not guess its
+                # execution sequence; the x86 source sequence and sim stamp
+                # are the authoritative join keys for this pre-request frame.
+                sequence_id=None,
+            )
         result = super().step(obs)
         response = self.last_result
         if response is None or result == SAFE_STOP:
@@ -126,6 +138,8 @@ class ContinuousROS2IPCAgentClient(ROS2IPCAgentClient):
 
     def reset(self, reset_index: Any = None) -> None:
         response = super().reset(reset_index)
+        self.capture_episode_id = str(response["episode_id"])
+        self.capture_reset_generation = int(response["reset_generation"])
         reset_execution_identity(
             str(response["episode_id"]), int(response["reset_generation"])
         )

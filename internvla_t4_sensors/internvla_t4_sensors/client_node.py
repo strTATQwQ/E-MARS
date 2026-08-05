@@ -153,11 +153,14 @@ class T4OdometryClientNode(InternVLAClientNode):
     # action boundary.  SV-05 showed that a two-action interval still allowed
     # stale queued actions to undo a useful four-camera correction.
     STEP3_TASK_STATE_ACTION_INTERVAL = 1
+    STEP3_TASK_STATE_MAX_CHECKS = 12
     STEP3_ARRIVAL_ACTION_INTERVAL = 8
     STEP3_ARRIVAL_MAX_CHECKS = 24
     STEP3_ARRIVAL_REQUIRED_CONFIRMATIONS = 2
     STEP3_ARRIVAL_MINIMUM_CONFIDENCE = 0.80
-    STEP3_MODEL_STOP_ESCAPE_BURST_MAX = 1
+    # One failed escape may be followed by one different bounded primitive.
+    # The advice validator binds the retry to the timed-out action exclusion.
+    STEP3_MODEL_STOP_ESCAPE_BURST_MAX = 2
 
     def __init__(self) -> None:
         super().__init__()
@@ -255,6 +258,12 @@ class T4OdometryClientNode(InternVLAClientNode):
             "1",
         }:
             raise RuntimeError("invalid Step3 timeout-advisor flag")
+        step3_task_state_control = os.environ.get(
+            "INTERNVLA_T5_STEP3_TASK_STATE_CONTROL", "0"
+        )
+        if step3_task_state_control not in {"0", "1"}:
+            raise RuntimeError("invalid Step3 task-state control flag")
+        self._step3_task_state_control = step3_task_state_control == "1"
         if (
             os.environ.get("INTERNVLA_T5_STEP3_TIMEOUT_ADVISOR", "0") == "1"
             and not self._step3_timeout_enabled
@@ -264,6 +273,11 @@ class T4OdometryClientNode(InternVLAClientNode):
                 "completion_sim "
                 "with observation_bound System2 replans"
             )
+        if self._step3_task_state_control and not self._step3_timeout_enabled:
+            raise RuntimeError(
+                "Step3 task-state control requires the isolated completion_sim "
+                "timeout advisor"
+            )
         self._step3_timeout_condition = threading.Condition()
         self._step3_timeout_pending: dict[str, Any] | None = None
         self._step3_timeout_advice: dict[str, Any] | None = None
@@ -271,6 +285,7 @@ class T4OdometryClientNode(InternVLAClientNode):
         self._step3_model_refresh_pending: dict[str, Any] | None = None
         self._step3_model_refresh_count = 0
         self._step3_timeout_interventions = 0
+        self._step3_task_state_checks = 0
         self._step3_timeout_max_interventions = int(
             os.environ.get("INTERNVLA_T5_STEP3_TIMEOUT_MAX_INTERVENTIONS", "12")
         )
@@ -588,8 +603,7 @@ class T4OdometryClientNode(InternVLAClientNode):
         if (
             not self._step3_timeout_enabled
             or self.step3_timeout_context_publisher is None
-            or self._step3_timeout_interventions
-            >= self._step3_timeout_max_interventions
+            or self._step3_task_state_checks >= self.STEP3_TASK_STATE_MAX_CHECKS
         ):
             return False
         action = completed_motion_action(pending)
@@ -615,12 +629,14 @@ class T4OdometryClientNode(InternVLAClientNode):
             "camera_order": ["front_left", "front", "front_right", "rear"],
             "camera_sensor_stamp_ns": camera_stamp_ns,
             "advisor_round": 0,
+            "task_state_control_enabled": self._step3_task_state_control,
         }
         with self._step3_timeout_condition:
             if self._step3_timeout_pending is not None:
                 return False
             self._step3_timeout_pending = value
             self._step3_timeout_advice = None
+            self._step3_task_state_checks += 1
         message = String()
         message.data = json.dumps(value, sort_keys=True, separators=(",", ":"))
         self.step3_timeout_context_publisher.publish(message)
@@ -1646,11 +1662,15 @@ class T4OdometryClientNode(InternVLAClientNode):
                 kind == "task_state_checkpoint_after_completed_motion"
                 and advice.get("status") == "ADVISE"
             )
+            task_state_control = bool(
+                task_state_checkpoint
+                and getattr(self, "_step3_task_state_control", False)
+            )
             task_state_advice = (
                 kind == "motion_timeout_after_confirmed_safe_stop"
                 and advice.get("status") == "ADVISE"
             )
-            model_stop_escape = (
+            model_stop_escape_transition_value = (
                 kind == "arrival_check_after_completed_motion"
                 and model_stop_escape_transition(
                     pending,
@@ -1659,6 +1679,23 @@ class T4OdometryClientNode(InternVLAClientNode):
                     escape_limit=self.STEP3_MODEL_STOP_ESCAPE_BURST_MAX,
                 ).action
                 == APPLY_BOUNDED_ESCAPE
+            )
+            excluded_escape_action = pending.get("excluded_action")
+            second_escape_after_timeout = bool(
+                self._step3_model_stop_escape_burst_count == 1
+                and isinstance(excluded_escape_action, int)
+                and not isinstance(excluded_escape_action, bool)
+                and excluded_escape_action
+                in {ACTION_FORWARD, ACTION_LEFT, ACTION_RIGHT}
+                and int(advice.get("advised_action", ACTION_STAND_STILL))
+                != excluded_escape_action
+            )
+            model_stop_escape = bool(
+                model_stop_escape_transition_value
+                and (
+                    self._step3_model_stop_escape_burst_count == 0
+                    or second_escape_after_timeout
+                )
             )
             if (
                 not task_state_checkpoint
@@ -1683,7 +1720,7 @@ class T4OdometryClientNode(InternVLAClientNode):
             )
             self._step3_timeout_pending = None
             self._step3_timeout_advice = None
-        if task_state_checkpoint:
+        if task_state_checkpoint and not task_state_control:
             if identity != expected:
                 self._record_motion_gate_event(
                     "step3_timeout_fallback",
@@ -1695,11 +1732,9 @@ class T4OdometryClientNode(InternVLAClientNode):
                     },
                 )
                 return
-            # Periodic task-state checkpoints update the advisor's semantic
-            # state only. Their wall-time arrival must never change the normal
-            # InternVLA action; bounded control advice remains reserved for a
-            # measured motion timeout or an oracle-rejected model STOP.
-            self._step3_timeout_interventions += 1
+            # Shadow checkpoints update semantic state but have no control
+            # effect and therefore must not consume the independent measured
+            # timeout intervention budget.
             self._record_motion_gate_event(
                 "step3_task_state_checkpoint_semantic_only",
                 str(pending.get("stop_token", "")),
@@ -1723,7 +1758,7 @@ class T4OdometryClientNode(InternVLAClientNode):
             return
         if (
             identity != expected
-            or (task_state_advice and not model_motion)
+            or ((task_state_advice or task_state_control) and not model_motion)
         ):
             self._record_motion_gate_event(
                 "step3_timeout_fallback",
@@ -1733,7 +1768,8 @@ class T4OdometryClientNode(InternVLAClientNode):
                         "sequence_identity_mismatch"
                         if identity != expected
                         else "internvla_terminal_or_hold_retained"
-                        if task_state_advice and not model_motion
+                        if (task_state_advice or task_state_control)
+                        and not model_motion
                         else str(advice.get("reason", "advisor_fallback"))
                     ),
                     "expected_identity": list(expected),
@@ -1743,6 +1779,36 @@ class T4OdometryClientNode(InternVLAClientNode):
             return
         advised_action = int(advice["advised_action"])
         original_action = int(command.discrete_action)
+        if task_state_advice and advised_action == original_action:
+            self._record_motion_gate_event(
+                "step3_timeout_advice_noop",
+                str(pending.get("stop_token", "")),
+                {
+                    "episode_id": str(command.episode_id),
+                    "reset_generation": int(command.reset_generation),
+                    "sequence_id": int(command.sequence_id),
+                    "retained_action": original_action,
+                    "confidence": float(advice["confidence"]),
+                    "snapshot_id": str(advice.get("snapshot_id", "")),
+                    "control_effect": "same_bounded_primitive",
+                },
+            )
+            return
+        if task_state_control and advised_action == original_action:
+            self._record_motion_gate_event(
+                "step3_task_state_checkpoint_control_noop",
+                str(pending.get("stop_token", "")),
+                {
+                    "episode_id": str(command.episode_id),
+                    "reset_generation": int(command.reset_generation),
+                    "sequence_id": int(command.sequence_id),
+                    "retained_action": original_action,
+                    "confidence": float(advice["confidence"]),
+                    "snapshot_id": str(advice.get("snapshot_id", "")),
+                    "control_effect": "same_bounded_primitive",
+                },
+            )
+            return
         command.discrete_action = advised_action
         command.stop = False
         command.action_source = 1
@@ -1760,7 +1826,7 @@ class T4OdometryClientNode(InternVLAClientNode):
                 "action": advised_action,
                 "timed_out": False,
             }
-        else:
+        elif not task_state_control:
             self._step3_timeout_interventions += 1
         self._step3_timeout_override = {
             "episode_id": str(command.episode_id),
@@ -1779,6 +1845,8 @@ class T4OdometryClientNode(InternVLAClientNode):
             "intervention_kind": (
                 "model_stop_escape"
                 if model_stop_escape
+                else "task_state_checkpoint"
+                if task_state_control
                 else "motion_timeout"
             ),
             "model_stop_escape_count": self._step3_model_stop_escapes,
@@ -1789,12 +1857,14 @@ class T4OdometryClientNode(InternVLAClientNode):
                 self.STEP3_MODEL_STOP_ESCAPE_BURST_MAX
             ),
         }
-        # A timed-out primitive proves that its queued continuation is based on
-        # an observation/action transition which did not occur, so refresh it
-        # after the advised action completes.  A periodic task-state correction
-        # does not prove that: the successful SV-03 trace relied on retaining
-        # the queued turns after its sequence-6 checkpoint correction.
-        if kind == "motion_timeout_after_confirmed_safe_stop":
+        # A control override changes the action/observation transition.  Clear
+        # only the pre-override consumable action queue after the advised
+        # primitive completes; the original instruction, policy history and
+        # System2 latent remain intact for the next fresh observation.
+        if kind in {
+            "motion_timeout_after_confirmed_safe_stop",
+            "task_state_checkpoint_after_completed_motion",
+        }:
             self._step3_model_refresh_pending = {
                 "episode_id": str(command.episode_id),
                 "reset_generation": int(command.reset_generation),
@@ -1805,6 +1875,8 @@ class T4OdometryClientNode(InternVLAClientNode):
             (
                 "step3_model_stop_escape_applied"
                 if model_stop_escape
+                else "step3_task_state_checkpoint_control_applied"
+                if task_state_control
                 else "step3_timeout_advice_applied"
             ),
             str(pending.get("stop_token", "")),
@@ -2575,6 +2647,7 @@ class T4OdometryClientNode(InternVLAClientNode):
             self._step3_timeout_advice = None
             self._step3_timeout_override = None
             self._step3_timeout_interventions = 0
+            self._step3_task_state_checks = 0
             self._step3_arrival_completed_actions = 0
             self._step3_arrival_checks = 0
             self._step3_last_completed_action = None
@@ -2648,6 +2721,7 @@ class T4OdometryClientNode(InternVLAClientNode):
             self._step3_timeout_advice = None
             self._step3_timeout_override = None
             self._step3_timeout_interventions = 0
+            self._step3_task_state_checks = 0
             self._step3_arrival_completed_actions = 0
             self._step3_arrival_checks = 0
             self._step3_last_completed_action = None

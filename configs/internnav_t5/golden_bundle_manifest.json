@@ -1,0 +1,485 @@
+{
+  "schema_version": 1,
+  "bundle_id": "t5-dual-lane-golden-v0-t4-functional-d6332b75",
+  "status": "FROZEN_FOR_D0_UNVALIDATED",
+  "promotion_state": "NOT_PROMOTED",
+  "authority": "codex_conversation_00_only",
+  "freeze_date": "2026-07-19",
+  "source_control": {
+    "t4_functional_done_commit_sha": "d6332b75a3830c0e2f9752446340c90398a2c489",
+    "t5_freeze_parent_commit_sha": "197076e87854df06f2981e179dfb1e179685a198",
+    "t4_final_package_sha256": "337eafb8dfe882ef4597883b45b850666d3f98b11f66b37a021e1f775f7423cb",
+    "runtime_commit_binding": "Each online run manifest must name the exact immutable commit containing this manifest; a candidate commit is not Golden until cross-lane promotion.",
+    "t4_mutation_policy": "T5 may reference but must never overwrite T4 results or reinterpret frozen metrics"
+  },
+  "model": {
+    "name": "InternVLA-N1",
+    "internnav_release": "0.3.1",
+    "internnav_revision": "1d8d078aa9031a4a02a1ae05844d49a1768a10e4",
+    "internnav_tree_sha": "ee246d29c5f53c1d0f18046c81ab974459f68691",
+    "internnav_worktree_clean_required": true,
+    "internnav_submodules": {
+      "internnav/model/basemodel/LongCLIP": "3966af9ae9331666309a22128468b734db4672a7",
+      "third_party/diffusion-policy": "5ba07ac6661db573af695b419a7947ecb704690f"
+    },
+    "checkpoint_name": "InternVLA-N1-DualVLN",
+    "checkpoint_revision": "a698a9e898b4001621a319e1bc89f02ec715cc86",
+    "checkpoint_content_manifest": "configs/internnav_t5/checkpoint_content_manifest.json",
+    "checkpoint_content_manifest_canonical_sha256": "4c49f702e1d969c26be91d736762f9ca53cd8326916907e09325ec7e1fc17150",
+    "evaluation_config": "scripts/eval/configs/h1_internvla_n1_async_cfg.py",
+    "weight_inventory_sha256": "95997bc9323f2b58920feb2c07752d3833a1dab16dc07cb51c9109ba17f5b45a",
+    "strict_load_contract": {
+      "parameter_tensor_count": 1338,
+      "buffer_tensor_count": 32,
+      "meta_parameter_count": 0,
+      "meta_buffer_count": 0,
+      "missing_unexpected_or_mismatched_keys": 0
+    },
+    "placement": "one resident copy on each lane DGX; never a long-lived split model-server/edge-server topology"
+  },
+  "configuration": {
+    "hash_policy": {
+      "canonical_json_sha256": "Parse JSON, serialize with sorted keys, ASCII, no NaN, and separators ',' ':' before SHA-256.",
+      "canonical_lf_text_sha256": "Decode UTF-8, normalize CRLF/CR to LF, then SHA-256."
+    },
+    "artifacts": [
+      {
+        "role": "t4_frozen_baseline",
+        "path": "configs/internnav_t5/t4_frozen_baseline.json",
+        "hash_kind": "canonical_json_sha256",
+        "sha256": "f44ebbc01d98e7fcc4776a0cd23150e73059614f79dcdd6b323f2343afb13ddc"
+      },
+      {
+        "role": "t5_completion_sim_contract",
+        "path": "configs/internnav_t5/primary_completion_sim.json",
+        "hash_kind": "canonical_json_sha256",
+      "sha256": "6f88ed54845ac1324fb34442f53adbf32adc65d464fa8795c932b0bb533800cb"
+      },
+      {
+        "role": "t5_completion_sim_ros_parameters",
+        "path": "configs/internnav_t5/primary_completion_sim.yaml",
+        "hash_kind": "canonical_lf_text_sha256",
+        "sha256": "b4f8a037b18db60795e5c7fdeff59cb02459ea2e0db00666e5cb8ef03b9b6f5e"
+      },
+      {
+        "role": "internvla_checkpoint_content",
+        "path": "configs/internnav_t5/checkpoint_content_manifest.json",
+        "hash_kind": "canonical_json_sha256",
+        "sha256": "4c49f702e1d969c26be91d736762f9ca53cd8326916907e09325ec7e1fc17150"
+      },
+      {
+        "role": "dual_lane_topology",
+        "path": "configs/internnav_t5/topology.json",
+        "hash_kind": "canonical_json_sha256",
+        "sha256": "d0ab8d9fdb8785ac55c17dc089811ec44409b1d0581a66a0a108bd7ad25fde22"
+      },
+      {
+        "role": "camera",
+        "path": "configs/internnav_t4/frozen_camera.json",
+        "hash_kind": "canonical_json_sha256",
+        "sha256": "e9aeb20a36d6db3f9389fd23686a17ad589f12ab08b97331c7430e4b775b4ee6"
+      },
+      {
+        "role": "static_global_map_lidar_local_costmap",
+        "path": "configs/internnav_t5/nav2_static_lidar.yaml",
+        "hash_kind": "canonical_lf_text_sha256",
+        "sha256": "89874f77fd410392990aac287c9964957154fdb8fa62682d4623321a587d962c"
+      },
+      {
+        "role": "recovery_a",
+        "path": "configs/completion_sim/recovery/profile_a.json",
+        "hash_kind": "canonical_json_sha256",
+        "sha256": "0b7b789f0ba3b0170be9dedd8298ccf4e47e002ad49e8320e3cd00afe0526531"
+      },
+      {
+        "role": "t4_frozen_ablation_contract",
+        "path": "configs/completion_sim/ablation/frozen_matrix_v1.json",
+        "hash_kind": "canonical_json_sha256",
+        "sha256": "26f667d4fbd34148356bd7f9ebc7c2a63238f3040f9d9d43d8520267daeff121"
+      }
+    ]
+  },
+  "camera": {
+    "model": "Intel RealSense D435i",
+    "variant": "d435i_low_062_p20",
+    "status": "FROZEN_HELDOUT_VALIDATED",
+    "resolution": [
+      640,
+      480
+    ],
+    "rgb_hfov_deg": 69.4,
+    "rgb_vfov_deg": 42.5,
+    "depth_hfov_deg": 87.0,
+    "depth_vfov_deg": 58.0,
+    "height_above_support_m": 0.62,
+    "pitch_down_deg": 20.0,
+    "translation_from_base_m": [
+      0.2,
+      0.0,
+      0.2
+    ],
+    "mount": "rigid_fixed_extrinsics",
+    "wrapper_sha256": "ef18af8a4338699893e9b43f900f1e72b12a4df0c9281e5a5adfc3f4854b7165"
+  },
+  "dataset_and_episodes": {
+    "dataset_name": "InternData-N1 val_unseen",
+    "dataset_revision": "7b05993b21813c3787f2f7f604bfc22b80c48c8e",
+    "dataset_sha256": "63631e3c8baf22cd1e083a1dd1617b5e75412f386715073468c34251143aac88",
+    "official_source_payload_sha256": "853673f8faadb26f883d57d71828cf895345c89fa594a7b918a78862318aeb31",
+    "d0_fixed_five": {
+      "path": "configs/internnav_t3/model_canary_episode_manifest.json",
+      "hash_kind": "canonical_json_sha256",
+      "sha256": "6b2a61f051684be0056125e1eee838edcc97fc5cca9258d891d155a6879d586e",
+      "runtime_dataset_sha256": "c568e33a55b6668f7669ddc5beef1af0967a674f4712eef29a3cf3151fba94d4",
+      "episode_count": 5,
+      "episode_keys": [
+        "433_121",
+        "5203_1339",
+        "2776_676",
+        "1036_259",
+        "2617_628"
+      ]
+    },
+    "frozen_pilot_twenty": {
+      "path": "configs/internnav_t3/model_pilot_episode_manifest.json",
+      "hash_kind": "canonical_json_sha256",
+      "sha256": "9d97a3aebfe75c635d939aa6e281324859fb3c4d09b602bff17a01e34007d7ff",
+      "runtime_input_manifest_sha256": "9479c0e01f0a5da5b998fe257a3bbeb15863f54ab5742fe030a20b0631408203",
+      "episode_count": 20,
+      "episode_keys": [
+        "6898_1741",
+        "6292_1573",
+        "5840_1474",
+        "6842_1720",
+        "1420_364",
+        "4084_1003",
+        "583_145",
+        "1803_448",
+        "6623_1657",
+        "2613_625",
+        "5627_1417",
+        "4182_1027",
+        "4009_976",
+        "654_157",
+        "4943_1255",
+        "6982_1765",
+        "3542_877",
+        "6157_1561",
+        "2564_610",
+        "2853_703"
+      ]
+    },
+    "canary_pilot_overlap_count": 0,
+    "same_episode_on_two_lanes_counts_once": true
+  },
+  "scenes": {
+    "source_name": "Scene-N1 MP3D-PE",
+    "source_revision": "2195d46aaab0ff48673b275fdfdc0731075b5ff2",
+    "archive_sha256": "fa168e09f1d4d3e339ea02eb3431115dc24b85cf5bd4ebf3f6426e9df2c9f005",
+    "archive_bytes": 28894023932,
+    "scene_directory_count": 90,
+    "d0_selected_scene_geometry": [
+      {
+        "scene": "2azQ1b91cZZ",
+        "ply_sha256": "0bac3f7d627caa7da3913281bcaf24f69ee46413cfd357244d8b512d2dc3a078"
+      },
+      {
+        "scene": "QUCTc6BB5sX",
+        "ply_sha256": "47288b291b7385de2fafd5f367f380ff79de2ad8caf96e3bb52f5cde02c348c4"
+      },
+      {
+        "scene": "TbHJrupSAjP",
+        "ply_sha256": "d11efd4e438411a06642d350200dddf0a837a1480acec58ed349ca1a889229f7"
+      },
+      {
+        "scene": "zsNo4HB9uLZ",
+        "ply_sha256": "8b83aee35d46725eb54152650b7efba1de97a1b8a877ed76b4fddc7d7322f1cb"
+      }
+    ]
+  },
+  "ros2_and_tf_contract": {
+    "protocol_version": 1,
+    "schema_hash_kind": "canonical_lf_text_sha256",
+    "schema_artifacts": [
+      {
+        "path": "internvla_ros2_msgs/msg/ObservationMetadata.msg",
+        "sha256": "1674d45e11c37c9a543241fe856e0f66ebacdcd4855bbbc3d35db2f941087a46"
+      },
+      {
+        "path": "internvla_ros2_msgs/msg/NavigationCommand.msg",
+        "sha256": "3926d346afa84581b1f3fdc021d2ccd6779773e3c661f80661d8d0a0c703b9b9"
+      },
+      {
+        "path": "internvla_ros2_msgs/action/Step.action",
+        "sha256": "926c8fd5eacff449da79ec69b389802369e0274b317324799fffa41167844eb3"
+      },
+      {
+        "path": "internvla_ros2_msgs/srv/Initialize.srv",
+        "sha256": "2ec877faa499bfbae812650f1072cf9675f91b746316b264b8a1b880700b36e2"
+      },
+      {
+        "path": "internvla_ros2_msgs/srv/Reset.srv",
+        "sha256": "8ab9cc9501669bb4daa8387fd88a2f2fa5a48a3ef4cf82428561287323a22f4d"
+      },
+      {
+        "path": "internvla_ros2_msgs/srv/Health.srv",
+        "sha256": "ac2346a81a9c38e30c60d9c1067d2e594ffdc335d80518f3474df961695316b8"
+      },
+      {
+        "path": "internvla_ros2_msgs/srv/Shutdown.srv",
+        "sha256": "47a9e0a5d727833da1e64f9421cbd02df0e3b121cb7420223c426dfbade1174a"
+      },
+      {
+        "path": "internvla_ros2/internvla_ros2/protocol.py",
+        "sha256": "88fddfc1cc02c4ecfd2a6bf8cd8ee49685b872f89414a1248cd007f412bf687e"
+      }
+    ],
+    "clock": {
+      "source": "paired_isaac_x86_worker_only",
+      "dgx_use_sim_time": true,
+      "remote_monotonic_values_are_identity_only": true,
+      "cross_host_absolute_monotonic_comparison_forbidden": true
+    },
+    "tf_tree": [
+      {
+        "parent": "map",
+        "child": "odom",
+        "kind": "static_identity_for_frozen_completion_sim"
+      },
+      {
+        "parent": "odom",
+        "child": "base_link",
+        "kind": "dynamic_pose",
+        "golden_v0_source": "isaac_gt_pose",
+        "candidate_sources": [
+          "lidar_imu_odometry",
+          "cuvslam"
+        ]
+      },
+      {
+        "parent": "base_link",
+        "child": "internvla_camera",
+        "kind": "static_calibrated_d435i"
+      }
+    ],
+    "tf_semantics_mutable_by_lane_workers": false,
+    "completion_sim_transform_lookup": "nearest_or_latest",
+    "completion_sim_transform_tolerance_sec": 2.5,
+    "lane_isolation": "same frame names are permitted only because ROS_DOMAIN_ID and DDS peers are disjoint"
+  },
+  "internvla_io_contract": {
+    "observation": {
+      "rgb": {
+        "shape_hwc": [
+          480,
+          640,
+          3
+        ],
+        "dtype": "uint8",
+        "encoding": "rgb8"
+      },
+      "depth": {
+        "shape_hwc": [
+          480,
+          640,
+          1
+        ],
+        "dtype": "float32",
+        "range": [
+          0.0,
+          1.0
+        ],
+        "finite_required": true
+      },
+      "pose": {
+        "global_gps": "float64[3]",
+        "global_rotation": "float64[4] wxyz"
+      },
+      "required_identity_fields": [
+        "episode_id",
+        "reset_generation",
+        "sequence_id",
+        "request_id",
+        "observation_digest",
+        "client_wall_monotonic_ns",
+        "sim_stamp",
+        "deadline",
+        "valid_until"
+      ],
+      "history_mode": "on"
+    },
+    "action": {
+      "discrete_action_values": {
+        "stand_still": -1,
+        "stop": 0,
+        "forward": 1,
+        "left": 2,
+        "right": 3
+      },
+      "trajectory_mode": "full_trajectory",
+      "trajectory_frame": "base_link",
+      "system_mode": "full_system1_system2",
+      "valid_until_required": true,
+      "stale_or_identity_mismatch": "discard_and_safe_stop"
+    },
+    "transport": {
+      "x86_to_lane_dgx": "bounded inline zlib arrays over peer-pinned TCP",
+      "inside_lane_dgx": "raw ROS 2 observation transport",
+      "cross_dgx_model_hop": false
+    },
+    "lane_request_id_prefix": {
+      "lane_a": "a::",
+      "lane_b": "b::"
+    }
+  },
+  "success_and_stop_contract": {
+    "official_success_source": "isaac-run/result.json:val_unseen.SR",
+    "official_success_rule": "The official evaluator recomputes Success from final NE and the immutable episode success radius.",
+    "progress_termination_label_is_official_success": false,
+    "baseline_termination_mode": "model_stop",
+    "model_stop": {
+      "discrete_action": 0,
+      "stop_flag": true,
+      "requires_matching_episode_reset_sequence_request_identity": true
+    },
+    "oracle_termination": {
+      "threshold_m": 2.5,
+      "distance_source": "evaluator_ground_truth",
+      "scope": "termination_only",
+      "interpretation": "diagnostic_upper_bound_never_model_credit"
+    },
+    "t4_frozen_pilot": {
+      "episode_count": 20,
+      "official_success_count": 1,
+      "official_sr": 0.05,
+      "termination_label_success_count": 0,
+      "result_summary_sha256": "7ce7c228d130de8a5876ba4dc41bac8b5b190d6cc41315d43f63d791b3ece8da"
+    }
+  },
+  "completion_sim_contract": {
+    "runtime_policy": "completion_sim",
+    "simulation_target": "isaac",
+    "real_go2_allowed": false,
+    "map_source": "static_global",
+    "local_costmap_source": "lidar",
+    "pose_source": "isaac_gt_pose",
+    "active_nvblox": false,
+    "nvblox_mode": "shadow_or_off",
+    "collision_monitor_policy": "warn_only_or_limited",
+    "bounded_velocity_required": true,
+    "simulation_estop_required": true,
+    "fatal_invariants": [
+      "nan_motion",
+      "fall",
+      "stale_motion",
+      "cross_episode_state",
+      "cross_lane_state",
+      "unbounded_velocity"
+    ],
+    "allowed_deviations": [
+      "recorder_partial_frame_warn",
+      "nearest_or_latest_tf",
+      "source_and_watchdog_timeout_up_to_5_sec",
+      "collision_monitor_warn_only",
+      "physical_collision_metric_only"
+    ],
+    "strict_evidence_profile_unchanged": true
+  },
+  "recovery_a": {
+    "selected": true,
+    "profile_id": "A",
+    "profile_canonical_sha256": "0b7b789f0ba3b0170be9dedd8298ccf4e47e002ad49e8320e3cd00afe0526531",
+    "result_summary_sha256": "b79f71159afdb8504d09c473b0158d36bf9874e27ed97f284e38add72fe8924a",
+    "metrics_sha256": "904d28184efa285eaff2737e164e403fb1685fdd92f3f616f753d029f9aabea7",
+    "fresh_replan_consumed_count": 6,
+    "old_trajectory_execution_count": 0,
+    "maximum_recoveries_per_episode": 2,
+    "must_not_repeat_old_trajectory": true
+  },
+  "lane_contract": {
+    "required_colocated_stack": [
+      "internvla_n1_model",
+      "ros2_sensor_ingress",
+      "localization",
+      "static_global_map",
+      "nvblox",
+      "lidar_local_costmap",
+      "nav2",
+      "watchdog",
+      "go2_command_adapter",
+      "bounded_velocity_control"
+    ],
+    "lane_a": {
+      "dgx_host": "10.100.100.128",
+      "dgx_user": "railgun",
+      "dgx_cuda_visible_devices": "0",
+      "paired_isaac_gpu": 0,
+      "ros_domain_id": 75,
+      "namespace": "/t5/lane_a",
+      "request_id_prefix": "a::",
+      "controller_tcp_port": 25137,
+      "model_client_tcp_port": 25139,
+      "oracle_tcp_port": 25140,
+      "clock_udp_port": 25141
+    },
+    "lane_b": {
+      "dgx_host": "10.100.120.116",
+      "dgx_user": "rail",
+      "dgx_cuda_visible_devices": "0",
+      "paired_isaac_gpu": 1,
+      "ros_domain_id": 76,
+      "namespace": "/t5/lane_b",
+      "request_id_prefix": "b::",
+      "controller_tcp_port": 25138,
+      "model_client_tcp_port": 25239,
+      "oracle_tcp_port": 25240,
+      "clock_udp_port": 25241
+    },
+    "symmetric_runtime": {
+      "same_golden_bundle_required": true,
+      "same_model_checkpoint_required": true,
+      "same_config_camera_scene_episode_required": true,
+      "same_ros_tf_and_io_contract_required": true,
+      "lane_specific_variation_allowlist": [
+        "host_identity",
+        "paired_isaac_gpu",
+        "ros_domain_id",
+        "namespace",
+        "ports",
+        "request_id_prefix",
+        "cache_tmp_log_result_roots",
+        "cpu_affinity"
+      ],
+      "sample_count_deduplication_key": "episode_key",
+      "lane_swap_cross_reproduction_required": true
+    }
+  },
+  "promotion_contract": {
+    "d0_required_sequence": [
+      "lane_a_fixed_5",
+      "lane_b_same_fixed_5",
+      "lane_a_and_b_simultaneous_same_fixed_5"
+    ],
+    "candidate_cross_reproduction": [
+      "lane_a_candidate_on_lane_b_fixed_5",
+      "lane_b_candidate_on_lane_a_fixed_5"
+    ],
+    "conversation_00_only_actions": [
+      "change_shared_message_schema",
+      "change_tf_semantics",
+      "change_success_or_stop_definition",
+      "merge_integration_branch",
+      "promote_golden_bundle"
+    ],
+    "hardware_only_gain_is_promotable": false,
+    "new_bundle_requires_cross_lane_pass": true
+  },
+  "prohibited_scope": {
+    "step_3_7": "FORBIDDEN",
+    "nvfp4": "FORBIDDEN",
+    "model_finetuning": "FORBIDDEN",
+    "lora_or_dagger_training": "FORBIDDEN",
+    "real_go2_motion": "FORBIDDEN",
+    "failure_trajectory_use": "DATA_PREPARATION_ONLY"
+  }
+}

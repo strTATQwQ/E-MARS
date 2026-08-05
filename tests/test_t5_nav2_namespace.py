@@ -64,6 +64,9 @@ def test_t5_nav2_copy_only_changes_namespaced_topics_and_gate_tolerances() -> No
     controller["general_goal_checker"]["xy_goal_tolerance"] = 0.03
     controller["general_goal_checker"]["yaw_goal_tolerance"] = 0.03
     controller["FollowPath"]["xy_goal_tolerance"] = 0.03
+    frozen_t4["local_costmap"]["local_costmap"]["ros__parameters"][
+        "inflation_layer"
+    ]["inflation_radius"] = 0.25
     assert t5 == frozen_t4
 
 

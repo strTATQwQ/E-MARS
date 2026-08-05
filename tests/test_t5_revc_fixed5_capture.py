@@ -185,7 +185,8 @@ def test_fixed5_profile_is_lane_b_gpu1_odd_cpu_and_does_not_replace_smoke() -> N
     assert 'test "$isaac_sensor_profile" = lane_b_revc_fixed5_capture || return 0' in coordinator
     assert "-name snapshot.json -o -name '*.png'" in coordinator
     assert '"snapshot_sidecar_count_five": len(sidecars) == 5' in coordinator
-    assert '"png_count_twenty": len(pngs) == 20' in coordinator
+    assert '"png_count_four_views_plus_optional_observer"' in coordinator
+    assert "len(pngs) == 20 + observer_count" in coordinator
     assert '"sidecar_references_exact_png_set": set(referenced) == set(pngs)' in coordinator
     assert '"capture_summary_exact_binding"' in coordinator
     assert 'capture_row.get("sidecar_sha256")' in coordinator
